@@ -1,0 +1,32 @@
+# Ignore all Markdown files except README.md
+*.md
+!README.md
+
+# Ignore Python bytecode cache
+__pycache__/
+*.py[cod]
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+/autoquerybench/notebooks/.jupyter_ystore.db
+
+# Ignore output logs and generated files
+autoquerybench/output/
+*.log
+*.csv
+*.json
+
+# Ignore paper PDFs
+papers/
+
+# Ignore VSCode settings (if used)
+.vscode/
+
+# Ignore OS/macOS metadata
+.DS_Store
+
+# Allow versioning of example templates if needed
+!autoquerybench/config/templates/
+
+.DS_Store
