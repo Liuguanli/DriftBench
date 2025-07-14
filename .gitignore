@@ -29,4 +29,4 @@ papers/
 # Allow versioning of example templates if needed
 !autoquerybench/config/templates/
 
-.DS_Store
+benchmarks

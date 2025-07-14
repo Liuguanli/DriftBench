@@ -38,7 +38,7 @@ class CSVSchemaExtractor(BaseSchemaExtractor):
                 # try parsing first 5 non-null values
             sample = pandas_series.dropna().head(5)
             try:
-                parsed = pd.to_datetime(sample, errors="raise")
+                parsed = pd.to_datetime(sample, format="%Y-%m-%d %H:%M:%S.%f", errors="raise")
                 return "datetime"
             except Exception:
                 return "categorical" if pandas_series.nunique() < categorical_threshold else "string"

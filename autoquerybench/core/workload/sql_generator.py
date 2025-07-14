@@ -212,5 +212,3 @@ def save_queries_to_json(timestamps: List[str], sqls: List[str], output_file: st
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, "w") as f:
         json.dump(queries, f, indent=2)
-
-
