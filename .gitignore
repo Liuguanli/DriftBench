@@ -1,6 +1,6 @@
 # Ignore all Markdown files except README.md
-*.md
-!README.md
+TODO.md
+PLAN.md
 
 # Ignore Python bytecode cache
 __pycache__/
@@ -12,10 +12,11 @@ __pycache__/
 /autoquerybench/notebooks/.jupyter_ystore.db
 
 # Ignore output logs and generated files
-autoquerybench/output/
+# autoquerybench/output/
+autoquerybench/data/
 *.log
-*.csv
-*.json
+# *.csv
+# *.json
 
 # Ignore paper PDFs
 papers/
