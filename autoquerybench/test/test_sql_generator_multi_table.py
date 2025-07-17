@@ -13,7 +13,7 @@ if __name__ == "__main__":
         "sample_rich.category": {"distribution": "choice", "choices": ["A", "B", "C"]},
         "sample_rich.signup_date": {"distribution": "fixed", "value": "2021-01-01"}
     }
-        
+
     timestamps, sqls = generate_sql_queries(
         template_file="./autoquerybench/data/sample_templates_multi_table.json",
         dist_config=dist_config,
@@ -23,11 +23,11 @@ if __name__ == "__main__":
     )
 
     # print(sqls)
-    for sql in sqls:
-        if "JOIN" in sql:
-            print(sql)
-            break
+    # for sql in sqls:
+    #     if "JOIN" in sql:
+    #         print(sql)
+    #         break
 
-    # save_queries_to_json(timestamps, sqls, "./autoquerybench/data/generated_queries_age_uniform.json")
+    save_queries_to_json(timestamps, sqls, "./autoquerybench/data/generated_queries_multi_table.json")
 
-    # save_queries_to_csv(timestamps, sqls, "./autoquerybench/data/generated_queries_age_uniform.csv")
+    save_queries_to_csv(timestamps, sqls, "./autoquerybench/data/generated_queries_multi_table.csv")
