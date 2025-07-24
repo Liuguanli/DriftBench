@@ -1,2 +1,2 @@
 
-python -m autoquerybench.test.test_template_generator
+python -m driftbench.test.test_template_generator

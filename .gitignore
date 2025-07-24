@@ -9,11 +9,11 @@ __pycache__/
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
-/autoquerybench/notebooks/.jupyter_ystore.db
+/driftbench/notebooks/.jupyter_ystore.db
 
 # Ignore output logs and generated files
 # autoquerybench/output/
-autoquerybench/data/
+driftbench/data/
 *.log
 # *.csv
 # *.json

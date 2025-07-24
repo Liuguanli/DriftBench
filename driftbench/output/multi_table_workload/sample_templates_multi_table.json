@@ -1,0 +1,286 @@
+[
+  {
+    "template_id": "T000",
+    "cardinality": 1441548,
+    "tables": {
+      "base": "public.catalog_sales",
+      "joins": [
+        {
+          "type": "INNER JOIN",
+          "table": "public.store_sales",
+          "condition": "public.catalog_sales.cs_ext_list_price = public.store_sales.ss_ext_list_price"
+        }
+      ]
+    },
+    "predicate": [
+      {
+        "column": "public.catalog_sales.cs_item_sk",
+        "operator": "BETWEEN",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 18000
+        },
+        "selectivity": 0.07
+      },
+      {
+        "column": "public.catalog_sales.cs_warehouse_sk",
+        "operator": "<",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 5
+        },
+        "selectivity": 0.01
+      },
+      {
+        "column": "public.catalog_sales.cs_ship_cdemo_sk",
+        "operator": ">=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 5,
+          "max": 1920765
+        },
+        "selectivity": 0.0
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.catalog_sales.cs_sold_time_sk",
+        "public.catalog_sales.cs_order_number"
+      ],
+      "aggregation": null,
+      "order_by": "public.catalog_sales.cs_sold_time_sk",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T001",
+    "cardinality": 1441548,
+    "tables": {
+      "base": "public.catalog_sales",
+      "joins": [
+        {
+          "type": "FULL JOIN",
+          "table": "public.store_sales",
+          "condition": "public.catalog_sales.cs_ext_tax = public.store_sales.ss_ext_tax"
+        }
+      ]
+    },
+    "predicate": [
+      {
+        "column": "public.catalog_sales.cs_warehouse_sk",
+        "operator": ">=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 5
+        },
+        "selectivity": 0.08
+      },
+      {
+        "column": "public.catalog_sales.cs_ext_ship_cost",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": "0.00",
+          "max": "14416.00"
+        },
+        "selectivity": 0.08
+      },
+      {
+        "column": "public.catalog_sales.cs_order_number",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 160000
+        },
+        "selectivity": 0.07
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.catalog_sales.cs_catalog_page_sk",
+        "public.catalog_sales.cs_ext_tax"
+      ],
+      "aggregation": null,
+      "order_by": "public.catalog_sales.cs_catalog_page_sk",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T002",
+    "cardinality": 1441548,
+    "tables": {
+      "base": "public.catalog_sales",
+      "joins": [
+        {
+          "type": "FULL JOIN",
+          "table": "public.store_sales",
+          "condition": "public.catalog_sales.cs_wholesale_cost = public.store_sales.ss_wholesale_cost"
+        }
+      ]
+    },
+    "predicate": [
+      {
+        "column": "public.catalog_sales.cs_bill_hdemo_sk",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 7200
+        },
+        "selectivity": 0.04
+      },
+      {
+        "column": "public.catalog_sales.cs_ext_wholesale_cost",
+        "operator": ">=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": "1.02",
+          "max": "9999.00"
+        },
+        "selectivity": 0.06
+      },
+      {
+        "column": "public.catalog_sales.cs_bill_addr_sk",
+        "operator": "BETWEEN",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 50000
+        },
+        "selectivity": 0.07
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.catalog_sales.cs_sales_price",
+        "public.catalog_sales.cs_bill_addr_sk"
+      ],
+      "aggregation": null,
+      "order_by": "public.catalog_sales.cs_bill_addr_sk",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T003",
+    "cardinality": 1441548,
+    "tables": {
+      "base": "public.catalog_sales",
+      "joins": [
+        {
+          "type": "LEFT JOIN",
+          "table": "public.store_sales",
+          "condition": "public.catalog_sales.cs_list_price = public.store_sales.ss_list_price"
+        }
+      ]
+    },
+    "predicate": [
+      {
+        "column": "public.catalog_sales.cs_catalog_page_sk",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 9828
+        },
+        "selectivity": 0.07
+      },
+      {
+        "column": "public.catalog_sales.cs_bill_cdemo_sk",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 5,
+          "max": 1920765
+        },
+        "selectivity": 0.1
+      },
+      {
+        "column": "public.catalog_sales.cs_ship_date_sk",
+        "operator": "<",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 2450817,
+          "max": 2452738
+        },
+        "selectivity": 0.09
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.catalog_sales.cs_quantity",
+        "public.catalog_sales.cs_ext_sales_price"
+      ],
+      "aggregation": null,
+      "order_by": "public.catalog_sales.cs_ext_sales_price",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T004",
+    "cardinality": 2880404,
+    "tables": {
+      "base": "public.store_sales",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "public.store_sales.ss_wholesale_cost",
+        "operator": ">=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": "1.00",
+          "max": "100.00"
+        },
+        "selectivity": 0.03
+      },
+      {
+        "column": "public.store_sales.ss_addr_sk",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 50000
+        },
+        "selectivity": 0.06
+      },
+      {
+        "column": "public.store_sales.ss_net_paid_inc_tax",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": "0.00",
+          "max": "21192.87"
+        },
+        "selectivity": 0.05
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.store_sales.ss_hdemo_sk",
+        "public.store_sales.ss_wholesale_cost"
+      ],
+      "aggregation": null,
+      "order_by": "public.store_sales.ss_wholesale_cost",
+      "limit": 100
+    }
+  }
+]
