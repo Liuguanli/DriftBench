@@ -1,0 +1,186 @@
+[
+  {
+    "template_id": "T000",
+    "cardinality": 1441548,
+    "tables": {
+      "base": "public.catalog_sales",
+      "joins": [
+        {
+          "type": "FULL JOIN",
+          "table": "public.store_sales",
+          "condition": "public.catalog_sales.cs_net_profit = public.store_sales.ss_net_profit"
+        }
+      ]
+    },
+    "predicate": [
+      {
+        "column": "public.catalog_sales.cs_warehouse_sk",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 5
+        },
+        "selectivity": 0.1
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.catalog_sales.cs_order_number"
+      ],
+      "aggregation": null,
+      "order_by": "public.catalog_sales.cs_order_number",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T001",
+    "cardinality": 2880404,
+    "tables": {
+      "base": "public.store_sales",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "public.store_sales.ss_addr_sk",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 50000
+        },
+        "selectivity": 0.1
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.store_sales.ss_sold_date_sk"
+      ],
+      "aggregation": null,
+      "order_by": "public.store_sales.ss_sold_date_sk",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T002",
+    "cardinality": 2880404,
+    "tables": {
+      "base": "public.store_sales",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "public.store_sales.ss_promo_sk",
+        "operator": "<",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 300
+        },
+        "selectivity": 0.1
+      },
+      {
+        "column": "public.store_sales.ss_sold_date_sk",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 2450816,
+          "max": 2452642
+        },
+        "selectivity": 0.1
+      },
+      {
+        "column": "public.store_sales.ss_hdemo_sk",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 7200
+        },
+        "selectivity": 0.1
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.store_sales.ss_ext_discount_amt"
+      ],
+      "aggregation": null,
+      "order_by": "public.store_sales.ss_ext_discount_amt",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T003",
+    "cardinality": 2880404,
+    "tables": {
+      "base": "public.store_sales",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "public.store_sales.ss_customer_sk",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 100000
+        },
+        "selectivity": 0.1
+      },
+      {
+        "column": "public.store_sales.ss_wholesale_cost",
+        "operator": "BETWEEN",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": "1.00",
+          "max": "100.00"
+        },
+        "selectivity": 0.1
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.store_sales.ss_item_sk"
+      ],
+      "aggregation": null,
+      "order_by": "public.store_sales.ss_item_sk",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T004",
+    "cardinality": 2880404,
+    "tables": {
+      "base": "public.store_sales",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "public.store_sales.ss_ext_list_price",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": "1.12",
+          "max": "19984.00"
+        },
+        "selectivity": 0.1
+      }
+    ],
+    "payload": {
+      "columns": [
+        "public.store_sales.ss_list_price"
+      ],
+      "aggregation": null,
+      "order_by": "public.store_sales.ss_list_price",
+      "limit": 100
+    }
+  }
+]

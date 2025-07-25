@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
+from typing import List, Optional
 from scipy.stats import gaussian_kde
 from scipy.stats import skewnorm
-
+from driftbench.core.data.distribution_simulator import DataDistributionSimulator
+from driftbench.core.data.sampler import Sampler
 import os
 
-MAX_KDE_SAMPLES = 50000  
 
 class SingleTableDriftGenerator:
     def __init__(self, csv_path, schema, base_table, seed=42):
@@ -26,7 +27,8 @@ class SingleTableDriftGenerator:
 
     def apply_drift(self, drift_type="outlier_injection", **kwargs):
         if drift_type == "outlier_injection":
-            return self._inject_outliers(**kwargs)
+            # return self._inject_outliers(**kwargs)
+            return self.inject_outliers_from_csv(**kwargs)
         elif drift_type == "value_skew":
             return self._inject_skew(**kwargs)
         elif drift_type == "vary_cardinality":
@@ -43,6 +45,31 @@ class SingleTableDriftGenerator:
         outliers = drifted_df.sample(n=n).copy()
         outliers[column] = extreme_value
         return pd.concat([drifted_df, outliers], ignore_index=True)
+    
+    def inject_outliers_from_csv(
+        self,
+        outlier_csv_path: str,
+        inject_count: Optional[int] = None,
+        target_columns: Optional[List[str]] = None,
+    ) -> pd.DataFrame:
+        outlier_df = pd.read_csv(outlier_csv_path)
+
+        if inject_count is not None and inject_count < len(outlier_df):
+            outlier_df = outlier_df.sample(n=inject_count, random_state=self.seed)
+
+        if target_columns is not None:
+            outlier_df = outlier_df[target_columns]
+
+        # Align with self.df (fill missing columns if needed)
+        full_outlier_df = pd.DataFrame(columns=self.df.columns)
+        for col in self.df.columns:
+            if col in outlier_df.columns:
+                full_outlier_df[col] = outlier_df[col]
+            else:
+                full_outlier_df[col] = pd.NA
+
+        # Concatenate to copy of self.df
+        return pd.concat([self.df.copy(), full_outlier_df], ignore_index=True)
 
 
     def _inject_skew(self, columns, portion=1.0, skewness=2):
@@ -88,9 +115,16 @@ class SingleTableDriftGenerator:
         target_rows = int(current_rows * scale)
         return self._generate_rows_like_existing(target_rows)
 
+    # MAX_KDE_SAMPLES = 1000  # adjust if needed
+
 
     def _generate_rows_like_existing(self, n):
+
+        MAX_KDE_SAMPLES = 50000
+        
+        simulator = DataDistributionSimulator(self.df, self.columns)
         new_data = {}
+
         for col in self.col_names:
 
             col_data = self.df[col].dropna()
@@ -100,23 +134,16 @@ class SingleTableDriftGenerator:
                 continue
 
             logical_type = self.columns[col]["logical_type"]
-
+            
             if logical_type == "numeric":
-
                 if len(col_data) > MAX_KDE_SAMPLES:
-                    sample_data = np.random.choice(col_data, size=MAX_KDE_SAMPLES, replace=False)
+                    sample_data = pd.Series(
+                        np.random.choice(col_data, size=MAX_KDE_SAMPLES, replace=False),
+                        index=None
+                    )
                 else:
                     sample_data = col_data
-
-                kde = gaussian_kde(sample_data)
-                samples = kde.resample(n).flatten()
-                samples = np.clip(samples, col_data.min(), col_data.max())
-
-                if pd.api.types.is_integer_dtype(col_data):
-                    samples = np.round(samples).astype(int)
-                else:
-                    samples = samples.astype(float)
-
+                samples = simulator.generate(sample_data, n, strategy_name="kde" if logical_type == "numeric" else "default")
                 new_data[col] = samples
             elif logical_type == "string" or logical_type == "categorical":
                 col_data = self.df[col].dropna().astype(str)
@@ -127,6 +154,45 @@ class SingleTableDriftGenerator:
             else:
                 new_data[col] = [None] * n  # fallback for unknown types
         return pd.DataFrame(new_data)
+
+    # def _generate_rows_like_existing(self, n):
+    #     new_data = {}
+    #     for col in self.col_names:
+
+    #         col_data = self.df[col].dropna()
+
+    #         if len(col_data) == 0:
+    #             new_data[col] = [None] * n
+    #             continue
+
+    #         logical_type = self.columns[col]["logical_type"]
+
+    #         if logical_type == "numeric":
+
+    #             if len(col_data) > MAX_KDE_SAMPLES:
+    #                 sample_data = np.random.choice(col_data, size=MAX_KDE_SAMPLES, replace=False)
+    #             else:
+    #                 sample_data = col_data
+
+    #             kde = gaussian_kde(sample_data)
+    #             samples = kde.resample(n).flatten()
+    #             samples = np.clip(samples, col_data.min(), col_data.max())
+
+    #             if pd.api.types.is_integer_dtype(col_data):
+    #                 samples = np.round(samples).astype(int)
+    #             else:
+    #                 samples = samples.astype(float)
+
+    #             new_data[col] = samples
+    #         elif logical_type == "string" or logical_type == "categorical":
+    #             col_data = self.df[col].dropna().astype(str)
+    #             new_data[col] = np.random.choice(col_data, n, replace=True)
+    #         elif logical_type == "datetime":
+    #             col_data = pd.to_datetime(self.df[col].dropna())
+    #             new_data[col] = np.random.choice(col_data, n, replace=True)
+    #         else:
+    #             new_data[col] = [None] * n  # fallback for unknown types
+    #     return pd.DataFrame(new_data)
     
 
     def _insert_records(self, n=10, filter_column=None, filter_func=None):
@@ -159,29 +225,76 @@ class SingleTableDriftGenerator:
         return self.df
 
 
-    def _delete_records(self, n=10, filter_column=None, filter_func=None):
-        """
-        Randomly delete `n` rows from the dataframe.
-        Optionally filter rows using `filter_column` and `filter_func` before sampling.
+    # def _delete_records(self, n=10, filter_column=None, filter_func=None):
+    #     """
+    #     Randomly delete `n` rows from the dataframe.
+    #     Optionally filter rows using `filter_column` and `filter_func` before sampling.
 
+    #     Args:
+    #         n (int): Number of rows to delete.
+    #         filter_column (str): Column to apply filter on (optional).
+    #         filter_func (function): A function that takes a Series and returns a boolean Series (optional).
+
+    #     Returns:
+    #         pd.DataFrame: The deleted rows.
+    #     """
+    #     candidate_df = self.df
+
+    #     if filter_column and filter_func:
+    #         if filter_column not in self.col_names:
+    #             raise ValueError(f"Column {filter_column} not in dataframe")
+    #         candidate_df = self.df[filter_func(self.df[filter_column])]
+
+    #     if n > len(candidate_df):
+    #         raise ValueError(f"Cannot delete {n} rows from filtered dataframe with only {len(candidate_df)} rows")
+
+    #     deleted_df = candidate_df.sample(n=n, random_state=self.seed).copy()
+    #     self.df = self.df.drop(deleted_df.index).reset_index(drop=True)
+    #     return deleted_df
+
+
+    def _delete_records(self, n=10, filter_column=None, filter_func=None,
+                        strategy="uniform", strategy_config=None):
+        """
+        Sample `n` rows from the dataframe for deletion (not actually dropped).
+        
         Args:
-            n (int): Number of rows to delete.
-            filter_column (str): Column to apply filter on (optional).
-            filter_func (function): A function that takes a Series and returns a boolean Series (optional).
+            n (int): Number of records to sample.
+            filter_column (str): Optional column to apply filter on.
+            filter_func (function): A function to filter rows on `filter_column`.
+            strategy (str): Sampling strategy name.
+            strategy_config (dict): Optional sampling config.
 
         Returns:
-            pd.DataFrame: The deleted rows.
+            pd.DataFrame: The records selected for deletion.
         """
         candidate_df = self.df
 
         if filter_column and filter_func:
-            if filter_column not in self.col_names:
+            if filter_column not in self.df.columns:
                 raise ValueError(f"Column {filter_column} not in dataframe")
             candidate_df = self.df[filter_func(self.df[filter_column])]
 
-        if n > len(candidate_df):
-            raise ValueError(f"Cannot delete {n} rows from filtered dataframe with only {len(candidate_df)} rows")
+        if len(candidate_df) < n:
+            raise ValueError(f"Cannot sample {n} rows from filtered dataframe with only {len(candidate_df)} rows")
 
-        deleted_df = candidate_df.sample(n=n, random_state=self.seed).copy()
-        self.df = self.df.drop(deleted_df.index).reset_index(drop=True)
-        return deleted_df
+        # use Sampler to sample from candidate_df
+        sampler = Sampler(candidate_df, self.columns, default_strategy=strategy)
+
+        # Uniform sampling
+        return sampler.sample_rows(n=n, strategy_name="uniform")
+
+        # # Weighted sampling
+        # sampler.sample_rows(n=n, strategy_name="weighted", config={"weight_col": "popularity"})
+
+        # # Zipf sampling
+        # sampler.sample_rows(n=n, strategy_name="zipf", config={"a": 1.8})
+
+        # # Stratified sampling
+        # sampler.sample_rows(n=n, strategy_name="stratified", config={"strata_col": "category"})
+
+        # # Long-tail sampling
+        # sampler.sample_rows(n=n, strategy_name="long_tail", config={"count_col": "access_count"})
+
+        # # Fixed ID sampling
+        # sampler.sample_rows(n=n, strategy_name="fixed_ids", config={"id_col": "user_id", "ids": [101, 205, 309]})

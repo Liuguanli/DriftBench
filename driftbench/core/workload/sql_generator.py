@@ -115,54 +115,14 @@ def generate_timestamps_fixed_duration(
     return timestamps
 
 
-def generate_timestamps(
-    count: int,
-    start_time: str,
-    pattern: str = "uniform",
-    queries_per_minute: int = 60
-) -> List[str]:
-    interval_sec = 60.0 / queries_per_minute
-    base_ts = datetime.datetime.fromisoformat(start_time)
-    timestamps = []
-
-    # Step sizes
-    steps = []
-
-    for i in range(count):
-        if pattern == "uniform":
-            steps.append(interval_sec)
-        elif pattern == "periodic":
-            steps.append(interval_sec * (1 + 0.5 * math.sin(i / 5)))  # smoother wave
-        elif pattern == "bursty":
-            # Simulate burst every 20 queries
-            if i % 20 < 3:
-                steps.append(interval_sec / 10)
-            else:
-                steps.append(interval_sec * 2)
-        elif pattern == "long_tail":
-            steps.append(interval_sec * (1 + math.log1p(i + 1)))
-        else:
-            steps.append(interval_sec)
-
-    # Cumulative offset
-    cumulative = 0.0
-    for step in steps:
-        cumulative += step
-        ts = base_ts + datetime.timedelta(seconds=cumulative)
-        timestamps.append(ts.isoformat(timespec="microseconds"))
-
-    return timestamps
-
-
-
 def generate_sql_queries(
     template_file: str,
     dist_config: Optional[Dict] = None,
     seed: int = 42,
     queries_per_template: int = 10,
-    timestamp_start: Optional[str] = "2023-01-01T00:00:00",
-    timestamp_pattern: str = "uniform",
-    total_duration_sec: float = 60
+    # timestamp_start: Optional[str] = "2023-01-01T00:00:00",
+    # timestamp_pattern: str = "uniform",
+    # total_duration_sec: float = 60
 ) -> List[Dict[str, str]]:
     """
     Load templates and generate SQL queries with associated timestamps.
@@ -185,14 +145,16 @@ def generate_sql_queries(
             sqls.append(sql)
     random.shuffle(sqls)
 
-    timestamps = generate_timestamps_fixed_duration(
-        count=len(sqls),
-        start_time=timestamp_start,
-        pattern=timestamp_pattern,
-        total_duration_sec=total_duration_sec
-    )
+    return sqls
 
-    return timestamps, sqls
+    # timestamps = generate_timestamps_fixed_duration(
+    #     count=len(sqls),
+    #     start_time=timestamp_start,
+    #     pattern=timestamp_pattern,
+    #     total_duration_sec=total_duration_sec
+    # )
+
+    # return timestamps, sqls
 
 
 def save_queries_to_csv(timestamps: List[str], sqls: List[str], output_file: str):

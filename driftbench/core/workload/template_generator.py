@@ -5,6 +5,7 @@ from typing import Any, List, Dict, Optional, Tuple
 import pprint
 
 class TemplateGenerator:
+
     def __init__(self, schema: dict, base_table: str = "sample", seed: Optional[int] = 42):
 
         self.schema = schema
@@ -14,7 +15,8 @@ class TemplateGenerator:
         self.columns = self.table["columns"]
         self.rnd = random.Random(seed)
         self.operator_pool = {
-            "numeric": [">=", "<=", ">", "<", "BETWEEN"],
+            # "numeric": [">=", "<=", ">", "<", "BETWEEN"],
+            "numeric": [">", "<", "BETWEEN"],
             "categorical": ["=", "!="],
             "datetime": [">=", "<="],
             "boolean": ["="],
@@ -22,14 +24,13 @@ class TemplateGenerator:
         }
 
 
-
     def _generate_predicate(self, col_name: str, col_info: dict, selectivity_lower_bound: int = 1e-6,
                             selectivity_upper_bound: int = 0.1, col_value_range: Any = None) -> Optional[dict]:
-        
+
         dtype = col_info.get("logical_type")
         full_col = f"{self.base_table}.{col_name}"
 
-        selectivity_lower_bound = max(selectivity_lower_bound, 1e-6)
+        selectivity_lower_bound = max(selectivity_lower_bound, 0.05)
         selectivity_upper_bound = min(selectivity_upper_bound, 1)
 
         if selectivity_lower_bound == selectivity_upper_bound:
@@ -99,7 +100,7 @@ class TemplateGenerator:
     def generate_templates(
         self,
         num_templates: int = 5,
-        max_predicates: int = 2,
+        max_predicates: int = 3,
         max_payload_columns: int = 3,
         selectivity: Optional[Dict[str, Tuple[float, float]]] = None,
         value_range: Optional[Dict[str, Any]] = None
@@ -115,14 +116,13 @@ class TemplateGenerator:
             pred_cols = self.rnd.sample(col_names, k=pred_num)
             payload_num = self.rnd.randint(1, min(max_payload_columns, len(col_names)))
             payload_cols = self.rnd.sample(col_names, k=payload_num)
-            # print(len(pred_cols), len(payload_cols))
             predicates = list(filter(None, [
                 self._generate_predicate(
                     col,
                     self.columns[col],
                     selectivity_lower_bound=selectivity[col][0] if selectivity and col in selectivity else 1e-6,
                     selectivity_upper_bound=selectivity[col][1] if selectivity and col in selectivity else 0.1,
-                    col_value_range=value_range[col] if value_range and value_range[col] else None
+                    col_value_range=value_range[col] if value_range and col in value_range else None
                 )
                 for col in pred_cols
             ]))
@@ -149,10 +149,10 @@ class TemplateGenerator:
 
         return templates
 
-    def save_templates(self, templates: List[Dict], output_path: str):
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(templates, f, indent=2)
+    # def save_templates(self, templates: List[Dict], output_path: str):
+    #     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    #     with open(output_path, "w") as f:
+    #         json.dump(templates, f, indent=2)
 
 
 class TemplateGeneratorMulti:
@@ -225,7 +225,7 @@ class TemplateGeneratorMulti:
         dtype = col_info.get("logical_type")
         full_col = f"{base_table}.{col_name}"
 
-        selectivity_lower_bound = max(selectivity_lower_bound, 1e-6)
+        selectivity_lower_bound = max(selectivity_lower_bound, 0.1)
         selectivity_upper_bound = min(selectivity_upper_bound, 1)
 
         if selectivity_lower_bound == selectivity_upper_bound:
@@ -302,16 +302,16 @@ class TemplateGeneratorMulti:
         join_count: int = 0,
         join_candidates: List[Dict[str, Any]] = None
     ) -> List[Dict]:
-  
+
         if join_candidates:
             self.join_candidates = join_candidates
-        
+
         assert selectivity is not None and len(selectivity) > 0, "selectivity must be provided and not be empty"
 
         if join_count == 0:
             pass
             #TODO use one table way
-        
+
         # TODO get at most {join_count} items from join_candidates 
 
         templates = []
@@ -334,9 +334,10 @@ class TemplateGeneratorMulti:
 
             if not value_range:
                 for col in pred_cols:
-                    col_value_range = self.tables[main_table]["columns"][col]["range"]
-                    template_value_range[col] = [col_value_range["min"], col_value_range["max"]]
-                    print(col, template_value_range)
+                    if "range" in self.tables[main_table]["columns"][col]:
+                        col_value_range = self.tables[main_table]["columns"][col]["range"]
+                        template_value_range[col] = [col_value_range["min"], col_value_range["max"]]
+                        # print(col, template_value_range)
             else:
                 template_value_range = value_range
 
@@ -349,7 +350,7 @@ class TemplateGeneratorMulti:
                     self.tables[main_table]["columns"][col],
                     selectivity_lower_bound=selectivity[col][0] if selectivity and col in selectivity else 1e-6,
                     selectivity_upper_bound=selectivity[col][1] if selectivity and col in selectivity else 0.1,
-                    col_value_range=template_value_range[col] if template_value_range and template_value_range[col] else None
+                    col_value_range=template_value_range[col] if template_value_range and col in template_value_range else None
                 )
                 for col in pred_cols
             ]))
@@ -407,7 +408,7 @@ class TemplateGeneratorMulti:
 
         return templates
 
-    def save_templates(self, templates: List[Dict], output_path: str):
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(templates, f, indent=2)
+    # def save_templates(self, templates: List[Dict], output_path: str):
+    #     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    #     with open(output_path, "w") as f:
+    #         json.dump(templates, f, indent=2)

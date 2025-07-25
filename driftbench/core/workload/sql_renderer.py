@@ -90,8 +90,8 @@ class PostgreSQLRenderer:
 
             if op.lower() == "between":  # dtype must in {"numeric"}
                 if dtype in {"numeric"}:
-                    val_min = pred["range"]["min"]
-                    val_max = pred["range"]["max"]
+                    val_min = float(pred["range"]["min"])
+                    val_max = float(pred["range"]["max"])
                     half_range = (val_max - val_min) * selectivity / 2
                     # TODO can bound the range of val via val_max and val_min from the schema
                     # TODO can also use the bound from user input

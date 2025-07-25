@@ -1,0 +1,250 @@
+{
+  "source": "csv",
+  "tables": {
+    "census_original": {
+      "columns": {
+        "age": {
+          "num_unique": 66,
+          "sample_values": [
+            39,
+            50,
+            38,
+            53,
+            28,
+            37,
+            49,
+            52,
+            31,
+            42
+          ],
+          "logical_type": "numeric",
+          "range": {
+            "min": 17,
+            "max": 90
+          },
+          "cdf": {
+            "0%": 17.0,
+            "25%": 28.0,
+            "50%": 36.0,
+            "75%": 46.0,
+            "100%": 90.0
+          }
+        },
+        "workclass": {
+          "num_unique": 7,
+          "sample_values": [
+            "State-gov",
+            "Self-emp-not-inc",
+            "Private",
+            "Federal-gov",
+            "Local-gov",
+            "?",
+            "Self-emp-inc"
+          ],
+          "logical_type": "categorical"
+        },
+        "education": {
+          "num_unique": 16,
+          "sample_values": [
+            "Bachelors",
+            "HS-grad",
+            "11th",
+            "Masters",
+            "9th",
+            "Some-college",
+            "Assoc-acdm",
+            "Assoc-voc",
+            "7th-8th",
+            "Doctorate"
+          ],
+          "logical_type": "string"
+        },
+        "education_num": {
+          "num_unique": 16,
+          "sample_values": [
+            13,
+            9,
+            7,
+            14,
+            5,
+            10,
+            12,
+            11,
+            4,
+            16
+          ],
+          "logical_type": "numeric",
+          "range": {
+            "min": 1,
+            "max": 16
+          },
+          "cdf": {
+            "0%": 1.0,
+            "25%": 9.0,
+            "50%": 10.0,
+            "75%": 12.0,
+            "100%": 16.0
+          }
+        },
+        "marital_status": {
+          "num_unique": 7,
+          "sample_values": [
+            "Never-married",
+            "Married-civ-spouse",
+            "Divorced",
+            "Married-spouse-absent",
+            "Separated",
+            "Married-AF-spouse",
+            "Widowed"
+          ],
+          "logical_type": "categorical"
+        },
+        "occupation": {
+          "num_unique": 15,
+          "sample_values": [
+            "Adm-clerical",
+            "Exec-managerial",
+            "Handlers-cleaners",
+            "Prof-specialty",
+            "Other-service",
+            "Sales",
+            "Craft-repair",
+            "Transport-moving",
+            "Farming-fishing",
+            "Machine-op-inspct"
+          ],
+          "logical_type": "string"
+        },
+        "relationship": {
+          "num_unique": 6,
+          "sample_values": [
+            "Not-in-family",
+            "Husband",
+            "Wife",
+            "Own-child",
+            "Unmarried",
+            "Other-relative"
+          ],
+          "logical_type": "categorical"
+        },
+        "race": {
+          "num_unique": 5,
+          "sample_values": [
+            "White",
+            "Black",
+            "Asian-Pac-Islander",
+            "Amer-Indian-Eskimo",
+            "Other"
+          ],
+          "logical_type": "categorical"
+        },
+        "sex": {
+          "num_unique": 2,
+          "sample_values": [
+            "Male",
+            "Female"
+          ],
+          "logical_type": "categorical"
+        },
+        "capital_gain": {
+          "num_unique": 36,
+          "sample_values": [
+            2174,
+            0,
+            14084,
+            5178,
+            5013,
+            2407,
+            14344,
+            15024,
+            7688,
+            34095
+          ],
+          "logical_type": "numeric",
+          "range": {
+            "min": 0,
+            "max": 34095
+          },
+          "cdf": {
+            "0%": 0.0,
+            "25%": 0.0,
+            "50%": 0.0,
+            "75%": 0.0,
+            "100%": 34095.0
+          }
+        },
+        "capital_loss": {
+          "num_unique": 30,
+          "sample_values": [
+            0,
+            2042,
+            1408,
+            1902,
+            1573,
+            1887,
+            1719,
+            1762,
+            1564,
+            2179
+          ],
+          "logical_type": "numeric",
+          "range": {
+            "min": 0,
+            "max": 2415
+          },
+          "cdf": {
+            "0%": 0.0,
+            "25%": 0.0,
+            "50%": 0.0,
+            "75%": 0.0,
+            "100%": 2415.0
+          }
+        },
+        "hours_per_week": {
+          "num_unique": 56,
+          "sample_values": [
+            40,
+            13,
+            16,
+            45,
+            50,
+            80,
+            30,
+            35,
+            60,
+            20
+          ],
+          "logical_type": "numeric",
+          "range": {
+            "min": 1,
+            "max": 99
+          },
+          "cdf": {
+            "0%": 1.0,
+            "25%": 40.0,
+            "50%": 40.0,
+            "75%": 45.0,
+            "100%": 99.0
+          }
+        },
+        "native_country": {
+          "num_unique": 29,
+          "sample_values": [
+            "United-States",
+            "Cuba",
+            "Jamaica",
+            "India",
+            "?",
+            "Mexico",
+            "South",
+            "Puerto-Rico",
+            "Honduras",
+            "England"
+          ],
+          "logical_type": "string"
+        }
+      },
+      "num_rows": 1000
+    }
+  }
+}

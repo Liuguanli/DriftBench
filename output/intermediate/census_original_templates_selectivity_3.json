@@ -1,0 +1,245 @@
+[
+  {
+    "template_id": "T000",
+    "cardinality": 1000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.capital_gain",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 0,
+          "max": 34095
+        },
+        "selectivity": 0.06
+      },
+      {
+        "column": "census_original.age",
+        "operator": "BETWEEN",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 17,
+          "max": 90
+        },
+        "selectivity": 0.3
+      },
+      {
+        "column": "census_original.education_num",
+        "operator": "<",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 16
+        },
+        "selectivity": 0.05
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.education"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.education",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T001",
+    "cardinality": 1000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.capital_gain",
+        "operator": ">",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 0,
+          "max": 34095
+        },
+        "selectivity": 0.08
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.education"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.education",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T002",
+    "cardinality": 1000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.relationship",
+        "operator": "=",
+        "type": "categorical",
+        "value": "",
+        "range": [
+          "Not-in-family",
+          "Husband",
+          "Wife",
+          "Own-child",
+          "Unmarried",
+          "Other-relative"
+        ],
+        "selectivity": 0.08
+      },
+      {
+        "column": "census_original.sex",
+        "operator": "=",
+        "type": "categorical",
+        "value": "",
+        "range": [
+          "Male",
+          "Female"
+        ],
+        "selectivity": 0.09
+      },
+      {
+        "column": "census_original.occupation",
+        "operator": "=",
+        "type": "string",
+        "value": "",
+        "range": [
+          "Adm-clerical",
+          "Exec-managerial",
+          "Handlers-cleaners",
+          "Prof-specialty",
+          "Other-service",
+          "Sales",
+          "Craft-repair",
+          "Transport-moving",
+          "Farming-fishing",
+          "Machine-op-inspct"
+        ],
+        "selectivity": 0.08
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.education",
+        "census_original.native_country"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.native_country",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T003",
+    "cardinality": 1000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.education",
+        "operator": "=",
+        "type": "string",
+        "value": "",
+        "range": [
+          "Bachelors",
+          "HS-grad",
+          "11th",
+          "Masters",
+          "9th",
+          "Some-college",
+          "Assoc-acdm",
+          "Assoc-voc",
+          "7th-8th",
+          "Doctorate"
+        ],
+        "selectivity": 0.07
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.capital_gain",
+        "census_original.workclass"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.workclass",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T004",
+    "cardinality": 1000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.education_num",
+        "operator": "BETWEEN",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 16
+        },
+        "selectivity": 0.08
+      },
+      {
+        "column": "census_original.age",
+        "operator": "<",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 17,
+          "max": 90
+        },
+        "selectivity": 0.29
+      },
+      {
+        "column": "census_original.native_country",
+        "operator": "LIKE",
+        "type": "string",
+        "value": "",
+        "range": [
+          "United-States",
+          "Cuba",
+          "Jamaica",
+          "India",
+          "?",
+          "Mexico",
+          "South",
+          "Puerto-Rico",
+          "Honduras",
+          "England"
+        ],
+        "selectivity": 0.08
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.capital_gain",
+        "census_original.marital_status",
+        "census_original.workclass"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.capital_gain",
+      "limit": 100
+    }
+  }
+]

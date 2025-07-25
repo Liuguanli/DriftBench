@@ -1,6 +1,7 @@
 # Ignore all Markdown files except README.md
 TODO.md
 PLAN.md
+COMMANDS.md
 
 # Ignore Python bytecode cache
 __pycache__/
@@ -19,10 +20,12 @@ driftbench/data/
 # *.json
 
 # Ignore paper PDFs
-papers/
+papers
 
 # Ignore VSCode settings (if used)
 .vscode/
+
+test_before_restructure
 
 # Ignore OS/macOS metadata
 .DS_Store
@@ -30,4 +33,4 @@ papers/
 # Allow versioning of example templates if needed
 !autoquerybench/config/templates/
 
-benchmarks
+existing_benchmarks
