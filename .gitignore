@@ -25,6 +25,8 @@ papers
 # Ignore VSCode settings (if used)
 .vscode/
 
+driftbench/config
+
 test_before_restructure
 
 # Ignore OS/macOS metadata
