@@ -40,37 +40,37 @@ This repository includes all essential artifacts used in the DriftBench paper.
 #### Varying Cardinality
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1_categorical.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1_categorical.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 #### Updating Cardinality
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000_categorical.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000_categorical.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 #### Shifting Column Distributions
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2_categorical.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2_categorical.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 #### Injecting Outliers
 
 <p align="center">
-  <img src="driftbench/notebooks/output_histograms/case_study_histogram_age_comparison.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/output_histograms/case_study_histogram_age_comparison.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 
@@ -82,20 +82,20 @@ The following visualizations in this repository were generated using Jupyter not
 #### Changing Predicate Distributions
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_predicate_center.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_predicate_center.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 
 #### Varying Selectivity
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_predicate_range_size.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_predicate_range_size.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 #### Predicate & Payload Shift
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/tsne_pred_payload.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/case_study/tsne_pred_payload.png" alt="Histogram: Age Comparison" width="600"/>
 </p>
 
 
@@ -103,15 +103,15 @@ The following visualizations in this repository were generated using Jupyter not
 ### Case Study: Q-Error Comparison
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_pg.png" alt="PostgreSQL Q-error" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_pg.png" alt="PostgreSQL Q-error" width="600"/>
 </p>
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_naru.png" alt="Naru Q-error" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_naru.png" alt="Naru Q-error" width="600"/>
 </p>
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_mscn.png" alt="MSCN Q-error" width="500"/>
+  <img src="driftbench/notebooks/case_study/case_study_mscn.png" alt="MSCN Q-error" width="600"/>
 </p>
 
 
