@@ -31,6 +31,10 @@ test_before_restructure
 
 # Ignore OS/macOS metadata
 .DS_Store
+lecarb/.DS_Store
+lecarb/estimator/.DS_Store
+
+
 
 # Allow versioning of example templates if needed
 !autoquerybench/config/templates/
