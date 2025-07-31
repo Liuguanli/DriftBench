@@ -70,11 +70,7 @@ This repository includes all essential artifacts used in the DriftBench paper.
 #### Injecting Outliers
 
 <p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2.png" alt="Histogram: Age Comparison" width="500"/>
-</p>
-
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2_categorical.png" alt="Histogram: Age Comparison" width="500"/>
+  <img src="driftbench/notebooks/output_histograms/case_study_histogram_age_comparison.png" alt="Histogram: Age Comparison" width="500"/>
 </p>
 
 
