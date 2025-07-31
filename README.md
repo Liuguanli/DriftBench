@@ -77,7 +77,9 @@ This repository includes all essential artifacts used in the DriftBench paper.
 
 ### Case Study: Workload Drift
 
-#### Varying Cardinality
+The following visualizations in this repository were generated using Jupyter notebooks in `driftbench/notebooks/`, and the required intermediate resources (schema, templates, drifted data, workloads) were produced by test scripts in the `test/` directory (steps are provided below).
+
+#### Changing Predicate Distributions
 
 <p align="center">
   <img src="driftbench/notebooks/case_study/case_study_predicate_center.png" alt="Histogram: Age Comparison" width="500"/>
