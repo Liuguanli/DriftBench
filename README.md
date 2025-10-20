@@ -1,282 +1,236 @@
 <p align="center">
-  <img src="./res/icon.png" alt="DriftBench Logo" width="420"/>
+  <img src="./res/icon.png" alt="DriftBench logo" width="420"/>
 </p>
-
 
 # DriftBench
 
-**DriftBench** is a benchmarking toolkit for evaluating the impact of **data drift** and **workload drift** in database systems. It supports controlled drift generation, query synthesis, and downstream tasks such as cardinality estimation analysis.
+DriftBench is a benchmarking toolkit that quantifies how data drift and workload drift influence database behavior. It powers the experiments in the DriftBench paper with reproducible drift generation, query synthesis, and downstream evaluation utilities.
 
 ---
 
+## Highlights
+- Unified handling of data and workload drift with shared abstractions.
+- Declarative experiment definitions through DriftSpec YAML files.
+- Support for CSV, Parquet, and PostgreSQL sources plus downstream workloads.
+- End-to-end assets (schemas, templates, workloads, plots) for paper reproduction.
 
-## Resources used in the Paper
+## DriftSpec at a Glance
 
-This repository includes all essential artifacts used in the DriftBench paper.
+DriftSpec is the YAML contract that tells DriftBench which drift scenario to build. A single file captures the drift family, data source, variables, and optional workload generation hooks, making experiments portable and versionable.
 
-### Input Datasets
-- `data/census_original.csv`: Real-world census dataset used as the base.
-- `data/census_outliers.csv`: Dataset with injected outliers for case studies.
-- `data/PG_info.json`: Metadata for PostgreSQL integration.
+### Key Elements
+- `type`: declares whether the pattern targets data or workloads (single-table or multi-table).
+- `data_source`: describes how to access the base data and optionally extract a schema.
+- `variables`: parameterizes the drift operators, output paths, and workload knobs.
+- Optional sections cover temporal stamps, query generation, and downstream processors.
 
-### Schema & Templates
-- `output/intermediate/census_original_schema.json`: Extracted schema used across all experiments.
-- `output/intermediate/census_original_templates.json`: Query templates generated from the base schema.
-- `output/intermediate/tpcds_schema.json`: Multi-table schema inferred from TPC-DS.
+### Minimal Example
 
-### Data Drift
-- `output/data/cardinality/scale/`: Scaled datasets (e.g., 0.1×, 1×).
-- `output/data/cardinality/update/`: Deleted subsets.
-- `output/data/distributional/outlier/`: Datasets with rare value injection.
-- `output/data/distributional/column/`: Skewed datasets based on value distributions.
+```yaml
+pattern_id: census-cardinality-demo
+seed: 42
 
-### Workloads Drift
-- `output/workload/parametric/distribution/`: Workloads with uniform, normal, and skewed predicate distributions.
-- `output/workload/parametric/selectivity/`: Workloads with varying selectivity levels.
-- `output/workload/tpcds_sqls_default.csv`: Default multi-table workload for TPC-DS.
+type:
+  family: data
+  category: drift
+  subtype: single_table
 
-### Case Study: Data Drift
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
 
-#### Varying Cardinality
+variables:
+  base_table: census_original
+  drifts:
+    - name: vary_cardinality_scale_1
+      drift_type: vary_cardinality
+      scale: 1.0
+      output_path: ./output/data/cardinality/scale/census_original_cardinality_1.csv
+```
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+Run any specification with:
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1_categorical.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+```bash
+python -m driftbench.cli run-yaml <path-to-yaml>
+```
 
-#### Updating Cardinality
+Explore complete templates in `driftspec/examples/`, including:
+- Data drift patterns: [`demo_data_single.yaml`](driftspec/examples/demo_data_single.yaml)
+- PostgreSQL single-table: [`demo_postgres.yaml`](driftspec/examples/demo_postgres.yaml)
+- PostgreSQL multi-table: [`demo_postgres_multi.yaml`](driftspec/examples/demo_postgres_multi.yaml)
+- Workload drift: [`workload_census.yaml`](driftspec/examples/workload_census.yaml)
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+Behind the scenes, the runner loads type handlers registered in `driftbench/spec/types/` and executes them through `driftbench/spec/core.py`.
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000_categorical.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+---
 
-#### Shifting Column Distributions
+## Paper Artifacts
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+Everything required to reproduce the results in the DriftBench paper lives in this repository.
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2_categorical.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+- **Input datasets**
+  - `data/census_original.csv`: baseline census table.
+  - `data/census_outliers.csv`: injected outliers for case studies.
+  - `data/PG_info.json`: PostgreSQL connection metadata.
+- **Schemas and templates**
+  - `output/intermediate/census_original_schema.json`: extracted single-table schema.
+  - `output/intermediate/census_original_templates.json`: workload templates for the census data.
+  - `output/intermediate/tpcds_schema.json`: inferred multi-table schema from TPC-DS.
+- **Data drift outputs**
+  - `output/data/cardinality/scale/`: scaled datasets (e.g., ×0.1, ×1).
+  - `output/data/cardinality/update/`: selective deletion scenarios.
+  - `output/data/distributional/column/`: column distribution shifts.
+  - `output/data/distributional/outlier/`: rare value injections.
+- **Workload drift outputs**
+  - `output/workload/parametric/distribution/`: predicate distribution changes.
+  - `output/workload/parametric/selectivity/`: workloads with varying selectivity.
+  - `output/workload/tpcds_sqls_default.csv`: multi-table workload derived from TPC-DS.
 
-#### Injecting Outliers
+---
 
-<p align="center">
-  <img src="driftbench/notebooks/output_histograms/case_study_histogram_age_comparison.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+## Case Study Gallery
 
+All visuals were generated from notebooks in `driftbench/notebooks/` using the assets listed above.
 
+- **Varying Cardinality**
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1.png" alt="Cardinality scale comparison (numeric)" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_cardinality_scale_1_categorical.png" alt="Cardinality scale comparison (categorical)" width="600"/>
+  </p>
 
-### Case Study: Workload Drift
+- **Selective Deletions**
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000.png" alt="Selective deletion effect (numeric)" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_cardinality_delete_5000_categorical.png" alt="Selective deletion effect (categorical)" width="600"/>
+  </p>
 
-The following visualizations in this repository were generated using Jupyter notebooks in `driftbench/notebooks/`, and the required intermediate resources (schema, templates, drifted data, workloads) were produced by test scripts in the `test/` directory (steps are provided below).
+- **Column Distribution Shifts**
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2.png" alt="Value skew impact (numeric)" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_census_original_skew_2_categorical.png" alt="Value skew impact (categorical)" width="600"/>
+  </p>
 
-#### Changing Predicate Distributions
+- **Outlier Injection**
+  <p align="center">
+    <img src="driftbench/notebooks/output_histograms/case_study_histogram_age_comparison.png" alt="Outlier injection histogram" width="600"/>
+  </p>
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_predicate_center.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
+- **Workload Drift**
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_predicate_center.png" alt="Predicate distribution shift" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_predicate_range_size.png" alt="Predicate selectivity shift" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/tsne_pred_payload.png" alt="Predicate and payload t-SNE" width="600"/>
+  </p>
 
+- **Q-Error Benchmarks**
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_pg.png" alt="PostgreSQL Q-error distribution" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_naru.png" alt="Naru Q-error distribution" width="600"/>
+  </p>
+  <p align="center">
+    <img src="driftbench/notebooks/case_study/case_study_mscn.png" alt="MSCN Q-error distribution" width="600"/>
+  </p>
 
-#### Varying Selectivity
+- **Join-Aware Drift Templates**
+  <details>
+  <summary>Click to expand a generated multi-table template</summary>
 
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_predicate_range_size.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
-
-#### Predicate & Payload Shift
-
-<p align="center">
-  <img src="driftbench/notebooks/case_study/tsne_pred_payload.png" alt="Histogram: Age Comparison" width="600"/>
-</p>
-
-
-
-### Case Study: Q-Error Comparison
-
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_pg.png" alt="PostgreSQL Q-error" width="600"/>
-</p>
-
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_naru.png" alt="Naru Q-error" width="600"/>
-</p>
-
-<p align="center">
-  <img src="driftbench/notebooks/case_study/case_study_mscn.png" alt="MSCN Q-error" width="600"/>
-</p>
-
-
-### Case Study: Join-Aware Drift
-
-
-The following shows an example of a generated multi-table query template:
-
-<details>
-<summary>Click to expand JSON template example</summary>
-
-```json
-{
-  "template_id": "T000",
-  "cardinality": 1441548,
-  "tables": {
-    "base": "public.catalog_sales",
-    "joins": [
+  ```json
+  {
+    "template_id": "T000",
+    "cardinality": 1441548,
+    "tables": {
+      "base": "public.catalog_sales",
+      "joins": [
+        {
+          "type": "FULL JOIN",
+          "table": "public.store_sales",
+          "condition": "public.catalog_sales.cs_net_profit = public.store_sales.ss_net_profit"
+        }
+      ]
+    },
+    "predicate": [
       {
-        "type": "FULL JOIN",
-        "table": "public.store_sales",
-        "condition": "public.catalog_sales.cs_net_profit = public.store_sales.ss_net_profit"
+        "column": "public.catalog_sales.cs_warehouse_sk",
+        "operator": "<=",
+        "type": "numeric",
+        "value": "",
+        "range": {
+          "min": 1,
+          "max": 5
+        },
+        "selectivity": 0.1
       }
-    ]
-  },
-  "predicate": [
-    {
-      "column": "public.catalog_sales.cs_warehouse_sk",
-      "operator": "<=",
-      "type": "numeric",
-      "value": "",
-      "range": {
-        "min": 1,
-        "max": 5
-      },
-      "selectivity": 0.1
-    }
-  ],
-  "payload": {
-    "columns": [
-      "public.catalog_sales.cs_order_number"
     ],
-    "aggregation": null,
-    "order_by": "public.catalog_sales.cs_order_number",
-    "limit": 100
+    "payload": {
+      "columns": [
+        "public.catalog_sales.cs_order_number"
+      ],
+      "aggregation": null,
+      "order_by": "public.catalog_sales.cs_order_number",
+      "limit": 100
+    }
   }
-}
-```
-</details> 
-
-
-These resources are sufficient to **reproduce all experiments and plots** presented in the paper.
-
-
-
-
-<!-- 
-## 🔧 Features
-
-- Drift-aware synthetic data generator (distributional shift, cardinality changes, outliers)
-- Workload drift simulation (predicate range, distribution, selectivity)
-- Multi-table and temporal query generation
-- Output formats compatible with PostgreSQL, Naru, MSCN, etc. -->
+  ```
+  </details>
 
 ---
 
-## 📦 Installation
+## Installation
+
+- Requires Python 3.9 or later.
+- Optional: PostgreSQL instance if you plan to run the database-backed examples.
+- Create a virtual environment and install the runtime libraries used across the repo:
 
 ```bash
-git clone https://github.com/your-username/driftbench.git
+python -m venv .venv
+source .venv/bin/activate
+pip install pandas numpy scipy scikit-learn PyYAML psycopg2-binary
 ```
 
-## 🚀 Quick Start
+Run commands from the repository root so `python -m driftbench.cli ...` resolves local modules.
 
-### 1. Extract Schema
+---
 
-```bash
-python -m test.test_csv_schema_extractor
+## Quickstart Workflow
 
-python -m test.test_postgresql_extractor
-```
+1. **Extract Schemas**
+   ```bash
+   python -m test.test_csv_schema_extractor
+   python -m test.test_postgresql_extractor
+   ```
+   Outputs appear in `output/intermediate/`.
 
-output: 
+2. **Generate Workload Templates**
+   ```bash
+   python -m test.test_template_generator_single_table
+   python -m test.test_template_generator_multi_table
+   ```
+   Templates are written to `output/intermediate/`.
 
-```bash
-./output/intermediate/census_original_schema.json
+3. **Produce Drifted Data**
+   ```bash
+   python -m test.test_data_generator_single_table
+   ```
+   Generated datasets land in `output/data/…`.
 
-./output/intermediate/tpcds_schema.json
-```
+4. **Produce Drifted Workloads**
+   ```bash
+   python -m test.test_sql_generator_single_table
+   python -m test.test_sql_generator_multi_table
+   ```
+   Workloads are saved under `output/workload/`.
 
-### 2. Workload Template Generate
-
-#### 2.1 Single Table
-
-<!-- python -m driftbench.cli run-yaml driftspec/examples/workload_census.yaml -->
-
-<!-- python -m driftbench.cli run-yaml driftspec/examples/demo_postgres_multi.yaml -->
-
-<!-- python -m driftbench.cli run-yaml driftspec/examples/demo_postgres.yaml -->
-
-```bash
-python -m test.test_template_generator_single_table
-```
-
-output: 
-
-```bash
-./output/intermediate/census_original_templates.json
-```
-
-#### 2.2 Multi Table
-
-```bash
-python -m test.test_template_generator_multi_table
-```
-
-output: 
-
-```bash
-./output/intermediate/tpcds_templates_multi_table.json
-```
-
-### 3 Generate Drifted Dataset
-
-```bash
-python -m test.test_data_generator_single_table
-```
-
-output: 
-```bash
-./output/data/cardinality/scale/census_original_cardinality_1.csv
-
-./output/data/cardinality/update/census_original_deletion_5000.csv
-
-./output/data/distributional/column/census_original_skew_2.csv
-
-./output/data/distributional/outlier/census_original_outlier.csv
-```
-
-### 3 Generate Drifted Workloads
-
-#### 3.1 Single Table
-
-```bash
-python -m test.test_sql_generator_single_table
-```
-
-output: 
-```bash
-./output/workload/parametric/distribution/census_original_uniform_sqls.csv
-./output/workload/parametric/distribution/census_original_normal_sqls.csv
-./output/workload/parametric/distribution/census_original_skew_sqls.csv
-
-./output/workload/parametric/selectivity/census_original_sqls_selectivity_1.csv
-./output/workload/parametric/selectivity/census_original_sqls_selectivity_2.csv
-./output/workload/parametric/selectivity/census_original_sqls_selectivity_3.csv
-```
-
-#### 3.2 Multi Table
-
-```bash
-python -m test.test_sql_generator_multi_table
-```
-
-output: 
-```bash
-./output/workload/tpcds_sqls_default.csv
-```
+These scripts mirror the pipeline used for the case studies and figures. Substitute any of the provided DriftSpec YAML files in `driftspec/examples/` to experiment with alternative drift scenarios.
