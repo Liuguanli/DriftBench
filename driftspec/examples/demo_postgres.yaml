@@ -1,0 +1,32 @@
+pattern_id: demo-pg-schema
+seed: 42
+
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+
+data_source:
+  kind: postgres
+  db_config_path: ./data/PG_info.json    # JSON with host/port/user/password/dbname
+  schema_name: public                    # Database schema to inspect
+  physical_table: census                 # Actual table name in the database
+  schema_extractor:
+    source_type: postgres
+    sample_size: 10000
+    schema_output_path: ./output/intermediate_yaml/demo_pg_schema.json
+
+variables:
+  base_table: census_original            # Logical name for template generation
+  defaults:
+    num_templates: 3
+    max_predicates: 3
+    max_payload_columns: 3
+    value_range:
+      age: [17, 90]
+
+  runs:
+    - name: base_run
+      output_path: ./output/intermediate_yaml/demo_pg_templates.json
+      selectivity:
+        age: [0.1, 0.2]

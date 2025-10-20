@@ -1,0 +1,120 @@
+pattern_id: demo-pg-multi
+seed: 42
+
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+
+data_source:
+  kind: postgres
+  db_config_path: ./data/PG_info.json
+  schema_name: public
+  num_rows: 100000
+  schema_extractor:
+    source_type: postgres
+    sample_size: 10000
+    schema_output_path: ./output/intermediate_yaml/demo_pg_schema.json
+
+variables:
+  base_table: census_original
+
+  candidate_sets:
+    customers:
+      - public.customer_address
+      - public.customer_demographics
+      - public.customer
+    sales:
+      - public.catalog_sales
+      - public.store_sales
+
+  defaults:
+    num_templates: 5
+    max_predicates: 3
+    max_payload_columns: 2
+    join_count: 2
+    selectivity:
+      age: [0.1, 0.2]
+      income: [0.1, 0.2]
+    value_range:
+      age: [0, 100]
+      income: [2000, 100000]
+
+  runs:
+    - name: single_demo
+      output_path: ./output/intermediate_yaml/demo_pg_templates_single.json
+      selectivity:
+        age: [0.1, 0.2]
+
+    - name: customers_multi
+      output_path: ./output/intermediate_yaml/demo_pg_templates_customers.json
+      candidate_tables_ref: customers
+      join_count: 2
+
+    - name: sales_multi
+      output_path: ./output/intermediate_yaml/demo_pg_templates_sales.json
+      candidate_tables_ref: sales
+      join_count: 1
+
+  query_runs:
+    - name: single_uniform
+      template: single_demo
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov","Private","Local-gov"] }
+      outputs:
+        - type: workload
+          path: ./output/workload/census_original_sqls_default.csv
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_uniform_timestamp.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_periodic_timestamp.csv
+          timestamp: { pattern: periodic, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_trend_timestamp.csv
+          timestamp: { pattern: trend, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_long_tail_timestamp.csv
+          timestamp: { pattern: long_tail, start_time: "2025-07-01T00:15:00", queries_per_minute: 300 }
+
+    - name: customers_multi_uniform
+      template: customers_multi
+      queries_per_template: 300
+      outputs:
+        - type: workload
+          path: ./output/workload/tpcds_customers_sqls_default.csv
+        - type: temporal
+          path: ./output/temporal/tpcds_customers_sqls_uniform_timestamp.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: sales_uniform
+      template: sales_multi
+      queries_per_template: 300
+      dist_config:
+        "public.catalog_sales.age": { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/distribution/tpcds_sales_uniform_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: sales_normal
+      template: sales_multi
+      queries_per_template: 300
+      dist_config:
+        "public.catalog_sales.age": { distribution: normal, mean: 50, std: 5 }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/distribution/tpcds_sales_normal_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+
+    - name: sales_zipf
+      template: sales_multi
+      queries_per_template: 300
+      dist_config:
+        "public.catalog_sales.age": { distribution: zipf, a: 2, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/distribution/tpcds_sales_zipf_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }

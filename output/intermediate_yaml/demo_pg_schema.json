@@ -1,0 +1,79 @@
+{
+  "source": {
+    "table": "dbgen_version",
+    "columns": {
+      "dv_version": {
+        "num_unique": 1,
+        "sample_values": [
+          "3.2.0"
+        ],
+        "logical_type": "string"
+      },
+      "dv_create_date": {
+        "num_unique": 1,
+        "sample_values": [
+          "2025-05-30"
+        ],
+        "logical_type": "datetime",
+        "range": {
+          "min": "2025-05-30",
+          "max": "2025-05-30"
+        }
+      },
+      "dv_create_time": {
+        "num_unique": 1,
+        "sample_values": [
+          "12:28:06"
+        ],
+        "logical_type": "categorical"
+      },
+      "dv_cmdline_args": {
+        "num_unique": 1,
+        "sample_values": [
+          "-scale 1 -dir ./data -force -verbose "
+        ],
+        "logical_type": "string"
+      }
+    }
+  },
+  "tables": {
+    "census_original": {
+      "table": "dbgen_version",
+      "columns": {
+        "dv_version": {
+          "num_unique": 1,
+          "sample_values": [
+            "3.2.0"
+          ],
+          "logical_type": "string"
+        },
+        "dv_create_date": {
+          "num_unique": 1,
+          "sample_values": [
+            "2025-05-30"
+          ],
+          "logical_type": "datetime",
+          "range": {
+            "min": "2025-05-30",
+            "max": "2025-05-30"
+          }
+        },
+        "dv_create_time": {
+          "num_unique": 1,
+          "sample_values": [
+            "12:28:06"
+          ],
+          "logical_type": "categorical"
+        },
+        "dv_cmdline_args": {
+          "num_unique": 1,
+          "sample_values": [
+            "-scale 1 -dir ./data -force -verbose "
+          ],
+          "logical_type": "string"
+        }
+      },
+      "num_rows": 100000
+    }
+  }
+}

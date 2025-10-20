@@ -1,0 +1,195 @@
+[
+  {
+    "template_id": "T000",
+    "cardinality": 100000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.dv_cmdline_args",
+        "operator": "LIKE",
+        "type": "string",
+        "value": "",
+        "range": [
+          "-scale 1 -dir ./data -force -verbose "
+        ],
+        "selectivity": 0.06
+      },
+      {
+        "column": "census_original.dv_version",
+        "operator": "LIKE",
+        "type": "string",
+        "value": "",
+        "range": [
+          "3.2.0"
+        ],
+        "selectivity": 0.08
+      },
+      {
+        "column": "census_original.dv_create_date",
+        "operator": ">=",
+        "type": "datetime",
+        "value": "",
+        "range": {
+          "min": "2025-05-30",
+          "max": "2025-05-30"
+        },
+        "selectivity": 0.08
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.dv_create_date"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.dv_create_date",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T001",
+    "cardinality": 100000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.dv_create_date",
+        "operator": "<=",
+        "type": "datetime",
+        "value": "",
+        "range": {
+          "min": "2025-05-30",
+          "max": "2025-05-30"
+        },
+        "selectivity": 0.08
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.dv_cmdline_args"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.dv_cmdline_args",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T002",
+    "cardinality": 100000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.dv_create_time",
+        "operator": "=",
+        "type": "categorical",
+        "value": "",
+        "range": [
+          "12:28:06"
+        ],
+        "selectivity": 0.07
+      },
+      {
+        "column": "census_original.dv_cmdline_args",
+        "operator": "=",
+        "type": "string",
+        "value": "",
+        "range": [
+          "-scale 1 -dir ./data -force -verbose "
+        ],
+        "selectivity": 0.06
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.dv_version"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.dv_version",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T003",
+    "cardinality": 100000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.dv_version",
+        "operator": "=",
+        "type": "string",
+        "value": "",
+        "range": [
+          "3.2.0"
+        ],
+        "selectivity": 0.09
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.dv_create_time"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.dv_create_time",
+      "limit": 100
+    }
+  },
+  {
+    "template_id": "T004",
+    "cardinality": 100000,
+    "tables": {
+      "base": "census_original",
+      "joins": []
+    },
+    "predicate": [
+      {
+        "column": "census_original.dv_version",
+        "operator": "=",
+        "type": "string",
+        "value": "",
+        "range": [
+          "3.2.0"
+        ],
+        "selectivity": 0.06
+      },
+      {
+        "column": "census_original.dv_create_time",
+        "operator": "=",
+        "type": "categorical",
+        "value": "",
+        "range": [
+          "12:28:06"
+        ],
+        "selectivity": 0.08
+      },
+      {
+        "column": "census_original.dv_cmdline_args",
+        "operator": "LIKE",
+        "type": "string",
+        "value": "",
+        "range": [
+          "-scale 1 -dir ./data -force -verbose "
+        ],
+        "selectivity": 0.05
+      }
+    ],
+    "payload": {
+      "columns": [
+        "census_original.dv_cmdline_args",
+        "census_original.dv_create_time"
+      ],
+      "aggregation": null,
+      "order_by": "census_original.dv_create_time",
+      "limit": 100
+    }
+  }
+]

@@ -1,0 +1,158 @@
+pattern_id: wp-w-census-01
+seed: 42
+
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/intermediate_yaml/census_original_schema.json
+
+variables:
+  base_table: census_original
+  # schema_path: ./output/intermediate_yaml/census_original_schema.json
+
+  defaults:
+    num_templates: 5
+    max_predicates: 4
+    max_payload_columns: 4
+    value_range:
+      age: [17, 90]
+      hours_per_week: [1, 99]
+
+  # === Template generation runs ===
+  runs:
+    - name: sel_1
+      output_path: ./output/intermediate_yaml/census_original_templates.json
+      selectivity:
+        age: [0.10, 0.20]
+        hours_per_week: [0.10, 0.20]
+
+    - name: sel_2
+      output_path: ./output/intermediate_yaml/census_original_templates_selectivity_2.json
+      selectivity:
+        age: [0.10, 0.25]
+        hours_per_week: [0.10, 0.30]
+
+    - name: sel_3
+      output_path: ./output/intermediate_yaml/census_original_templates_selectivity_3.json
+      selectivity:
+        age: [0.10, 0.40]
+        hours_per_week: [0.10, 0.30]
+
+    - name: struct_2
+      output_path: ./output/intermediate_yaml/census_original_templates_structual_2.json
+      num_templates: 500
+      max_predicates: 5
+      max_payload_columns: 6
+      selectivity:
+        age: [0.10, 0.40]
+        hours_per_week: [0.10, 0.30]
+
+    - name: struct_3
+      output_path: ./output/intermediate_yaml/census_original_templates_structual_3.json
+      num_templates: 500
+      max_predicates: 7
+      max_payload_columns: 8
+      selectivity:
+        age: [0.10, 0.40]
+        hours_per_week: [0.10, 0.30]
+
+  # === Query generation runs ===
+  # Use 'template' to reference a template run by name (from the list above),
+  # or provide a direct template_file path.
+  query_runs:
+
+    # ---- Temporal patterns (uniform/periodic/trend/long_tail) ----
+    - name: temporal_patterns
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: workload
+          path: ./output/workload/census_original_sqls_default.csv
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_uniform_timestamp.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_periodic_timestamp.csv
+          timestamp: { pattern: periodic, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_trend_timestamp.csv
+          timestamp: { pattern: trend, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }
+        - type: temporal
+          path: ./output/temporal/census_original_sqls_long_tail_timestamp.csv
+          timestamp: { pattern: long_tail, start_time: "2025-07-01T00:15:00", queries_per_minute: 300 }
+
+    # ---- Parametric (distributional: uniform/normal/zipf) ----
+    - name: distribution_uniform
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/distribution/census_original_uniform_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: distribution_normal
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: normal, mean: 50, std: 5 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/distribution/census_original_normal_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+
+    - name: distribution_zipf
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: zipf, a: 2, min: 18, max: 75 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/distribution/census_original_skew_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }
+
+    # ---- Parametric (selectivity 1/2/3 via different templates) ----
+    - name: selectivity_1
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/selectivity/census_original_sqls_selectivity_1.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: selectivity_2
+      template: sel_2
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/selectivity/census_original_sqls_selectivity_2.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+
+    - name: selectivity_3
+      template: sel_3
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./output/workload/parametric/selectivity/census_original_sqls_selectivity_3.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }

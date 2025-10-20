@@ -1,0 +1,40 @@
+pattern_id: dp-census-single
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/intermediate_yaml/census_original_schema.json
+
+variables:
+  base_table: census_original
+  drifts:
+    - name: vary_cardinality_scale_1
+      drift_type: vary_cardinality
+      output_path: ./output/data/cardinality/scale/census_original_cardinality_1.csv
+      scale: 1
+
+    - name: selective_deletion_5000
+      drift_type: selective_deletion
+      output_path: ./output/data/cardinality/update/census_original_deletion_5000.csv
+      n: 5000
+
+    - name: value_skew_age_hw_edu
+      drift_type: value_skew
+      output_path: ./output/data/distributional/column/census_original_skew_2.csv
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 2
+
+    - name: outlier_injection
+      drift_type: outlier_injection
+      output_path: ./output/data/distributional/outlier/census_original_outlier.csv
+      outlier_csv_path: ./data/census_outliers.csv

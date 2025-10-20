@@ -206,6 +206,12 @@ output:
 
 #### 2.1 Single Table
 
+<!-- python -m driftbench.cli run-yaml driftspec/examples/workload_census.yaml -->
+
+<!-- python -m driftbench.cli run-yaml driftspec/examples/demo_postgres_multi.yaml -->
+
+<!-- python -m driftbench.cli run-yaml driftspec/examples/demo_postgres.yaml -->
+
 ```bash
 python -m test.test_template_generator_single_table
 ```
