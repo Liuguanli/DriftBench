@@ -54,6 +54,48 @@ Run any specification with:
 python -m driftbench.cli run-yaml <path-to-yaml>
 ```
 
+### Custom Deletion Filters (registry + DriftSpec)
+
+DriftSpec cannot serialize Python callables, so use the filter registry to reference a filter by name.
+
+1) Register a filter in code:
+
+```python
+# my_project/filters.py
+from driftbench.core.data.filter_registry import register_filter
+
+@register_filter("age_gt_60")
+def age_gt_60(series, config):
+    return series > 60
+```
+
+2) Import the module and reference it in YAML:
+
+```yaml
+filter_registry_modules:
+  - my_project.filters
+
+variables:
+  base_table: census_original
+  drifts:
+    - name: delete_age_gt_60
+      drift_type: selective_deletion
+      n: 5000
+      filter:
+        column: age
+        func_name: age_gt_60
+      output_path: ./output/data/cardinality/update/census_original_deletion_age_gt_60.csv
+```
+
+You can also use simple declarative filters without registration:
+
+```yaml
+filter:
+  column: timestamp
+  min: "2025-07-02T00:00:00"
+  max: "2025-07-03T00:00:00"
+```
+
 ### Trace to DriftSpec (mock flow)
 
 If you already parsed a real database trace into a compact CSV/JSON summary, you can generate a DriftSpec YAML directly:

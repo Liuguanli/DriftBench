@@ -289,16 +289,23 @@ class SingleTableDriftGenerator:
     #     return deleted_df
 
 
-    def _delete_records(self, n=10, filter_column=None, filter_func=None,
-                        strategy="uniform", strategy_config=None):
+    def _delete_records(self, n=None, filter=None, n_ratio=None,
+                        strategy="uniform", strategy_config=None, **legacy):
         """
         Sample `n` rows from the dataframe for deletion (not actually dropped).
         
         Args:
             n (int): Number of records to sample.
-            filter_column (str): Optional column to apply filter on.
-            filter_func (function): A function to filter rows on `filter_column`.
-            strategy (str): Sampling strategy name.
+            n_ratio (float): Ratio of eligible records to sample (0, 1].
+            filter (dict): Optional eligibility filter (boolean mask only):
+                - column: target column name (required when filter is set)
+                - func: python callable(series, config) -> mask (python only)
+                - func_name: registered filter name (YAML-friendly)
+                - config: optional config for func/func_name
+                - op: one of >, >=, <, <=, ==, !=, in, not_in
+                - value: value for op (list for in/not_in)
+                - min / max: inclusive range bounds
+            strategy (str): Deletion strategy (uniform, key_weighted, time_weighted).
             strategy_config (dict): Optional sampling config.
 
         Returns:
@@ -306,19 +313,175 @@ class SingleTableDriftGenerator:
         """
         candidate_df = self.df
 
-        if filter_column and filter_func:
-            if filter_column not in self.df.columns:
-                raise ValueError(f"Column {filter_column} not in dataframe")
-            candidate_df = self.df[filter_func(self.df[filter_column])]
+        def _coerce_datetime(series, value):
+            if pd.api.types.is_datetime64_any_dtype(series):
+                return series, pd.to_datetime(value, errors="coerce")
+            if isinstance(value, str):
+                series_dt = pd.to_datetime(series, errors="coerce")
+                value_dt = pd.to_datetime(value, errors="coerce")
+                if series_dt.notna().any() and pd.notna(value_dt):
+                    return series_dt, value_dt
+            return series, value
+
+        if filter is not None and legacy:
+            raise ValueError("Use 'filter' or legacy filter_* args, not both.")
+
+        if filter is None and legacy:
+            filter = {
+                "column": legacy.get("filter_column"),
+                "func": legacy.get("filter_func"),
+                "func_name": legacy.get("filter_func_name"),
+                "config": legacy.get("filter_func_config"),
+                "op": legacy.get("filter_op"),
+                "value": legacy.get("filter_value"),
+                "min": legacy.get("filter_min"),
+                "max": legacy.get("filter_max"),
+            }
+
+        if filter:
+            column = filter.get("column")
+            if not column:
+                raise ValueError("filter.column is required when filter is provided.")
+            if column not in self.df.columns:
+                raise ValueError(f"Column {column} not in dataframe")
+            series = self.df[column]
+
+            if filter.get("func"):
+                cfg = filter.get("config") or {}
+                mask = filter["func"](series, cfg)
+                candidate_df = self.df[mask]
+            elif filter.get("func_name"):
+                from driftbench.core.data.filter_registry import get_filter
+                fn = get_filter(filter["func_name"])
+                cfg = filter.get("config") or {}
+                mask = fn(series, cfg)
+                candidate_df = self.df[mask]
+            elif filter.get("op") or filter.get("min") is not None or filter.get("max") is not None:
+                if filter.get("op"):
+                    if filter.get("value") is None:
+                        raise ValueError("filter.value is required when filter.op is provided")
+                    series, value = _coerce_datetime(series, filter.get("value"))
+                    op = filter.get("op")
+                    if op == ">":
+                        mask = series > value
+                    elif op == ">=":
+                        mask = series >= value
+                    elif op == "<":
+                        mask = series < value
+                    elif op == "<=":
+                        mask = series <= value
+                    elif op == "==":
+                        mask = series == value
+                    elif op == "!=":
+                        mask = series != value
+                    elif op == "in":
+                        if not isinstance(value, list):
+                            raise ValueError("filter.value must be a list for 'in'")
+                        mask = series.isin(value)
+                    elif op == "not_in":
+                        if not isinstance(value, list):
+                            raise ValueError("filter.value must be a list for 'not_in'")
+                        mask = ~series.isin(value)
+                    else:
+                        raise ValueError(f"Unsupported filter.op: {op}")
+                    candidate_df = self.df[mask]
+                else:
+                    series, min_val = _coerce_datetime(series, filter.get("min"))
+                    _, max_val = _coerce_datetime(series, filter.get("max"))
+                    if filter.get("min") is not None and filter.get("max") is not None:
+                        mask = (series >= min_val) & (series <= max_val)
+                    elif filter.get("min") is not None:
+                        mask = series >= min_val
+                    else:
+                        mask = series <= max_val
+                    candidate_df = self.df[mask]
+            else:
+                raise ValueError("filter must include func/func_name, op, or min/max.")
+
+        if n_ratio is not None:
+            if n is not None:
+                raise ValueError("Use 'n' or 'n_ratio', not both.")
+            if not (0 < float(n_ratio) <= 1.0):
+                raise ValueError("n_ratio must be in (0, 1].")
+            n = int(len(candidate_df) * float(n_ratio))
+
+        if n is None:
+            n = 10
+
+        if n <= 0:
+            raise ValueError("n must be a positive integer after applying filters.")
 
         if len(candidate_df) < n:
-            raise ValueError(f"Cannot sample {n} rows from filtered dataframe with only {len(candidate_df)} rows")
+            raise ValueError(
+                f"Cannot sample {n} rows from filtered dataframe with only {len(candidate_df)} rows."
+            )
 
-        # use Sampler to sample from candidate_df
-        sampler = Sampler(candidate_df, self.columns, default_strategy=strategy)
+        config = strategy_config or {}
 
-        # Uniform sampling
-        return sampler.sample_rows(n=n, strategy_name="uniform")
+        def _normalize_weights(weights: pd.Series) -> pd.Series:
+            weights = weights.astype(float).fillna(0.0)
+            weights[~np.isfinite(weights)] = 0.0
+            total = weights.sum()
+            if total <= 0:
+                raise ValueError("Computed weights are all zero or invalid.")
+            return weights
+
+        def _time_to_numeric(series: pd.Series) -> pd.Series:
+            if pd.api.types.is_datetime64_any_dtype(series):
+                return series.view("int64")
+            series_dt = pd.to_datetime(series, errors="coerce")
+            if series_dt.notna().any():
+                return series_dt.view("int64")
+            return pd.to_numeric(series, errors="coerce")
+
+        def _build_weights(df: pd.DataFrame) -> pd.Series:
+            if strategy == "uniform":
+                return pd.Series(1.0, index=df.index)
+
+            if strategy == "key_weighted":
+                key_col = config.get("key_col")
+                if key_col is None or key_col not in df.columns:
+                    raise ValueError("key_weighted requires 'key_col' in strategy_config")
+                bias = config.get("bias", "dense")
+                alpha = float(config.get("alpha", 1.0))
+                freqs = df[key_col].value_counts()
+                if bias == "dense":
+                    row_weights = df[key_col].map(lambda k: pow(freqs.get(k, 1), alpha))
+                elif bias == "sparse":
+                    row_weights = df[key_col].map(lambda k: pow(1.0 / max(freqs.get(k, 1), 1), alpha))
+                else:
+                    raise ValueError("key_weighted bias must be 'dense' or 'sparse'")
+                return row_weights
+
+            if strategy == "time_weighted":
+                time_col = config.get("time_col")
+                if time_col is None or time_col not in df.columns:
+                    raise ValueError("time_weighted requires 'time_col' in strategy_config")
+                bias = config.get("bias", "recent")
+                alpha = float(config.get("alpha", 1.0))
+                numeric = _time_to_numeric(df[time_col])
+                if numeric.notna().sum() == 0:
+                    raise ValueError("time_weighted requires a valid time column")
+                min_v = numeric.min()
+                max_v = numeric.max()
+                if pd.isna(min_v) or pd.isna(max_v):
+                    raise ValueError("time_weighted requires a valid time column")
+                if max_v == min_v:
+                    norm = pd.Series(1.0, index=df.index)
+                else:
+                    norm = (numeric - min_v) / (max_v - min_v)
+                if bias == "recent":
+                    row_weights = pow(norm, alpha)
+                elif bias == "old":
+                    row_weights = pow(1.0 - norm, alpha)
+                else:
+                    raise ValueError("time_weighted bias must be 'recent' or 'old'")
+                return row_weights
+
+            raise ValueError(f"Unsupported deletion strategy: {strategy}")
+
+        weights = _normalize_weights(_build_weights(candidate_df))
+        return candidate_df.sample(n=n, weights=weights, replace=False, random_state=self.seed).reset_index(drop=True)
 
         # # Weighted sampling
         # sampler.sample_rows(n=n, strategy_name="weighted", config={"weight_col": "popularity"})
