@@ -54,6 +54,17 @@ Run any specification with:
 python -m driftbench.cli run-yaml <path-to-yaml>
 ```
 
+### Trace to DriftSpec (mock flow)
+
+If you already parsed a real database trace into a compact CSV/JSON summary, you can generate a DriftSpec YAML directly:
+
+```bash
+python -m driftbench.cli trace-to-spec driftspec/trace_inputs/trace_data_mock.csv driftspec/generated/trace_data_mock.yaml
+python -m driftbench.cli trace-to-spec driftspec/trace_inputs/trace_workload_mock.json driftspec/generated/trace_workload_mock.yaml
+```
+
+The mock inputs live in `driftspec/trace_inputs/` and show the minimal fields the generator expects.
+
 Explore complete templates in `driftspec/examples/`, including:
 - Data drift patterns: [`demo_data_single.yaml`](driftspec/examples/demo_data_single.yaml)
 - PostgreSQL single-table: [`demo_postgres.yaml`](driftspec/examples/demo_postgres.yaml)

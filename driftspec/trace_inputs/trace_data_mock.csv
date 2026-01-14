@@ -1,0 +1,4 @@
+record_type,trace_type,pattern_id,seed,base_table,data_source_kind,data_source_path,drift_name,drift_type,scale,output_path
+meta,data,trace-census-data,42,census_original,csv,./data/census_original.csv,,,
+drift,,,,,,,cardinality_scale_1,vary_cardinality,1.0,./output/data/cardinality/scale/census_original_cardinality_1.csv
+drift,,,,,,,cardinality_scale_0_5,vary_cardinality,0.5,./output/data/cardinality/scale/census_original_cardinality_0.5.csv

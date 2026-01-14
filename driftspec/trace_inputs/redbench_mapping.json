@@ -1,0 +1,37 @@
+{
+  "mode": "redbench_stats",
+  "pattern_id_prefix": "redbench",
+  "data_source": {
+    "kind": "csv",
+    "path": "./data/census_original.csv",
+    "schema_extractor": {
+      "source_type": "csv",
+      "sample_size": 1000,
+      "schema_output_path": "./output/intermediate_yaml/census_original_schema.json"
+    }
+  },
+  "base_table": "census_original",
+  "defaults": {
+    "num_templates": 5,
+    "max_predicates": 4,
+    "max_payload_columns": 4
+  },
+  "run_from": {
+    "name_from": "workload_type",
+    "num_templates_from": "n_distinct_readsets",
+    "max_predicates_from": "n_distinct_num_joins",
+    "num_templates_min": 2,
+    "num_templates_max": 50,
+    "max_predicates_min": 1,
+    "max_predicates_max": 6,
+    "output_path_template": "./output/intermediate_yaml/redbench_{name}_templates.json"
+  },
+  "query_from": {
+    "name_from": "workload_type",
+    "template_ref_from": "workload_type",
+    "queries_per_template_from": "number_of_queries",
+    "queries_per_template_min": 10,
+    "queries_per_template_max": 1000,
+    "output_path_template": "./output/workload/redbench_{name}_sqls.csv"
+  }
+}
