@@ -5,6 +5,7 @@ from scipy.stats import gaussian_kde
 from scipy.stats import skewnorm
 from driftbench.core.data.distribution_simulator import DataDistributionSimulator
 from driftbench.core.data.sampler import Sampler
+from driftbench.core.temporal.time_stamp_generator import generate_timestamps
 import os
 
 
@@ -37,6 +38,10 @@ class SingleTableDriftGenerator:
             return self._delete_records(**kwargs)
         elif drift_type == "insert_records":
             return self._insert_records(**kwargs)
+        elif drift_type == "add_timestamp":
+            return self._add_timestamp(**kwargs)
+        elif drift_type == "concat_csvs":
+            return self._concat_csvs(**kwargs)
         else:
             raise ValueError(f"Unsupported drift type: {drift_type}")
 
@@ -45,6 +50,37 @@ class SingleTableDriftGenerator:
         outliers = drifted_df.sample(n=n).copy()
         outliers[column] = extreme_value
         return pd.concat([drifted_df, outliers], ignore_index=True)
+
+    def _add_timestamp(
+        self,
+        timestamp_column: str = "timestamp",
+        start_time: str = "2025-07-01T00:00:00",
+        pattern: str = "uniform",
+        queries_per_minute: int = 60,
+        source_path: Optional[str] = None,
+    ) -> pd.DataFrame:
+        drifted_df = pd.read_csv(source_path) if source_path else self.df.copy()
+        timestamps = generate_timestamps(
+            count=len(drifted_df),
+            start_time=start_time,
+            pattern=pattern,
+            queries_per_minute=int(queries_per_minute),
+        )
+        drifted_df[timestamp_column] = timestamps
+        return drifted_df
+
+    def _concat_csvs(
+        self,
+        input_paths: List[str],
+        sort_by: Optional[str] = None,
+    ) -> pd.DataFrame:
+        if not input_paths:
+            raise ValueError("concat_csvs requires input_paths.")
+        frames = [pd.read_csv(path) for path in input_paths]
+        combined = pd.concat(frames, ignore_index=True)
+        if sort_by and sort_by in combined.columns:
+            combined = combined.sort_values(sort_by).reset_index(drop=True)
+        return combined
     
     def inject_outliers_from_csv(
         self,

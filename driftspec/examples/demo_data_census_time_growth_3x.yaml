@@ -1,0 +1,54 @@
+pattern_id: census-original-time-growth-3x
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/intermediate_yaml/census_original_schema.json
+
+variables:
+  base_table: census_original
+  drifts:
+    - name: day1_timestamped
+      drift_type: add_timestamp
+      source_path: ./data/census_original.csv
+      timestamp_column: timestamp
+      start_time: "2025-07-01T00:00:00"
+      pattern: uniform
+      queries_per_minute: 34
+      output_path: ./output/data/time_demo/census_original_day1.csv
+
+    - name: day2_timestamped
+      drift_type: add_timestamp
+      source_path: ./data/census_original.csv
+      timestamp_column: timestamp
+      start_time: "2025-07-02T00:00:00"
+      pattern: periodic
+      queries_per_minute: 34
+      output_path: ./output/data/time_demo/census_original_day2.csv
+
+    - name: day3_timestamped
+      drift_type: add_timestamp
+      source_path: ./data/census_original.csv
+      timestamp_column: timestamp
+      start_time: "2025-07-03T00:00:00"
+      pattern: long_tail
+      queries_per_minute: 370
+      output_path: ./output/data/time_demo/census_original_day3.csv
+
+    - name: concat_time_growth_3x
+      drift_type: concat_csvs
+      input_paths:
+        - ./output/data/time_demo/census_original_day1.csv
+        - ./output/data/time_demo/census_original_day2.csv
+        - ./output/data/time_demo/census_original_day3.csv
+      sort_by: timestamp
+      output_path: ./output/data/time_demo/census_original_time_growth_3x.csv
