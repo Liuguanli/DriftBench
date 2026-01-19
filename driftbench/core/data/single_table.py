@@ -28,8 +28,9 @@ class SingleTableDriftGenerator:
 
     def apply_drift(self, drift_type="outlier_injection", **kwargs):
         if drift_type == "outlier_injection":
-            # return self._inject_outliers(**kwargs)
-            return self.inject_outliers_from_csv(**kwargs)
+            if kwargs.get("outlier_csv_path"):
+                return self.inject_outliers_from_csv(**kwargs)
+            return self._inject_outliers(**kwargs)
         elif drift_type == "value_skew":
             return self._inject_skew(**kwargs)
         elif drift_type == "vary_cardinality":
@@ -45,10 +46,60 @@ class SingleTableDriftGenerator:
         else:
             raise ValueError(f"Unsupported drift type: {drift_type}")
 
-    def _inject_outliers(self, column, n=10, extreme_value=1e6):
+    def _inject_outliers(
+        self,
+        column: Optional[str] = None,
+        n: int = 10,
+        extreme_value: Optional[float] = None,
+        min_extreme: Optional[float] = None,
+        max_extreme: Optional[float] = None,
+        extreme_scale: float = 1.0,
+        inject_count: Optional[int] = None,
+        key_column: Optional[str] = None,
+    ):
+        if inject_count is not None:
+            n = inject_count
+
+        target_col = column or key_column
+        if not target_col:
+            raise ValueError("outlier_injection requires 'column' or 'key_column' when no outlier_csv_path is set.")
+        if target_col not in self.col_names:
+            raise ValueError(f"Column {target_col} not found.")
+
+        series = self.df[target_col].dropna()
+        if series.empty:
+            raise ValueError(f"Column {target_col} has no non-null values for outlier injection.")
+        if not pd.api.types.is_numeric_dtype(series):
+            raise ValueError(f"Column {target_col} must be numeric for outlier injection.")
+
+        if min_extreme is not None or max_extreme is not None:
+            if min_extreme is None or max_extreme is None:
+                raise ValueError("Both min_extreme and max_extreme must be set when using a range.")
+            if min_extreme > max_extreme:
+                raise ValueError("min_extreme must be <= max_extreme.")
+            outlier_values = np.random.uniform(min_extreme, max_extreme, size=n)
+        else:
+            if extreme_value is None or (isinstance(extreme_value, str) and extreme_value.lower() == "auto"):
+                col_min = series.min()
+                col_max = series.max()
+                span = col_max - col_min
+                if span == 0:
+                    span = max(abs(col_min), 1.0)
+                if extreme_scale <= 0:
+                    raise ValueError("extreme_scale must be > 0.")
+                low = col_min - span * extreme_scale
+                high = col_max + span * extreme_scale
+                outlier_values = np.random.choice([low, high], size=n)
+            else:
+                outlier_values = np.full(n, float(extreme_value))
+
+        if pd.api.types.is_integer_dtype(series):
+            outlier_values = np.round(outlier_values).astype(int)
+
         drifted_df = self.df.copy()
-        outliers = drifted_df.sample(n=n).copy()
-        outliers[column] = extreme_value
+        replace = n > len(drifted_df)
+        outliers = drifted_df.sample(n=n, replace=replace, random_state=self.seed).copy()
+        outliers[target_col] = outlier_values
         return pd.concat([drifted_df, outliers], ignore_index=True)
 
     def _add_timestamp(
