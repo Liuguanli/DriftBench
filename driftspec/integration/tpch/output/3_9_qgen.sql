@@ -8,11 +8,11 @@ from
 	orders,
 	lineitem
 where
-	c_mktsegment = 'MACHINERY'
+	c_mktsegment = 'BUILDING'
 	and c_custkey = o_custkey
 	and l_orderkey = o_orderkey
-	and o_orderdate < date '1996-01-06'
-	and l_shipdate > date '1996-01-06'
+	and o_orderdate < date '1995-03-03'
+	and l_shipdate > date '1995-03-03'
 group by
 	l_orderkey,
 	o_orderdate,

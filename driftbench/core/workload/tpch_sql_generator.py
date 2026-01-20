@@ -4,6 +4,8 @@ import random
 import datetime
 from typing import Dict, List, Any, Iterable, Tuple
 
+_DSS_CACHE: Dict[str, Dict[str, List[Tuple[str, int]]]] = {}
+
 
 def _strip_template_lines(lines: Iterable[str]) -> str:
     cleaned: List[str] = []
@@ -87,8 +89,69 @@ def _sample_param_value(defn: Any, rng: random.Random) -> Any:
         fmt = defn.get("format")
         value = start + datetime.timedelta(days=offset)
         return value.strftime(fmt) if fmt else value.isoformat()
+    if dtype == "dss_dist":
+        dist_file = defn["dist_file"]
+        dist_name = defn["dist_name"]
+        return _sample_dss_dist(dist_file, dist_name, rng)
 
     raise ValueError(f"Unsupported param type: {dtype}")
+
+
+def _load_dss_file(dist_file: str) -> Dict[str, List[Tuple[str, int]]]:
+    if dist_file in _DSS_CACHE:
+        return _DSS_CACHE[dist_file]
+
+    dists: Dict[str, List[Tuple[str, int]]] = {}
+    current: str | None = None
+    with open(dist_file, "r", encoding="utf-8", errors="ignore") as f:
+        for raw in f:
+            line = raw.strip()
+            if not line:
+                continue
+            if line.startswith("#"):
+                continue
+            low = line.lower()
+            if low.startswith("begin "):
+                current = line.split(None, 1)[1].strip()
+                dists[current] = []
+                continue
+            if low.startswith("end "):
+                current = None
+                continue
+            if current is None:
+                continue
+            if "|" not in line:
+                continue
+            token, weight_str = [p.strip() for p in line.split("|", 1)]
+            if token.lower() == "count":
+                continue
+            try:
+                weight = int(weight_str)
+            except ValueError:
+                continue
+            if weight <= 0:
+                continue
+            dists[current].append((token, weight))
+
+    _DSS_CACHE[dist_file] = dists
+    return dists
+
+
+def _sample_dss_dist(dist_file: str, dist_name: str, rng: random.Random) -> str:
+    dists = _load_dss_file(dist_file)
+    if dist_name not in dists:
+        raise ValueError(f"Distribution '{dist_name}' not found in {dist_file}")
+    items = dists[dist_name]
+    total = sum(w for _, w in items)
+    if total <= 0:
+        raise ValueError(f"Distribution '{dist_name}' has no positive weights in {dist_file}")
+    roll = rng.uniform(0, total)
+    cumulative = 0.0
+    for token, weight in items:
+        cumulative += weight
+        if roll <= cumulative:
+            return token
+    return items[-1][0]
 
 
 def _normalize_params_map(param_specs: Dict[Any, Any]) -> Dict[str, Any]:
@@ -166,3 +229,61 @@ def generate_tpch_queries_indexed(
     if shuffle:
         rng.shuffle(entries)
     return entries
+
+
+def generate_tpch_queries_indexed_qgen(
+    template_dir: str,
+    query_ids: Iterable[int | str],
+    queries_per_template: int = 1,
+    seed: int = 42,
+    shuffle: bool = True,
+    dist_file: str | None = None,
+) -> List[Dict[str, Any]]:
+    rng = random.Random(seed)
+    query_ids = [str(qid) for qid in query_ids]
+    templates = load_tpch_templates(template_dir, query_ids)
+    dist_file = _resolve_dss_path(template_dir, dist_file)
+
+    entries: List[Dict[str, Any]] = []
+    for qid in query_ids:
+        template_sql = templates[qid]
+        for idx in range(1, int(queries_per_template) + 1):
+            params = _qgen_params_for_query(qid, rng, dist_file)
+            entries.append(
+                {
+                    "query_id": qid,
+                    "index": idx,
+                    "sql": render_tpch_template(template_sql, params),
+                }
+            )
+
+    if shuffle:
+        rng.shuffle(entries)
+    return entries
+
+
+def _resolve_dss_path(template_dir: str, dist_file: str | None) -> str:
+    if dist_file:
+        return dist_file
+    candidate = os.path.join(os.path.dirname(template_dir), "dists.dss")
+    if os.path.exists(candidate):
+        return candidate
+    raise ValueError("dists.dss not found; set qgen_dist_file or use dss_dist with explicit dist_file")
+
+
+def _qgen_params_for_query(qid: str, rng: random.Random, dist_file: str) -> List[Any]:
+    if qid == "1":
+        return [rng.randint(60, 120)]
+    if qid == "2":
+        size = rng.randint(1, 50)
+        p_type = _sample_dss_dist(dist_file, "p_types", rng)
+        suffix = p_type.split()[-1]
+        region = _sample_dss_dist(dist_file, "regions", rng)
+        return [size, suffix, region]
+    if qid == "3":
+        segment = _sample_dss_dist(dist_file, "msegmnt", rng)
+        start = datetime.date(1995, 3, 1)
+        date = start + datetime.timedelta(days=rng.randint(0, 30))
+        return [segment, date.isoformat()]
+
+    raise ValueError(f"qgen param_mode not implemented for TPCH query {qid}")

@@ -7,6 +7,7 @@ from ...core.utils import save_sqls, save_sqls_with_timestamps
 from ...core.workload.tpch_sql_generator import (
     generate_tpch_queries,
     generate_tpch_queries_indexed,
+    generate_tpch_queries_indexed_qgen,
     list_tpch_query_ids,
 )
 from ..registry import register
@@ -35,6 +36,8 @@ def handle_tpch_sql_templates(spec: Dict[str, Any]) -> None:
     defaults = variables.get("defaults", {})
     default_query_ids = variables.get("query_ids")
     base_params = variables.get("params", {})
+    default_param_mode = defaults.get("param_mode", "custom")
+    qgen_dist_file = variables.get("qgen_dist_file") or defaults.get("qgen_dist_file")
     seed = int(spec.get("seed", 42))
 
     runs = variables.get("query_runs") or variables.get("runs") or []
@@ -50,16 +53,28 @@ def handle_tpch_sql_templates(spec: Dict[str, Any]) -> None:
         qpt = int(run.get("queries_per_template", defaults.get("queries_per_template", 1)))
         shuffle = bool(run.get("shuffle", defaults.get("shuffle", True)))
 
-        params = _merge_params(base_params, run.get("params"))
-
-        entries = generate_tpch_queries_indexed(
-            template_dir=template_dir,
-            query_ids=run_query_ids,
-            param_specs=params,
-            queries_per_template=qpt,
-            seed=seed,
-            shuffle=shuffle,
-        )
+        param_mode = run.get("param_mode", default_param_mode)
+        if param_mode == "qgen":
+            entries = generate_tpch_queries_indexed_qgen(
+                template_dir=template_dir,
+                query_ids=run_query_ids,
+                queries_per_template=qpt,
+                seed=seed,
+                shuffle=shuffle,
+                dist_file=run.get("qgen_dist_file") or qgen_dist_file,
+            )
+        elif param_mode == "custom":
+            params = _merge_params(base_params, run.get("params"))
+            entries = generate_tpch_queries_indexed(
+                template_dir=template_dir,
+                query_ids=run_query_ids,
+                param_specs=params,
+                queries_per_template=qpt,
+                seed=seed,
+                shuffle=shuffle,
+            )
+        else:
+            raise ValueError(f"Unsupported param_mode: {param_mode}")
         sqls = [entry["sql"] for entry in entries]
 
         outputs = run.get("outputs")
