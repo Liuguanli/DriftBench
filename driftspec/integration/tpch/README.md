@@ -27,6 +27,7 @@ python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_data_out
 Schema resolution (DDL):
 - These specs use `ddl_path` + `use_ddl_columns: true` to derive column lists
   from `existing_benchmarks/TPC-H V3.0.1/dbgen/dss.ddl` before loading `.tbl`.
+  With this enabled, you can omit per-table `columns` blocks in the specs.
 
 Python entrypoint (equivalent):
 
