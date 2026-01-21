@@ -15,6 +15,19 @@ python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_workload
 python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_workload_custom.yaml
 ```
 
+Run TPC-H multi-table data drift specs (BenchBase .tbl inputs):
+
+```bash
+python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_data_scale.yaml
+python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_data_cardinality.yaml
+python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_data_skew.yaml
+python -m driftbench.cli run-yaml driftspec/integration/tpch/specs/tpch_data_outliers.yaml
+```
+
+Schema resolution (DDL):
+- These specs use `ddl_path` + `use_ddl_columns: true` to derive column lists
+  from `existing_benchmarks/TPC-H V3.0.1/dbgen/dss.ddl` before loading `.tbl`.
+
 Python entrypoint (equivalent):
 
 ```python
@@ -46,3 +59,14 @@ Output options:
   - `filename_template` supports `{query_id}` and `{index}` (1-based).
 
 Outputs land in `driftspec/integration/tpch/output/` by default.
+
+Outlier placement rationale (TPC-H):
+- `l_extendedprice` appears in payload/aggregates, not in predicates, by design.
+  It primarily affects revenue-like aggregates while keeping query selectivity stable.
+- To test predicate-sensitive drift, inject outliers into filter columns such as
+  `l_quantity`, `l_discount`, `l_shipdate`, or `o_orderdate`.
+- To test join/FK-sensitive drift, use key skew or new keys while preserving
+  referential integrity (for example, `skew_fk` on `orders_customer` or
+  `add_dimension_keys` on `customer` with `reassign`).
+- If you want `l_extendedprice` in a predicate, add it in a custom workload
+  template (this deviates from the standard TPC-H semantics).

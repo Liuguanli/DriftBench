@@ -1,9 +1,12 @@
 # driftbench/spec/types/data_drift.py
 import os, json, importlib
 from typing import Any, Dict
+import re
 from ..registry import register
 from ...core.schema.factory import get_schema_extractor
 from ...core.data.single_table import SingleTableDriftGenerator
+from ...core.data.multi_table import MultiTableDriftGenerator
+import pandas as pd
 
 def _ensure_dir(p: str):
     d = os.path.dirname(p)
@@ -91,6 +94,90 @@ def _run_single_table(local_path: str, schema: Dict[str, Any], base_table: str,
         df.to_csv(out_path, index=False)
         print(f"[DATA DRIFT OK] {drift.get('name', drift_type)} -> {out_path}")
 
+_DDL_CACHE: Dict[str, Dict[str, list[str]]] = {}
+
+
+def _parse_ddl_columns(ddl_path: str) -> Dict[str, list[str]]:
+    if ddl_path in _DDL_CACHE:
+        return _DDL_CACHE[ddl_path]
+    text = ""
+    with open(ddl_path, "r", encoding="utf-8", errors="ignore") as f:
+        text = f.read()
+    tables: Dict[str, list[str]] = {}
+    for match in re.finditer(r"CREATE\s+TABLE\s+(\w+)\s*\((.*?)\);", text, re.S | re.I):
+        name = match.group(1).strip().lower()
+        body = match.group(2)
+        cols: list[str] = []
+        parts: list[str] = []
+        buf: list[str] = []
+        depth = 0
+        for ch in body:
+            if ch == "(":
+                depth += 1
+            elif ch == ")" and depth > 0:
+                depth -= 1
+            if ch == "," and depth == 0:
+                parts.append("".join(buf))
+                buf = []
+                continue
+            buf.append(ch)
+        if buf:
+            parts.append("".join(buf))
+        for raw in parts:
+            line = raw.strip()
+            if not line:
+                continue
+            if line.lower().startswith(("primary", "foreign", "unique", "constraint")):
+                continue
+            cols.append(line.split()[0].lower())
+        if cols:
+            tables[name] = cols
+    _DDL_CACHE[ddl_path] = tables
+    return tables
+
+
+def _columns_from_ddl(ddl_path: str, table_name: str) -> list[str]:
+    tables = _parse_ddl_columns(ddl_path)
+    key = table_name.lower()
+    if key not in tables:
+        raise ValueError(f"Table '{table_name}' not found in DDL: {ddl_path}")
+    return tables[key]
+
+
+def _load_table_frame(table_cfg: Dict[str, Any]) -> pd.DataFrame:
+    path = table_cfg.get("path")
+    if not path:
+        raise ValueError("Table config requires 'path'.")
+    fmt = (table_cfg.get("format") or "").lower()
+    delimiter = table_cfg.get("delimiter")
+    columns = table_cfg.get("columns")
+    ddl_path = table_cfg.get("ddl_path")
+    use_ddl = bool(table_cfg.get("use_ddl_columns", False))
+    if ddl_path and (columns is None or use_ddl):
+        table_name = table_cfg.get("ddl_table") or table_cfg.get("name")
+        if not table_name:
+            raise ValueError("DDL-based load requires table name (use 'name' or 'ddl_table').")
+        columns = _columns_from_ddl(ddl_path, table_name)
+        table_cfg["columns"] = columns
+    drop_last_empty = bool(table_cfg.get("drop_last_empty", False))
+
+    if fmt == "tbl" or delimiter or columns:
+        sep = delimiter or "|"
+        if columns:
+            names = list(columns)
+            if drop_last_empty:
+                names.append("_extra")
+            df = pd.read_csv(path, sep=sep, header=None, names=names)
+            if drop_last_empty and "_extra" in df.columns:
+                df = df.drop(columns=["_extra"])
+            return df
+        df = pd.read_csv(path, sep=sep, header=None)
+        if drop_last_empty and df.shape[1] > 0:
+            df = df.iloc[:, :-1]
+        return df
+
+    return pd.read_csv(path)
+
 @register(family="data", category="drift", subtype="single_table")
 def handle_data_single_table(spec: Dict[str, Any]) -> None:
     ds = spec.get("data_source", {}) or {}
@@ -119,6 +206,45 @@ def handle_data_multi_table(spec: Dict[str, Any]) -> None:
     tables = variables.get("tables")
     if not tables or not isinstance(tables, list):
         raise ValueError("variables.tables must be a non-empty list for multi_table.")
+
+    drift_steps = variables.get("drift_steps")
+    relationships = variables.get("relationships")
+    if drift_steps:
+        tables_data: Dict[str, pd.DataFrame] = {}
+        output_paths: Dict[str, str] = {}
+        table_keys: Dict[str, str] = {}
+        ddl_path_default = variables.get("ddl_path")
+        use_ddl_default = variables.get("use_ddl_columns")
+        for tcfg in tables:
+            name = tcfg.get("name") or tcfg.get("base_table") or "table"
+            if ddl_path_default and "ddl_path" not in tcfg:
+                tcfg["ddl_path"] = ddl_path_default
+            if use_ddl_default is not None and "use_ddl_columns" not in tcfg:
+                tcfg["use_ddl_columns"] = use_ddl_default
+            tables_data[name] = _load_table_frame(tcfg)
+            if tcfg.get("output_path"):
+                output_paths[name] = tcfg["output_path"]
+            if tcfg.get("key_column"):
+                table_keys[name] = tcfg["key_column"]
+
+        gen = MultiTableDriftGenerator(
+            tables=tables_data,
+            relationships=relationships or [],
+            table_keys=table_keys,
+            seed=int(spec.get("seed", 42)),
+        )
+        gen.apply_steps(drift_steps)
+        if variables.get("validate_integrity", True):
+            gen.validate_integrity()
+        for name, df in gen.tables.items():
+            out_path = output_paths.get(name)
+            if not out_path:
+                continue
+            _ensure_dir(out_path)
+            df.to_csv(out_path, index=False)
+            print(f"[DATA DRIFT OK] {name} -> {out_path}")
+        return
+
     pattern_id = spec.get("pattern_id", "data-drift")
     for tcfg in tables:
         name = tcfg.get("name") or tcfg.get("base_table") or "table"
