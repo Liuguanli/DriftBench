@@ -50,8 +50,9 @@ Notes on parameters:
 
 Parameter modes:
 - `param_mode: custom` (default) uses `params` from the YAML.
-- `param_mode: qgen` uses built-in qgen-like rules (currently Q1–Q3).
-  Optionally set `qgen_dist_file` to point at `dists.dss`.
+- `param_mode: qgen` uses built-in qgen-like rules (Q1–Q22).
+  Optionally set `qgen_dist_file` to point at `dists.dss` and `qgen_scale`
+  to control scale-sensitive parameters (e.g., Q11).
 
 Output options:
 - `type: workload`: write all SQLs into one file at `path`.

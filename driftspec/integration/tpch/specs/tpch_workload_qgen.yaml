@@ -15,11 +15,11 @@ variables:
     queries_per_template: 5
     shuffle: true
 
-  query_ids: [1, 2, 3]
+  query_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
 
   query_runs:
     - name: tpch_qgen
-      query_ids: [1, 2, 3]
+      query_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
       queries_per_template: 10
       outputs:
         - type: split

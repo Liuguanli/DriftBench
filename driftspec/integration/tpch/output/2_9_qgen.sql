@@ -16,11 +16,11 @@ from
 where
 	p_partkey = ps_partkey
 	and s_suppkey = ps_suppkey
-	and p_size = 7
+	and p_size = 45
 	and p_type like '%STEEL'
 	and s_nationkey = n_nationkey
 	and n_regionkey = r_regionkey
-	and r_name = 'AFRICA'
+	and r_name = 'ASIA'
 	and ps_supplycost = (
 		select
 			min(ps_supplycost)
@@ -34,7 +34,7 @@ where
 			and s_suppkey = ps_suppkey
 			and s_nationkey = n_nationkey
 			and n_regionkey = r_regionkey
-			and r_name = 'AFRICA'
+			and r_name = 'ASIA'
 	)
 order by
 	s_acctbal desc,

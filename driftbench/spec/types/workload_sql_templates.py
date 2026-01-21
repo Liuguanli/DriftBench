@@ -55,6 +55,7 @@ def handle_tpch_sql_templates(spec: Dict[str, Any]) -> None:
 
         param_mode = run.get("param_mode", default_param_mode)
         if param_mode == "qgen":
+            qgen_scale = float(run.get("qgen_scale", defaults.get("qgen_scale", 1)))
             entries = generate_tpch_queries_indexed_qgen(
                 template_dir=template_dir,
                 query_ids=run_query_ids,
@@ -62,6 +63,7 @@ def handle_tpch_sql_templates(spec: Dict[str, Any]) -> None:
                 seed=seed,
                 shuffle=shuffle,
                 dist_file=run.get("qgen_dist_file") or qgen_dist_file,
+                scale=qgen_scale,
             )
         elif param_mode == "custom":
             params = _merge_params(base_params, run.get("params"))
