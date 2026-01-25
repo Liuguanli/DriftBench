@@ -228,7 +228,16 @@ def _extract_or_load_schema(spec: Dict[str, Any]) -> Dict[str, Any]:
         if not csv_path:
             raise ValueError("For CSV, set data_source.path")
         extractor = get_schema_extractor("csv", csv_path=csv_path, sample_size=se.get("sample_size", 1000))
-        sch = extractor.extract_schema()  # {"table": "...", "columns": [...]}
+        sch = extractor.extract_schema()
+        if "tables" in sch and isinstance(sch["tables"], dict) and sch["tables"]:
+            tables = sch["tables"]
+            if base_table and base_table in tables:
+                phys = base_table
+                cols = tables[base_table].get("columns") or tables[base_table]
+            else:
+                phys, entry = next(iter(tables.items()))
+                cols = entry.get("columns") or entry
+            return _save_and_return_single(phys, cols)
         phys = sch.get("table") or os.path.basename(csv_path)
         return _save_and_return_single(phys, sch["columns"])
 
@@ -238,6 +247,15 @@ def _extract_or_load_schema(spec: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError("For Parquet, set data_source.path")
         extractor = get_schema_extractor("parquet", parquet_path=pq_path, sample_size=se.get("sample_size", 1000))
         sch = extractor.extract_schema()
+        if "tables" in sch and isinstance(sch["tables"], dict) and sch["tables"]:
+            tables = sch["tables"]
+            if base_table and base_table in tables:
+                phys = base_table
+                cols = tables[base_table].get("columns") or tables[base_table]
+            else:
+                phys, entry = next(iter(tables.items()))
+                cols = entry.get("columns") or entry
+            return _save_and_return_single(phys, cols)
         phys = sch.get("table") or os.path.basename(pq_path)
         return _save_and_return_single(phys, sch["columns"])
 
@@ -342,6 +360,10 @@ def handle_workload_templates(spec: Dict[str, Any]) -> None:
                 selectivity=cfg.get("selectivity") or {},
                 value_range=cfg.get("value_range") or variables.get("defaults", {}).get("value_range"),
                 join_count=int(cfg.get("join_count", variables.get("defaults", {}).get("join_count", 1))),
+                predicate_columns=cfg.get("predicate_columns"),
+                predicate_operators=cfg.get("predicate_operators"),
+                required_predicate_columns=cfg.get("required_predicate_columns"),
+                required_payload_columns=cfg.get("required_payload_columns"),
             )
         else:
             # SINGLE-TABLE branch
@@ -360,7 +382,21 @@ def handle_workload_templates(spec: Dict[str, Any]) -> None:
                     variables, ds, schema["tables"][base_table]["table"], base_table
                 )
             gen = TemplateGenerator(schema, base_table=base_table)
-            kwargs = {k: cfg[k] for k in ["num_templates","max_predicates","max_payload_columns","selectivity","value_range"] if k in cfg}
+            kwargs = {
+                k: cfg[k]
+                for k in [
+                    "num_templates",
+                    "max_predicates",
+                    "max_payload_columns",
+                    "selectivity",
+                    "value_range",
+                    "predicate_columns",
+                    "predicate_operators",
+                    "required_predicate_columns",
+                    "required_payload_columns",
+                ]
+                if k in cfg
+            }
             templates = gen.generate_templates(**kwargs)
 
         templates = _json_safe(templates)

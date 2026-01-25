@@ -18,6 +18,12 @@ driftbench/data/
 *.log
 # *.csv
 # *.json
+tasks/cardinality_estimation/data/
+tasks/cardinality_estimation/output/
+tasks/cardinality_estimation/ce_timeline_census/log/
+tasks/cardinality_estimation/ce_timeline_census/result/
+tasks/cardinality_estimation/ce_timeline_census/model/
+tasks/cardinality_estimation/ce_timeline_census/figures/
 
 # Ignore paper PDFs
 papers

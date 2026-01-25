@@ -1,0 +1,170 @@
+pattern_id: census-ce-workload-trend
+seed: 42
+
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./tasks/cardinality_estimation/specs/census_schema.json
+
+variables:
+  base_table: census_original
+
+  defaults:
+    num_templates: 12
+    max_predicates: 4
+    max_payload_columns: 2
+    value_range:
+      age: [17, 90]
+      hours_per_week: [1, 99]
+      education_num: [1, 16]
+      capital_gain: [0, 99999]
+      capital_loss: [0, 5000]
+    predicate_operators:
+      numeric: ["BETWEEN"]
+
+  runs:
+    - name: trend_tpl_phase_1
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_trend_templates_phase_1.json
+      num_templates: 20
+      max_predicates: 2
+      max_payload_columns: 2
+      predicate_columns: [age, workclass]
+      required_predicate_columns: [age, workclass]
+      selectivity:
+        age: [0.05, 0.10]
+
+    - name: trend_tpl_phase_2
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_trend_templates_phase_2.json
+      num_templates: 18
+      max_predicates: 3
+      max_payload_columns: 3
+      predicate_columns: [education_num, education, marital_status]
+      required_predicate_columns: [education_num, marital_status]
+      selectivity:
+        education_num: [0.10, 0.20]
+
+    - name: trend_tpl_phase_3
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_trend_templates_phase_3.json
+      num_templates: 16
+      max_predicates: 3
+      max_payload_columns: 3
+      predicate_columns: [capital_gain, occupation, relationship]
+      required_predicate_columns: [capital_gain, occupation]
+      selectivity:
+        capital_gain: [0.05, 0.15]
+
+    - name: trend_tpl_phase_4
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_trend_templates_phase_4.json
+      num_templates: 18
+      max_predicates: 3
+      max_payload_columns: 3
+      predicate_columns: [hours_per_week, workclass, race]
+      required_predicate_columns: [hours_per_week, workclass]
+      selectivity:
+        hours_per_week: [0.15, 0.25]
+
+    - name: trend_tpl_phase_5
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_trend_templates_phase_5.json
+      num_templates: 16
+      max_predicates: 3
+      max_payload_columns: 3
+      predicate_columns: [capital_loss, marital_status, education]
+      required_predicate_columns: [capital_loss, marital_status]
+      selectivity:
+        capital_loss: [0.05, 0.20]
+
+    - name: trend_tpl_phase_6
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_trend_templates_phase_6.json
+      num_templates: 14
+      max_predicates: 3
+      max_payload_columns: 3
+      predicate_columns: [age, race, native_country]
+      required_predicate_columns: [age, native_country]
+      selectivity:
+        age: [0.30, 0.45]
+
+  query_runs:
+    # Phase 1: younger + low hours, narrow workclass
+    - name: trend_phase_1_uniform_low
+      template: trend_tpl_phase_1
+      queries_per_template: 500
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 30 }
+        census_original.workclass: { distribution: choice, choices: ["Private"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/trend/phases/census_trend_phase_1.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 600 }
+
+    # Phase 2: mid-age + mid hours, broader workclass
+    - name: trend_phase_2_normal_mid
+      template: trend_tpl_phase_2
+      queries_per_template: 500
+      dist_config:
+        census_original.education_num: { distribution: normal, mean: 10, std: 2 }
+        census_original.education: { distribution: choice, choices: ["Bachelors", "HS-grad", "Some-college"] }
+        census_original.marital_status: { distribution: choice, choices: ["Married-civ-spouse", "Never-married", "Divorced"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/trend/phases/census_trend_phase_2.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:20:00", queries_per_minute: 600 }
+
+    # Phase 3: older + skewed ages
+    - name: trend_phase_3_zipf_high
+      template: trend_tpl_phase_3
+      queries_per_template: 500
+      dist_config:
+        census_original.capital_gain: { distribution: zipf, a: 2.5, min: 0, max: 99999 }
+        census_original.occupation: { distribution: choice, choices: ["Exec-managerial", "Tech-support", "Sales"] }
+        census_original.relationship: { distribution: choice, choices: ["Husband", "Not-in-family", "Own-child"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/trend/phases/census_trend_phase_3.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:40:00", queries_per_minute: 600 }
+
+    # Phase 4: tight selectivity again, but with older ages
+    - name: trend_phase_4_selectivity_1
+      template: trend_tpl_phase_4
+      queries_per_template: 500
+      dist_config:
+        census_original.hours_per_week: { distribution: normal, mean: 40, std: 8 }
+        census_original.workclass: { distribution: choice, choices: ["Private", "State-gov"] }
+        census_original.race: { distribution: choice, choices: ["White", "Black", "Asian-Pac-Islander"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/trend/phases/census_trend_phase_4.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T01:00:00", queries_per_minute: 600 }
+
+    # Phase 5: mid selectivity, wider hours
+    - name: trend_phase_5_selectivity_2
+      template: trend_tpl_phase_5
+      queries_per_template: 500
+      dist_config:
+        census_original.capital_loss: { distribution: uniform, min: 0, max: 2000 }
+        census_original.marital_status: { distribution: choice, choices: ["Married-civ-spouse", "Never-married", "Divorced"] }
+        census_original.education: { distribution: choice, choices: ["HS-grad", "Masters", "Bachelors"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/trend/phases/census_trend_phase_5.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T01:20:00", queries_per_minute: 600 }
+
+    # Phase 6: wide selectivity, older + high hours
+    - name: trend_phase_6_selectivity_3
+      template: trend_tpl_phase_6
+      queries_per_template: 500
+      dist_config:
+        census_original.age: { distribution: uniform, min: 45, max: 75 }
+        census_original.race: { distribution: choice, choices: ["White", "Black", "Asian-Pac-Islander"] }
+        census_original.native_country: { distribution: choice, choices: ["United-States", "Mexico", "Philippines"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/trend/phases/census_trend_phase_6.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T01:40:00", queries_per_minute: 600 }

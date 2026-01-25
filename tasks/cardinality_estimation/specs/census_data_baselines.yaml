@@ -1,0 +1,93 @@
+pattern_id: census-ce-baselines
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./tasks/cardinality_estimation/specs/census_schema.json
+
+variables:
+  base_table: census_original
+  drifts:
+    - name: original_skew_2
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 2
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_2.csv
+
+    - name: original_skew_3
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 3
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_3.csv
+
+    - name: original_skew_4
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 4
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_4.csv
+
+    - name: original_skew_5
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 5
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_5.csv
+
+    - name: original_skew_6
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 6
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_6.csv
+
+    - name: original_skew_7
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 7
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_7.csv
+
+    - name: original_skew_8
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 8
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_8.csv
+
+    - name: original_skew_9
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 9
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_9.csv
+
+    - name: original_skew_10
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 10
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_10.csv
+
+    - name: original_skew_11
+      drift_type: value_skew
+      columns: ["age", "hours_per_week", "workclass", "education"]
+      portion: 1.0
+      skewness: 11
+      output_path: ./tasks/cardinality_estimation/data/census13/original_skew_11.csv
+
+    - name: original_cardinality_1
+      drift_type: vary_cardinality
+      scale: 1
+      output_path: ./tasks/cardinality_estimation/data/census13/original_cardinality_1.csv
