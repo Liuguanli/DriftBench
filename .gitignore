@@ -24,6 +24,10 @@ tasks/cardinality_estimation/ce_timeline_census/log/
 tasks/cardinality_estimation/ce_timeline_census/result/
 tasks/cardinality_estimation/ce_timeline_census/model/
 tasks/cardinality_estimation/ce_timeline_census/figures/
+tasks/indexing/data/
+tasks/indexing/queries/
+tasks/indexing/logs/
+tasks/indexing/out/
 
 # Ignore paper PDFs
 papers

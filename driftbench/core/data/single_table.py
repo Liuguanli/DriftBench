@@ -50,21 +50,29 @@ class SingleTableDriftGenerator:
         self,
         column: Optional[str] = None,
         n: int = 10,
+        n_ratio: Optional[float] = None,
         extreme_value: Optional[float] = None,
         min_extreme: Optional[float] = None,
         max_extreme: Optional[float] = None,
         extreme_scale: float = 1.0,
+        extreme_direction: Optional[str] = None,
         inject_count: Optional[int] = None,
         key_column: Optional[str] = None,
     ):
         if inject_count is not None:
             n = inject_count
+        if n_ratio is not None:
+            n = int(len(self.df) * float(n_ratio))
+        if n <= 0:
+            raise ValueError("outlier_injection requires n > 0.")
 
         target_col = column or key_column
         if not target_col:
             raise ValueError("outlier_injection requires 'column' or 'key_column' when no outlier_csv_path is set.")
         if target_col not in self.col_names:
             raise ValueError(f"Column {target_col} not found.")
+        if extreme_direction is not None and extreme_direction not in ("high", "low"):
+            raise ValueError("extreme_direction must be 'high' or 'low'.")
 
         series = self.df[target_col].dropna()
         if series.empty:
@@ -89,7 +97,12 @@ class SingleTableDriftGenerator:
                     raise ValueError("extreme_scale must be > 0.")
                 low = col_min - span * extreme_scale
                 high = col_max + span * extreme_scale
-                outlier_values = np.random.choice([low, high], size=n)
+                if extreme_direction == "high":
+                    outlier_values = np.random.uniform(col_max, high, size=n)
+                elif extreme_direction == "low":
+                    outlier_values = np.random.uniform(low, col_min, size=n)
+                else:
+                    outlier_values = np.random.choice([low, high], size=n)
             else:
                 outlier_values = np.full(n, float(extreme_value))
 
@@ -205,16 +218,17 @@ class SingleTableDriftGenerator:
     # MAX_KDE_SAMPLES = 1000  # adjust if needed
 
 
-    def _generate_rows_like_existing(self, n):
+    def _generate_rows_like_existing(self, n, source_df=None):
 
         MAX_KDE_SAMPLES = 50000
-        
-        simulator = DataDistributionSimulator(self.df, self.columns)
+
+        df = source_df if source_df is not None else self.df
+        simulator = DataDistributionSimulator(df, self.columns)
         new_data = {}
 
         for col in self.col_names:
 
-            col_data = self.df[col].dropna()
+            col_data = df[col].dropna()
 
             if len(col_data) == 0:
                 new_data[col] = [None] * n
@@ -233,10 +247,10 @@ class SingleTableDriftGenerator:
                 samples = simulator.generate(sample_data, n, strategy_name="kde" if logical_type == "numeric" else "default")
                 new_data[col] = samples
             elif logical_type == "string" or logical_type == "categorical":
-                col_data = self.df[col].dropna().astype(str)
+                col_data = df[col].dropna().astype(str)
                 new_data[col] = np.random.choice(col_data, n, replace=True)
             elif logical_type == "datetime":
-                col_data = pd.to_datetime(self.df[col].dropna())
+                col_data = pd.to_datetime(df[col].dropna())
                 new_data[col] = np.random.choice(col_data, n, replace=True)
             else:
                 new_data[col] = [None] * n  # fallback for unknown types
@@ -282,7 +296,7 @@ class SingleTableDriftGenerator:
     #     return pd.DataFrame(new_data)
     
 
-    def _insert_records(self, n=10, filter_column=None, filter_func=None):
+    def _insert_records(self, n=10, n_ratio=None, filter_column=None, filter_func=None):
         """
         Insert `n` new rows generated from existing data distribution.
 
@@ -297,6 +311,10 @@ class SingleTableDriftGenerator:
         Returns:
             pd.DataFrame: Updated dataframe after insertion.
         """
+        if n_ratio is not None:
+            n = int(len(self.df) * float(n_ratio))
+        if n <= 0:
+            raise ValueError("insert_records requires n > 0.")
         source_df = self.df
 
         if filter_column and filter_func:
@@ -307,9 +325,8 @@ class SingleTableDriftGenerator:
                 raise ValueError("No rows match the filter condition.")
 
         # Now generate n rows like filtered data
-        new_rows = self._generate_rows_like_existing(source_df, n=n)
-        self.df = pd.concat([self.df, new_rows], ignore_index=True)
-        return self.df
+        new_rows = self._generate_rows_like_existing(n=n, source_df=source_df)
+        return pd.concat([self.df, new_rows], ignore_index=True)
 
 
     # def _delete_records(self, n=10, filter_column=None, filter_func=None):
