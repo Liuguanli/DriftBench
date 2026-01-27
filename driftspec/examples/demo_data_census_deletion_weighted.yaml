@@ -27,22 +27,14 @@ variables:
       strategy: uniform
       output_path: ./output/data/cardinality/update/census_original_delete_age_gt_60_uniform.csv
 
-    - name: delete_key_dense_age
+    - name: delete_age_40_50_uniform
       drift_type: selective_deletion
-      n: 5000
-      strategy: key_weighted
-      strategy_config:
-        key_col: age
-        bias: dense
-        alpha: 1.0
-      output_path: ./output/data/cardinality/update/census_original_delete_key_dense_age.csv
+      n_ratio: 0.5
+      filter:
+        column: age
+        min: 40
+        max: 50
+      strategy: uniform
+      output_path: ./output/data/cardinality/update/census_original_delete_age_40_50_uniform.csv
 
-    - name: delete_key_sparse_age
-      drift_type: selective_deletion
-      n: 5000
-      strategy: key_weighted
-      strategy_config:
-        key_col: age
-        bias: sparse
-        alpha: 1.0
-      output_path: ./output/data/cardinality/update/census_original_delete_key_sparse_age.csv
+# NOTE: dense/sparse key-weighted deletions removed per request.
