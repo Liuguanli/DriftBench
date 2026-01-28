@@ -1,0 +1,50 @@
+pattern_id: redbench_redbench_stats_0_10
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/intermediate_yaml/census_original_schema.json
+variables:
+  base_table: census_original
+  defaults:
+    num_templates: 5
+    max_predicates: 4
+    max_payload_columns: 4
+  runs:
+  - name: low_variability
+    output_path: ./output/intermediate_yaml/redbench_low_variability_templates.json
+    num_templates: 2
+    max_predicates: 2
+  - name: mid_variability
+    output_path: ./output/intermediate_yaml/redbench_mid_variability_templates.json
+    num_templates: 4
+    max_predicates: 3
+  - name: high_variability
+    output_path: ./output/intermediate_yaml/redbench_high_variability_templates.json
+    num_templates: 33
+    max_predicates: 6
+  query_runs:
+  - name: low_variability
+    template: low_variability
+    queries_per_template: 10
+    outputs:
+    - type: workload
+      path: ./output/workload/redbench_low_variability_sqls.csv
+  - name: mid_variability
+    template: mid_variability
+    queries_per_template: 17
+    outputs:
+    - type: workload
+      path: ./output/workload/redbench_mid_variability_sqls.csv
+  - name: high_variability
+    template: high_variability
+    queries_per_template: 88
+    outputs:
+    - type: workload
+      path: ./output/workload/redbench_high_variability_sqls.csv

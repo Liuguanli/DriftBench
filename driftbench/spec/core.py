@@ -1,6 +1,8 @@
 # driftbench/spec/core.py
 # driftbench/spec/core.py
 from .types import workload_templates  # ensure loaded
+from .types import workload_sql_templates  # ensure loaded
+from .types import workload_keylist   # ensure loaded
 from .types import data_drift          # ensure loaded
 
 import yaml, random

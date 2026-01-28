@@ -1,0 +1,40 @@
+pattern_id: census-deletion-weighted
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/intermediate_yaml/census_original_schema.json
+
+variables:
+  base_table: census_original
+  drifts:
+    - name: delete_age_gt_60_uniform
+      drift_type: selective_deletion
+      n_ratio: 0.5
+      filter:
+        column: age
+        op: ">"
+        value: 60
+      strategy: uniform
+      output_path: ./output/data/cardinality/update/census_original_delete_age_gt_60_uniform.csv
+
+    - name: delete_age_40_50_uniform
+      drift_type: selective_deletion
+      n_ratio: 0.5
+      filter:
+        column: age
+        min: 40
+        max: 50
+      strategy: uniform
+      output_path: ./output/data/cardinality/update/census_original_delete_age_40_50_uniform.csv
+
+# NOTE: dense/sparse key-weighted deletions removed per request.

@@ -1,0 +1,118 @@
+pattern_id: census-ce-workload
+seed: 42
+
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+
+data_source:
+  kind: csv
+  path: ./data/census_original.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./tasks/cardinality_estimation/specs/census_schema.json
+
+variables:
+  base_table: census_original
+
+  defaults:
+    num_templates: 5
+    max_predicates: 3
+    max_payload_columns: 2
+    value_range:
+      age: [17, 90]
+      hours_per_week: [1, 99]
+    predicate_operators:
+      numeric: ["BETWEEN"]
+
+  runs:
+    - name: sel_1
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_original_templates.json
+      selectivity:
+        age: [0.10, 0.20]
+        hours_per_week: [0.10, 0.20]
+      predicate_columns: [age, workclass]
+      required_predicate_columns: [age, workclass]
+      # required_payload_columns: [age, workclass]
+
+    - name: sel_2
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_original_templates_selectivity_2.json
+      selectivity:
+        age: [0.10, 0.30]
+        hours_per_week: [0.10, 0.30]
+      predicate_columns: [age, workclass]
+      required_predicate_columns: [age, workclass]
+
+    - name: sel_3
+      output_path: ./tasks/cardinality_estimation/output/intermediate_yaml/census_original_templates_selectivity_3.json
+      selectivity:
+        age: [0.10, 0.40]
+        hours_per_week: [0.10, 0.40]
+      predicate_columns: [age, workclass]
+      required_predicate_columns: [age, workclass]
+
+  query_runs:
+    - name: distribution_uniform
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 40, max: 75 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/parametric/distribution/census_original_uniform_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: distribution_normal
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: normal, mean: 30, std: 5 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/parametric/distribution/census_original_normal_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+
+    - name: distribution_zipf
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: zipf, a: 4, min: 50, max: 75 }
+        census_original.workclass: { distribution: choice, choices: ["State-gov", "Private", "Local-gov"] }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/parametric/distribution/census_original_skew_sqls.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }
+
+    - name: selectivity_1
+      template: sel_1
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/parametric/selectivity/census_original_sqls_selectivity_1.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: selectivity_2
+      template: sel_2
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/parametric/selectivity/census_original_sqls_selectivity_2.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:05:00", queries_per_minute: 300 }
+
+    - name: selectivity_3
+      template: sel_3
+      queries_per_template: 300
+      dist_config:
+        census_original.age: { distribution: uniform, min: 18, max: 75 }
+      outputs:
+        - type: temporal
+          path: ./tasks/cardinality_estimation/output/workload/parametric/selectivity/census_original_sqls_selectivity_3.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }

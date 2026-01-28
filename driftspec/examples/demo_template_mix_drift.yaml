@@ -1,0 +1,74 @@
+pattern_id: demo_template_mix_drift
+seed: 42
+
+type:
+  family: workload
+  category: templates
+  subtype: selection_payload
+
+data_source:
+  kind: csv
+  path: ./data/orders.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./specs/orders_schema.json
+
+variables:
+  base_table: orders
+
+  defaults:
+    num_templates: 8
+    max_predicates: 3
+    max_payload_columns: 3
+
+  # Multi-table setup: selection-only vs join-heavy
+  candidate_sets:
+    sel_only: [orders]
+    join_pair: [orders, customers]
+
+  runs:
+    - name: sel_templates
+      candidate_tables_ref: sel_only
+      join_count: 1
+      output_path: ./output/intermediate/sel_templates.json
+
+    - name: join_templates
+      candidate_tables_ref: join_pair
+      join_count: 2
+      output_path: ./output/intermediate/join_templates.json
+
+  query_runs:
+    # Phase 1: 80% selection, 20% join
+    - name: phase1_sel_80
+      template: sel_templates
+      queries_per_template: 80
+      outputs:
+        - type: temporal
+          path: ./output/workload/phase1_sel.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    - name: phase1_join_20
+      template: join_templates
+      queries_per_template: 20
+      outputs:
+        - type: temporal
+          path: ./output/workload/phase1_join.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:00:00", queries_per_minute: 300 }
+
+    # Phase 2: 20% selection, 80% join
+    - name: phase2_sel_20
+      template: sel_templates
+      queries_per_template: 20
+      outputs:
+        - type: temporal
+          path: ./output/workload/phase2_sel.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }
+
+    - name: phase2_join_80
+      template: join_templates
+      queries_per_template: 80
+      outputs:
+        - type: temporal
+          path: ./output/workload/phase2_join.csv
+          timestamp: { pattern: uniform, start_time: "2025-07-01T00:10:00", queries_per_minute: 300 }

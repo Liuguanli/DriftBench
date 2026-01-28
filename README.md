@@ -54,11 +54,82 @@ Run any specification with:
 python -m driftbench.cli run-yaml <path-to-yaml>
 ```
 
+### Custom Deletion Filters (registry + DriftSpec)
+
+DriftSpec cannot serialize Python callables, so use the filter registry to reference a filter by name.
+
+1) Register a filter in code:
+
+```python
+# my_project/filters.py
+from driftbench.core.data.filter_registry import register_filter
+
+@register_filter("age_gt_60")
+def age_gt_60(series, config):
+    return series > 60
+```
+
+2) Import the module and reference it in YAML:
+
+```yaml
+filter_registry_modules:
+  - my_project.filters
+
+variables:
+  base_table: census_original
+  drifts:
+    - name: delete_age_gt_60
+      drift_type: selective_deletion
+      n: 5000
+      filter:
+        column: age
+        func_name: age_gt_60
+      output_path: ./output/data/cardinality/update/census_original_deletion_age_gt_60.csv
+```
+
+You can also use simple declarative filters without registration:
+
+```yaml
+filter:
+  column: timestamp
+  min: "2025-07-02T00:00:00"
+  max: "2025-07-03T00:00:00"
+```
+
+### Trace to DriftSpec (mock flow)
+
+If you already parsed a real database trace into a compact CSV/JSON summary, you can generate a DriftSpec YAML directly:
+
+```bash
+python -m driftbench.cli trace-to-spec driftspec/trace_inputs/trace_data_mock.csv driftspec/generated/trace_data_mock.yaml
+python -m driftbench.cli trace-to-spec driftspec/trace_inputs/trace_workload_mock.json driftspec/generated/trace_workload_mock.yaml
+```
+
+The mock inputs live in `driftspec/trace_inputs/` and show the minimal fields the generator expects.
+
 Explore complete templates in `driftspec/examples/`, including:
 - Data drift patterns: [`demo_data_single.yaml`](driftspec/examples/demo_data_single.yaml)
 - PostgreSQL single-table: [`demo_postgres.yaml`](driftspec/examples/demo_postgres.yaml)
 - PostgreSQL multi-table: [`demo_postgres_multi.yaml`](driftspec/examples/demo_postgres_multi.yaml)
 - Workload drift: [`workload_census.yaml`](driftspec/examples/workload_census.yaml)
+
+### Census Temporal Demos (Data)
+
+These specs create timestamped census data and time growth scenarios under `output/data/time_demo/`.
+
+- [`demo_data_census_timestamp.yaml`](driftspec/examples/demo_data_census_timestamp.yaml): add a `timestamp` column with uniform arrivals.
+- [`demo_data_census_time_growth.yaml`](driftspec/examples/demo_data_census_time_growth.yaml): combine a base day with an age-skewed day to show a distribution shift.
+- [`demo_data_census_time_growth_3x.yaml`](driftspec/examples/demo_data_census_time_growth_3x.yaml): 3-day time growth (uniform + periodic + bursty).
+- [`demo_data_census_time_growth_4x.yaml`](driftspec/examples/demo_data_census_time_growth_4x.yaml): 4-day time growth (adds a long-tail day).
+
+Run them with:
+
+```bash
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_census_timestamp.yaml
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_census_time_growth.yaml
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_census_time_growth_3x.yaml
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_census_time_growth_4x.yaml
+```
 
 Behind the scenes, the runner loads type handlers registered in `driftbench/spec/types/` and executes them through `driftbench/spec/core.py`.
 

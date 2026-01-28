@@ -1,0 +1,154 @@
+pattern_id: indexing-data-drift
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ./tasks/indexing/data/keys_u64.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 10000
+    schema_output_path: ./tasks/indexing/data/keys_u64_schema.json
+
+variables:
+  base_table: keys_u64
+  drifts:
+    - name: scale_1
+      drift_type: vary_cardinality
+      scale: 1
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_1.csv
+
+    - name: scale_2
+      drift_type: vary_cardinality
+      scale: 2
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_2.csv
+
+    - name: scale_3
+      drift_type: vary_cardinality
+      scale: 3
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_3.csv
+
+    - name: scale_4
+      drift_type: vary_cardinality
+      scale: 4
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_4.csv
+
+    - name: scale_5
+      drift_type: vary_cardinality
+      scale: 5
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_5.csv
+
+    - name: scale_6
+      drift_type: vary_cardinality
+      scale: 6
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_6.csv
+
+    - name: scale_7
+      drift_type: vary_cardinality
+      scale: 7
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_7.csv
+
+    - name: scale_8
+      drift_type: vary_cardinality
+      scale: 8
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_8.csv
+
+    - name: scale_9
+      drift_type: vary_cardinality
+      scale: 9
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_9.csv
+
+    - name: scale_10
+      drift_type: vary_cardinality
+      scale: 10
+      output_path: ./tasks/indexing/data/drift/scale/keys_scale_10.csv
+
+    - name: skew_2
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 2
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_2.csv
+
+    - name: skew_3
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 3
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_3.csv
+
+    - name: skew_4
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 4
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_4.csv
+
+    - name: skew_5
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 5
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_5.csv
+
+    - name: skew_6
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 6
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_6.csv
+
+    - name: skew_7
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 7
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_7.csv
+
+    - name: skew_8
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 8
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_8.csv
+
+    - name: skew_9
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 9
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_9.csv
+
+    - name: skew_10
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 10
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_10.csv
+
+    - name: skew_11
+      drift_type: value_skew
+      columns: ["key"]
+      portion: 1.0
+      skewness: 11
+      output_path: ./tasks/indexing/data/drift/skew/keys_skew_11.csv
+
+    - name: inject_outliers_10pct
+      drift_type: outlier_injection
+      key_column: key
+      n_ratio: 0.10
+      extreme_direction: high
+      extreme_scale: 1.0
+      output_path: ./tasks/indexing/data/drift/outliers/keys_inject_outliers_10pct.csv
+
+    - name: inject_outliers_20pct
+      drift_type: outlier_injection
+      key_column: key
+      n_ratio: 0.20
+      extreme_direction: high
+      extreme_scale: 1.0
+      output_path: ./tasks/indexing/data/drift/outliers/keys_inject_outliers_20pct.csv

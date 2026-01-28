@@ -1,0 +1,134 @@
+pattern_id: indexing-query-keylist
+seed: 42
+
+type:
+  family: workload
+  category: keylist
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ./tasks/indexing/data/keys_u64.csv
+
+variables:
+  key_column: key
+  type_format: u64
+  output_has_size: false
+  query_runs:
+    - name: point_uniform_10k
+      query_type: point
+      distribution: uniform
+      count: 10000
+      output_path: ./tasks/indexing/queries/point_uniform_10k.bin
+
+    - name: point_zipf_a2_10k
+      query_type: point
+      distribution: zipf
+      zipf_alpha: 2
+      count: 10000
+      output_path: ./tasks/indexing/queries/point_zipf_a2_10k.bin
+
+    - name: point_zipf_a3_10k
+      query_type: point
+      distribution: zipf
+      zipf_alpha: 3
+      count: 10000
+      output_path: ./tasks/indexing/queries/point_zipf_a3_10k.bin
+
+    - name: point_zipf_a4_10k
+      query_type: point
+      distribution: zipf
+      zipf_alpha: 4
+      count: 10000
+      output_path: ./tasks/indexing/queries/point_zipf_a4_10k.bin
+
+    - name: point_zipf_a5_10k
+      query_type: point
+      distribution: zipf
+      zipf_alpha: 5
+      count: 10000
+      output_path: ./tasks/indexing/queries/point_zipf_a5_10k.bin
+
+    - name: point_hotspot_1pct_10k
+      query_type: point
+      distribution: hotspot
+      hotspot_frac: 0.01
+      count: 10000
+      output_path: ./tasks/indexing/queries/point_hotspot_1pct_10k.bin
+
+    - name: range_uniform_r100_10k
+      query_type: range
+      distribution: uniform
+      r_size: 100
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r100_10k.bin
+
+    - name: range_uniform_r200_10k
+      query_type: range
+      distribution: uniform
+      r_size: 200
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r200_10k.bin
+
+    - name: range_uniform_r400_10k
+      query_type: range
+      distribution: uniform
+      r_size: 400
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r400_10k.bin
+
+    - name: range_uniform_r800_10k
+      query_type: range
+      distribution: uniform
+      r_size: 800
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r800_10k.bin
+
+    - name: range_uniform_r1600_10k
+      query_type: range
+      distribution: uniform
+      r_size: 1600
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r1600_10k.bin
+
+    - name: range_uniform_r3200_10k
+      query_type: range
+      distribution: uniform
+      r_size: 3200
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r3200_10k.bin
+
+    - name: range_uniform_r6400_10k
+      query_type: range
+      distribution: uniform
+      r_size: 6400
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r6400_10k.bin
+
+    - name: range_uniform_r12800_10k
+      query_type: range
+      distribution: uniform
+      r_size: 12800
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r12800_10k.bin
+
+    - name: range_uniform_r25600_10k
+      query_type: range
+      distribution: uniform
+      r_size: 25600
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r25600_10k.bin
+
+    - name: range_uniform_r51200_10k
+      query_type: range
+      distribution: uniform
+      r_size: 51200
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r51200_10k.bin
+
+    - name: range_uniform_r102400_10k
+      query_type: range
+      distribution: uniform
+      r_size: 102400
+      count: 10000
+      output_path: ./tasks/indexing/queries/range_uniform_r102400_10k.bin

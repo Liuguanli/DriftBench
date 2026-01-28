@@ -30,6 +30,7 @@ class CSVSchemaExtractor(BaseSchemaExtractor):
     def extract_schema(self):
         df = pd.read_csv(self.csv_path, nrows=self.sample_size) if self.sample_size > 0 else pd.read_csv(self.csv_path)
         schema = {}
+        import pandas.api.types as ptypes
 
         for col in df.columns:
             col_data = df[col].dropna()
@@ -42,7 +43,7 @@ class CSVSchemaExtractor(BaseSchemaExtractor):
                 "logical_type": logical_type
             }
 
-            if np.issubdtype(col_data.dtype, np.number) or np.issubdtype(col_data.dtype, np.datetime64):
+            if ptypes.is_numeric_dtype(col_data) or ptypes.is_datetime64_any_dtype(col_data):
                 try:
                     col_info["range"] = {
                         "min": col_data.min(),

@@ -1,0 +1,27 @@
+pattern_id: tpch-workload-qgen
+seed: 42
+
+type:
+  family: workload
+  category: sql_templates
+  subtype: tpch
+
+variables:
+  template_dir: ./existing_benchmarks/TPC-H V3.0.1/dbgen/queries
+
+  defaults:
+    param_mode: qgen
+    qgen_dist_file: ./existing_benchmarks/TPC-H V3.0.1/dbgen/dists.dss
+    queries_per_template: 5
+    shuffle: true
+
+  query_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+
+  query_runs:
+    - name: tpch_qgen
+      query_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+      queries_per_template: 10
+      outputs:
+        - type: split
+          path: ./driftspec/integration/tpch/output
+          filename_template: "{query_id}_{index}_qgen.sql"

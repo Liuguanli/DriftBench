@@ -1,0 +1,48 @@
+pattern_id: tpch-workload-custom
+seed: 42
+
+type:
+  family: workload
+  category: sql_templates
+  subtype: tpch
+
+variables:
+  template_dir: ./existing_benchmarks/TPC-H V3.0.1/dbgen/queries
+
+  defaults:
+    param_mode: custom
+    queries_per_template: 5
+    shuffle: true
+
+  query_ids: [1, 2, 3]
+
+  params:
+    "1":
+      - type: int_range
+        min: 60
+        max: 120
+    "2":
+      - type: int_range
+        min: 1
+        max: 50
+      - type: choice
+        values: ["TIN", "NICKEL", "STEEL", "BRASS"]
+      - type: dss_dist
+        dist_file: ./existing_benchmarks/TPC-H V3.0.1/dbgen/dists.dss
+        dist_name: regions
+    "3":
+      - type: dss_dist
+        dist_file: ./existing_benchmarks/TPC-H V3.0.1/dbgen/dists.dss
+        dist_name: msegmnt
+      - type: date_range
+        start: "1995-01-01"
+        end: "1996-12-31"
+
+  query_runs:
+    - name: tpch_custom
+      query_ids: [1, 2, 3]
+      queries_per_template: 10
+      outputs:
+        - type: split
+          path: ./driftspec/integration/tpch/output
+          filename_template: "{query_id}_{index}_custom.sql"

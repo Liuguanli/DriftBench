@@ -25,7 +25,8 @@ class TemplateGenerator:
 
 
     def _generate_predicate(self, col_name: str, col_info: dict, selectivity_lower_bound: int = 1e-6,
-                            selectivity_upper_bound: int = 0.1, col_value_range: Any = None) -> Optional[dict]:
+                            selectivity_upper_bound: int = 0.1, col_value_range: Any = None,
+                            operator_choices: Optional[List[str]] = None) -> Optional[dict]:
 
         dtype = col_info.get("logical_type")
         full_col = f"{self.base_table}.{col_name}"
@@ -38,7 +39,10 @@ class TemplateGenerator:
         else:
             selectivity = round(self.rnd.uniform(selectivity_lower_bound, selectivity_upper_bound), 2)
 
-        op = self.rnd.choice(self.operator_pool.get(dtype, ["="]))
+        op_pool = operator_choices or self.operator_pool.get(dtype, ["="])
+        if not op_pool:
+            raise ValueError(f"Operator choices empty for column '{col_name}'")
+        op = self.rnd.choice(op_pool)
         if dtype == "numeric":
             return {
                 "column": full_col,
@@ -103,26 +107,84 @@ class TemplateGenerator:
         max_predicates: int = 3,
         max_payload_columns: int = 3,
         selectivity: Optional[Dict[str, Tuple[float, float]]] = None,
-        value_range: Optional[Dict[str, Any]] = None
+        value_range: Optional[Dict[str, Any]] = None,
+        predicate_columns: Optional[List[str]] = None,
+        required_predicate_columns: Optional[List[str]] = None,
+        required_payload_columns: Optional[List[str]] = None,
+        predicate_operators: Optional[Dict[str, List[str]]] = None
     ) -> List[Dict]:
         
         assert selectivity is not None and len(selectivity) > 0, "selectivity must be provided and not be empty"
 
         templates = []
         col_names = sorted(list(self.columns.keys()))  # sorted for deterministic output
+        pred_candidates = [
+            c.split(".")[-1] for c in (predicate_columns or [])
+        ]
+        pred_candidates = list(dict.fromkeys(pred_candidates))
+        missing_pred_candidates = [c for c in pred_candidates if c not in col_names]
+        if missing_pred_candidates:
+            raise ValueError(
+                f"Predicate columns missing from schema: {missing_pred_candidates}"
+            )
+        allowed_pred = pred_candidates or col_names
+
+        req_pred = list(dict.fromkeys([
+            c.split(".")[-1] for c in (required_predicate_columns or [])
+        ]))
+        req_payload = list(dict.fromkeys(required_payload_columns or []))
+        missing_pred = [c for c in req_pred if c not in col_names]
+        missing_payload = [c for c in req_payload if c not in col_names]
+        if missing_pred:
+            raise ValueError(f"Required predicate columns missing from schema: {missing_pred}")
+        if missing_payload:
+            raise ValueError(f"Required payload columns missing from schema: {missing_payload}")
+        missing_required_in_allowed = [c for c in req_pred if c not in allowed_pred]
+        if missing_required_in_allowed:
+            raise ValueError(
+                "Required predicate columns must be included in predicate_columns: "
+                f"{missing_required_in_allowed}"
+            )
+        pred_num_max = min(max_predicates, len(allowed_pred))
+        payload_num_max = min(max_payload_columns, len(col_names))
+        pred_num_min = max(1, len(req_pred))
+        payload_num_min = max(1, len(req_payload))
+        if pred_num_min > pred_num_max:
+            raise ValueError(
+                f"Required predicate columns exceed max_predicates={max_predicates}: {req_pred}"
+            )
+        if payload_num_min > payload_num_max:
+            raise ValueError(
+                f"Required payload columns exceed max_payload_columns={max_payload_columns}: {req_payload}"
+            )
+
+        def _operator_choices(col: str, dtype: Optional[str]) -> Optional[List[str]]:
+            if not predicate_operators:
+                return None
+            full_col = f"{self.base_table}.{col}"
+            if full_col in predicate_operators:
+                return predicate_operators[full_col]
+            if col in predicate_operators:
+                return predicate_operators[col]
+            if dtype and dtype in predicate_operators:
+                return predicate_operators[dtype]
+            return None
 
         for i in range(num_templates):
-            pred_num = self.rnd.randint(1, min(max_predicates, len(col_names)))
-            pred_cols = self.rnd.sample(col_names, k=pred_num)
-            payload_num = self.rnd.randint(1, min(max_payload_columns, len(col_names)))
-            payload_cols = self.rnd.sample(col_names, k=payload_num)
+            pred_num = self.rnd.randint(pred_num_min, pred_num_max)
+            payload_num = self.rnd.randint(payload_num_min, payload_num_max)
+            pred_pool = [c for c in allowed_pred if c not in req_pred]
+            payload_pool = [c for c in col_names if c not in req_payload]
+            pred_cols = req_pred + self.rnd.sample(pred_pool, k=pred_num - len(req_pred))
+            payload_cols = req_payload + self.rnd.sample(payload_pool, k=payload_num - len(req_payload))
             predicates = list(filter(None, [
                 self._generate_predicate(
                     col,
                     self.columns[col],
                     selectivity_lower_bound=selectivity[col][0] if selectivity and col in selectivity else 1e-6,
                     selectivity_upper_bound=selectivity[col][1] if selectivity and col in selectivity else 0.1,
-                    col_value_range=value_range[col] if value_range and col in value_range else None
+                    col_value_range=value_range[col] if value_range and col in value_range else None,
+                    operator_choices=_operator_choices(col, self.columns[col].get("logical_type")),
                 )
                 for col in pred_cols
             ]))
@@ -220,7 +282,8 @@ class TemplateGeneratorMulti:
         ]
 
     def _generate_predicate(self, base_table: str, col_name: str, col_info: dict, selectivity_lower_bound: int = 1e-6,
-                            selectivity_upper_bound: int = 0.1, col_value_range: Any = None) -> Optional[dict]:
+                            selectivity_upper_bound: int = 0.1, col_value_range: Any = None,
+                            operator_choices: Optional[List[str]] = None) -> Optional[dict]:
 
         dtype = col_info.get("logical_type")
         full_col = f"{base_table}.{col_name}"
@@ -233,7 +296,10 @@ class TemplateGeneratorMulti:
         else:
             selectivity = round(self.rnd.uniform(selectivity_lower_bound, selectivity_upper_bound), 2)
 
-        op = self.rnd.choice(self.operator_pool.get(dtype, ["="]))
+        op_pool = operator_choices or self.operator_pool.get(dtype, ["="])
+        if not op_pool:
+            raise ValueError(f"Operator choices empty for column '{full_col}'")
+        op = self.rnd.choice(op_pool)
         if dtype == "numeric":
             return {
                 "column": full_col,
@@ -300,7 +366,11 @@ class TemplateGeneratorMulti:
         selectivity: Optional[Dict[str, Tuple[float, float]]] = None,
         value_range: Optional[List[Tuple[str, Any]]] = None,
         join_count: int = 0,
-        join_candidates: List[Dict[str, Any]] = None
+        join_candidates: List[Dict[str, Any]] = None,
+        predicate_columns: Optional[List[str]] = None,
+        required_predicate_columns: Optional[List[str]] = None,
+        required_payload_columns: Optional[List[str]] = None,
+        predicate_operators: Optional[Dict[str, List[str]]] = None
     ) -> List[Dict]:
 
         if join_candidates:
@@ -315,20 +385,101 @@ class TemplateGeneratorMulti:
         # TODO get at most {join_count} items from join_candidates 
 
         templates = []
+        pred_global = set()
+        pred_table = {}
+        for col in predicate_columns or []:
+            if "." in col:
+                table, col_name = col.split(".", 1)
+                pred_table.setdefault(table, set()).add(col_name)
+            else:
+                pred_global.add(col)
+        def _allowed_pred_cols(table: str, columns: Optional[List[str]] = None) -> List[str]:
+            if not predicate_columns:
+                return columns or list(self.tables[table]["columns"].keys())
+            allowed = set()
+            base_cols = columns or list(self.tables[table]["columns"].keys())
+            for col in pred_global:
+                if col in self.tables[table]["columns"]:
+                    allowed.add(col)
+            for col in pred_table.get(table, set()):
+                if col in self.tables[table]["columns"]:
+                    allowed.add(col)
+            return [c for c in base_cols if c in allowed]
+        def _operator_choices(col: str, dtype: Optional[str], table: Optional[str] = None) -> Optional[List[str]]:
+            if not predicate_operators:
+                return None
+            if table:
+                full_col = f"{table}.{col}"
+                if full_col in predicate_operators:
+                    return predicate_operators[full_col]
+            if col in predicate_operators:
+                return predicate_operators[col]
+            if dtype and dtype in predicate_operators:
+                return predicate_operators[dtype]
+            return None
+        req_pred = [
+            c.split(".")[-1] for c in (required_predicate_columns or [])
+        ]
+        req_payload = [
+            c.split(".")[-1] for c in (required_payload_columns or [])
+        ]
+        req_pred = list(dict.fromkeys(req_pred))
+        req_payload = list(dict.fromkeys(req_payload))
+        required_cols = list(dict.fromkeys(req_pred + req_payload))
+        main_candidates = list(self.tables.keys())
+        if required_cols:
+            main_candidates = [
+                t for t in main_candidates
+                if all(c in self.tables[t]["columns"] for c in required_cols)
+            ]
+            if not main_candidates:
+                raise ValueError(
+                    f"Required columns not found in any table: {required_cols}"
+                )
+        if predicate_columns:
+            main_candidates = [
+                t for t in main_candidates
+                if _allowed_pred_cols(t)
+            ]
+            if not main_candidates:
+                raise ValueError(
+                    "Predicate columns not found in any table."
+                )
         # col_names = sorted(list(self.columns.keys()))  # sorted for deterministic output
 
         for i in range(num_templates):
             # 1. Randomly select a main table
-            main_table = self.rnd.sample(list(self.tables.keys()), 1)[0]
+            main_table = self.rnd.sample(main_candidates, 1)[0]
             main_columns = list(self.tables[main_table]["columns"].keys())
 
             # 2. Generate SELECT clause (payload columns)
-            payload_num = self.rnd.randint(1, min(max_payload_columns, len(main_columns)))
-            payload_cols = self.rnd.sample(main_columns, k=payload_num)
+            payload_num_max = min(max_payload_columns, len(main_columns))
+            payload_num_min = max(1, len(req_payload))
+            if payload_num_min > payload_num_max:
+                raise ValueError(
+                    f"Required payload columns exceed max_payload_columns={max_payload_columns}: {req_payload}"
+                )
+            payload_num = self.rnd.randint(payload_num_min, payload_num_max)
+            payload_pool = [c for c in main_columns if c not in req_payload]
+            payload_cols = req_payload + self.rnd.sample(payload_pool, k=payload_num - len(req_payload))
 
             # 3. Generate predicate columns
-            pred_num = self.rnd.randint(1, min(max_predicates, len(main_columns)))
-            pred_cols = self.rnd.sample(main_columns, k=pred_num)
+            allowed_pred_cols = _allowed_pred_cols(main_table, main_columns)
+            missing_required_in_allowed = [c for c in req_pred if c not in allowed_pred_cols]
+            if missing_required_in_allowed:
+                raise ValueError(
+                    "Required predicate columns must be included in predicate_columns: "
+                    f"{missing_required_in_allowed}"
+                )
+            pred_num_max = min(max_predicates, len(allowed_pred_cols))
+            pred_num_min = max(1, len(req_pred))
+            if pred_num_min > pred_num_max:
+                raise ValueError(
+                    f"Required predicate columns exceed max_predicates={max_predicates}: {req_pred}"
+                )
+            pred_num = self.rnd.randint(pred_num_min, pred_num_max)
+            pred_pool = [c for c in allowed_pred_cols if c not in req_pred]
+            pred_cols = req_pred + self.rnd.sample(pred_pool, k=pred_num - len(req_pred))
 
             template_value_range = {}
 
@@ -350,7 +501,12 @@ class TemplateGeneratorMulti:
                     self.tables[main_table]["columns"][col],
                     selectivity_lower_bound=selectivity[col][0] if selectivity and col in selectivity else 1e-6,
                     selectivity_upper_bound=selectivity[col][1] if selectivity and col in selectivity else 0.1,
-                    col_value_range=template_value_range[col] if template_value_range and col in template_value_range else None
+                    col_value_range=template_value_range[col] if template_value_range and col in template_value_range else None,
+                    operator_choices=_operator_choices(
+                        col,
+                        self.tables[main_table]["columns"][col].get("logical_type"),
+                        table=main_table,
+                    ),
                 )
                 for col in pred_cols
             ]))
