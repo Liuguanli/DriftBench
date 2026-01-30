@@ -1,45 +1,61 @@
 pattern_id: tpch-workload-basic
 seed: 42
-
 type:
   family: workload
   category: sql_templates
   subtype: tpch
-
+data_source:
+  kind: sql_templates
+  uri: ./existing_benchmarks/TPC-H V3.0.1/dbgen/queries
 variables:
   template_dir: ./existing_benchmarks/TPC-H V3.0.1/dbgen/queries
-
   defaults:
     queries_per_template: 5
     shuffle: true
-
-  query_ids: [1, 2, 3]
-
+  query_ids:
+  - 1
+  - 2
+  - 3
   params:
-    "1":
-      - type: int_range
-        min: 60
-        max: 120
-    "2":
-      - type: int_range
-        min: 1
-        max: 50
-      - type: choice
-        values: ["TIN", "NICKEL", "STEEL", "BRASS"]
-      - type: choice
-        values: ["ASIA", "EUROPE", "AMERICA", "AFRICA"]
-    "3":
-      - type: choice
-        values: ["BUILDING", "AUTOMOBILE", "MACHINERY", "HOUSEHOLD", "FURNITURE"]
-      - type: date_range
-        start: "1995-01-01"
-        end: "1996-12-31"
-
+    '1':
+    - type: int_range
+      min: 60
+      max: 120
+    '2':
+    - type: int_range
+      min: 1
+      max: 50
+    - type: choice
+      values:
+      - TIN
+      - NICKEL
+      - STEEL
+      - BRASS
+    - type: choice
+      values:
+      - ASIA
+      - EUROPE
+      - AMERICA
+      - AFRICA
+    '3':
+    - type: choice
+      values:
+      - BUILDING
+      - AUTOMOBILE
+      - MACHINERY
+      - HOUSEHOLD
+      - FURNITURE
+    - type: date_range
+      start: '1995-01-01'
+      end: '1996-12-31'
   query_runs:
-    - name: tpch_default
-      query_ids: [1, 2, 3]
-      queries_per_template: 10
-      outputs:
-        - type: split
-          path: ./driftspec/integration/tpch/output
-          filename_template: "{query_id}_{index}.sql"
+  - name: tpch_default
+    query_ids:
+    - 1
+    - 2
+    - 3
+    queries_per_template: 10
+    outputs:
+    - type: split
+      path: ./driftspec/integration/tpch/output
+      filename_template: '{query_id}_{index}.sql'
