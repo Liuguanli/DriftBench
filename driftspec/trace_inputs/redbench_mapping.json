@@ -19,7 +19,6 @@
   "run_from": {
     "name_from": "workload_type",
     "num_templates_from": "n_distinct_readsets",
-    "max_predicates_from": "n_distinct_num_joins",
     "num_templates_min": 2,
     "num_templates_max": 50,
     "max_predicates_min": 1,
