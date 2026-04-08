@@ -5,6 +5,7 @@ import { Slider } from "../components/ui/slider";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend } from "recharts";
+import { useI18n } from "../i18n";
 
 const generateNormalData = (count: number, meanX: number, meanY: number, stdDev: number) => {
   return Array.from({ length: count }, () => ({
@@ -14,6 +15,7 @@ const generateNormalData = (count: number, meanX: number, meanY: number, stdDev:
 };
 
 export function Visualization() {
+  const { t, messages } = useI18n();
   const [cardinalityScale, setCardinalityScale] = useState([2]);
   const [skewness, setSkewness] = useState([0.5]);
   const [temporalPattern, setTemporalPattern] = useState("uniform");
@@ -77,34 +79,36 @@ export function Visualization() {
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">Drift Visualization</h1>
+          <h1 className="text-4xl font-bold mb-4">{t("visualization.title")}</h1>
           <p className="text-lg text-muted-foreground">
-            Interactive visualizations demonstrating different types of data and workload drift
+            {t("visualization.subtitle")}
           </p>
         </div>
 
         <Tabs defaultValue="data-cardinality" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="data-cardinality">Data Cardinality</TabsTrigger>
-            <TabsTrigger value="data-distribution">Data Distribution</TabsTrigger>
-            <TabsTrigger value="workload">Workload</TabsTrigger>
-            <TabsTrigger value="temporal">Temporal</TabsTrigger>
+            <TabsTrigger value="data-cardinality">{t("visualization.tabs.cardinality")}</TabsTrigger>
+            <TabsTrigger value="data-distribution">{t("visualization.tabs.distribution")}</TabsTrigger>
+            <TabsTrigger value="workload">{t("visualization.tabs.workload")}</TabsTrigger>
+            <TabsTrigger value="temporal">{t("visualization.tabs.temporal")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="data-cardinality" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Cardinality Scaling Drift</CardTitle>
+                <CardTitle>{t("visualization.cardinality.title")}</CardTitle>
                 <CardDescription>
-                  Visualize how dataset size changes affect distribution
+                  {t("visualization.cardinality.desc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label>Cardinality Scale Factor: {cardinalityScale[0]}x</Label>
+                    <Label>
+                      {t("visualization.cardinality.scaleLabel")}: {cardinalityScale[0]}x
+                    </Label>
                     <span className="text-sm text-muted-foreground">
-                      {originalData.length} → {scaledData.length} records
+                      {originalData.length} → {scaledData.length} {t("visualization.cardinality.records")}
                     </span>
                   </div>
                   <Slider
@@ -119,43 +123,41 @@ export function Visualization() {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Original Dataset (D₁)</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.cardinality.original")}</h4>
                     <ResponsiveContainer width="100%" height={300}>
                       <ScatterChart>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" dataKey="x" domain={[0, 100]} />
                         <YAxis type="number" dataKey="y" domain={[0, 100]} />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter name="Data Points" data={originalData} fill="#3b82f6" />
+                        <Scatter name={t("visualization.labels.dataPoints")} data={originalData} fill="#3b82f6" />
                       </ScatterChart>
                     </ResponsiveContainer>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Cardinality: {originalData.length} records
+                      Cardinality: {originalData.length} {t("visualization.cardinality.records")}
                     </p>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Scaled Dataset (D₂)</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.cardinality.scaled")}</h4>
                     <ResponsiveContainer width="100%" height={300}>
                       <ScatterChart>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" dataKey="x" domain={[0, 100]} />
                         <YAxis type="number" dataKey="y" domain={[0, 100]} />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter name="Data Points" data={scaledData} fill="#f59e0b" />
+                        <Scatter name={t("visualization.labels.dataPoints")} data={scaledData} fill="#f59e0b" />
                       </ScatterChart>
                     </ResponsiveContainer>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Cardinality: {scaledData.length} records ({cardinalityScale[0]}× scaling)
+                      Cardinality: {scaledData.length} {t("visualization.cardinality.records")} ({cardinalityScale[0]}× scaling)
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-muted p-4 rounded-lg">
                   <p className="text-sm">
-                    <strong>Impact:</strong> Cardinality scaling affects storage footprint, query plan costs,
-                    and statistics accuracy. The distribution pattern remains similar, but the sheer volume
-                    can trigger different optimization strategies.
+                    <strong>Impact:</strong> {t("visualization.cardinality.impact")}
                   </p>
                 </div>
               </CardContent>
@@ -165,9 +167,9 @@ export function Visualization() {
           <TabsContent value="data-distribution" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Progressive Distribution Drift</CardTitle>
+                <CardTitle>{t("visualization.distribution.title")}</CardTitle>
                 <CardDescription>
-                  Observe how data distribution evolves through overlapping shifts
+                  {t("visualization.distribution.desc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -180,10 +182,10 @@ export function Visualization() {
                         <XAxis type="number" dataKey="x" domain={[-4, 4]} />
                         <YAxis type="number" dataKey="y" domain={[-2, 6]} />
                         <Tooltip />
-                        <Scatter name="D₁" data={baseDistribution} fill="#3b82f6" />
+                        <Scatter name={t("visualization.labels.datasetD1")} data={baseDistribution} fill="#3b82f6" />
                       </ScatterChart>
                     </ResponsiveContainer>
-                    <p className="text-xs text-muted-foreground mt-2">Stable normal distribution</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t("visualization.distribution.stable")}</p>
                   </div>
 
                   <div>
@@ -194,11 +196,11 @@ export function Visualization() {
                         <XAxis type="number" dataKey="x" domain={[-4, 4]} />
                         <YAxis type="number" dataKey="y" domain={[-2, 6]} />
                         <Tooltip />
-                        <Scatter name="D₁" data={baseDistribution} fill="#3b82f6" fillOpacity={0.3} />
-                        <Scatter name="D₂ New" data={driftedDistribution1} fill="#f59e0b" />
+                        <Scatter name={t("visualization.labels.datasetD1")} data={baseDistribution} fill="#3b82f6" fillOpacity={0.3} />
+                        <Scatter name={t("visualization.labels.datasetD2New")} data={driftedDistribution1} fill="#f59e0b" />
                       </ScatterChart>
                     </ResponsiveContainer>
-                    <p className="text-xs text-muted-foreground mt-2">New mode emerges (orange)</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t("visualization.distribution.newMode")}</p>
                   </div>
 
                   <div>
@@ -209,15 +211,15 @@ export function Visualization() {
                         <XAxis type="number" dataKey="x" domain={[-4, 4]} />
                         <YAxis type="number" dataKey="y" domain={[-2, 6]} />
                         <Tooltip />
-                        <Scatter name="D₁+D₂" data={driftedDistribution1} fill="#f59e0b" fillOpacity={0.3} />
+                        <Scatter name={`${t("visualization.labels.datasetD1")}+${t("visualization.labels.datasetD2New")}`} data={driftedDistribution1} fill="#f59e0b" fillOpacity={0.3} />
                         <Scatter
-                          name="D₃ Outliers"
+                          name={t("visualization.labels.datasetD3Outliers")}
                           data={driftedDistribution2.slice(-50)}
                           fill="#10b981"
                         />
                       </ScatterChart>
                     </ResponsiveContainer>
-                    <p className="text-xs text-muted-foreground mt-2">Outliers injected (green)</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t("visualization.distribution.outliers")}</p>
                   </div>
                 </div>
               </CardContent>
@@ -225,15 +227,19 @@ export function Visualization() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Column Distribution Shift</CardTitle>
-                <CardDescription>Interactive skewness adjustment</CardDescription>
+                <CardTitle>{t("visualization.distribution.columnTitle")}</CardTitle>
+                <CardDescription>{t("visualization.distribution.columnDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label>Skewness: {skewness[0].toFixed(2)}</Label>
+                    <Label>{t("visualization.distribution.skewness")}: {skewness[0].toFixed(2)}</Label>
                     <span className="text-sm text-muted-foreground">
-                      {skewness[0] < 0.3 ? "Balanced" : skewness[0] < 0.7 ? "Moderate" : "Heavy Skew"}
+                      {skewness[0] < 0.3
+                        ? t("visualization.distribution.balanced")
+                        : skewness[0] < 0.7
+                          ? t("visualization.distribution.moderate")
+                          : t("visualization.distribution.heavy")}
                     </span>
                   </div>
                   <Slider
@@ -248,7 +254,7 @@ export function Visualization() {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Original Distribution</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.distribution.original")}</h4>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={ageDistOriginal}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -261,7 +267,7 @@ export function Visualization() {
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Skewed Distribution</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.distribution.skewed")}</h4>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={ageDistSkewed}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -276,9 +282,7 @@ export function Visualization() {
 
                 <div className="bg-muted p-4 rounded-lg">
                   <p className="text-sm">
-                    <strong>Impact:</strong> Distribution shifts can significantly affect cardinality estimation
-                    and query optimization. Increased skewness concentrates data in specific ranges, potentially
-                    making some predicates highly selective while others become ineffective.
+                    <strong>Impact:</strong> {t("visualization.distribution.impact")}
                   </p>
                 </div>
               </CardContent>
@@ -288,51 +292,49 @@ export function Visualization() {
           <TabsContent value="workload" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Workload Drift Patterns</CardTitle>
+                <CardTitle>{t("visualization.workload.title")}</CardTitle>
                 <CardDescription>
-                  Changes in query predicate distributions over time
+                  {t("visualization.workload.desc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Original Workload (W₁)</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.workload.original")}</h4>
                     <ResponsiveContainer width="100%" height={300}>
                       <ScatterChart>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" dataKey="query" name="Query ID" />
-                        <YAxis type="number" dataKey="predicateCenter" name="Predicate Center" domain={[0, 100]} />
+                        <XAxis type="number" dataKey="query" name={t("visualization.labels.queryId")} />
+                        <YAxis type="number" dataKey="predicateCenter" name={t("visualization.labels.predicateCenter")} domain={[0, 100]} />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter name="Queries" data={workloadOriginal} fill="#3b82f6" />
+                        <Scatter name={t("visualization.labels.queries")} data={workloadOriginal} fill="#3b82f6" />
                       </ScatterChart>
                     </ResponsiveContainer>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Uniform distribution of predicate values (age range centers)
+                      {t("visualization.workload.originalNote")}
                     </p>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Drifted Workload (W₂)</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.workload.drifted")}</h4>
                     <ResponsiveContainer width="100%" height={300}>
                       <ScatterChart>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" dataKey="query" name="Query ID" />
-                        <YAxis type="number" dataKey="predicateCenter" name="Predicate Center" domain={[0, 100]} />
+                        <XAxis type="number" dataKey="query" name={t("visualization.labels.queryId")} />
+                        <YAxis type="number" dataKey="predicateCenter" name={t("visualization.labels.predicateCenter")} domain={[0, 100]} />
                         <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-                        <Scatter name="Queries" data={workloadDrifted} fill="#f59e0b" />
+                        <Scatter name={t("visualization.labels.queries")} data={workloadDrifted} fill="#f59e0b" />
                       </ScatterChart>
                     </ResponsiveContainer>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Predicate ranges shift and concentrate in higher values (parametric drift)
+                      {t("visualization.workload.driftedNote")}
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-muted p-4 rounded-lg">
                   <p className="text-sm">
-                    <strong>Impact:</strong> Workload drift affects learned query optimizers and cardinality
-                    estimators that rely on historical query patterns. Shifting predicate distributions can
-                    make cached statistics or learned models less accurate over time.
+                    <strong>Impact:</strong> {t("visualization.workload.impact")}
                   </p>
                 </div>
               </CardContent>
@@ -342,23 +344,23 @@ export function Visualization() {
           <TabsContent value="temporal" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Temporal Drift Patterns</CardTitle>
+                <CardTitle>{t("visualization.temporal.title")}</CardTitle>
                 <CardDescription>
-                  How drift evolves over time with different patterns
+                  {t("visualization.temporal.desc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Temporal Pattern</Label>
+                  <Label>{t("visualization.temporal.patternLabel")}</Label>
                   <Select value={temporalPattern} onValueChange={setTemporalPattern}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="uniform">Uniform - Constant rate</SelectItem>
-                      <SelectItem value="periodic">Periodic - Repeating cycles</SelectItem>
-                      <SelectItem value="trend">Trend - Gradual increase</SelectItem>
-                      <SelectItem value="long_tail">Long Tail - Burst with decay</SelectItem>
+                      <SelectItem value="uniform">{t("visualization.temporal.uniform")}</SelectItem>
+                      <SelectItem value="periodic">{t("visualization.temporal.periodic")}</SelectItem>
+                      <SelectItem value="trend">{t("visualization.temporal.trend")}</SelectItem>
+                      <SelectItem value="long_tail">{t("visualization.temporal.tail")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -366,65 +368,49 @@ export function Visualization() {
                 <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={temporalData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" label={{ value: "Time (seconds)", position: "insideBottom", offset: -5 }} />
-                    <YAxis label={{ value: "Event Rate", angle: -90, position: "insideLeft" }} />
+                    <XAxis dataKey="time" label={{ value: t("visualization.temporal.axisTime"), position: "insideBottom", offset: -5 }} />
+                    <YAxis label={{ value: t("visualization.temporal.axisRate"), angle: -90, position: "insideLeft" }} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="rate" stroke="#3b82f6" strokeWidth={2} name="Event Rate" />
+                    <Line type="monotone" dataKey="rate" stroke="#3b82f6" strokeWidth={2} name={t("visualization.labels.eventRate")} />
                   </LineChart>
                 </ResponsiveContainer>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                     <h4 className="text-sm font-semibold mb-2 text-blue-900 dark:text-blue-100">
-                      {temporalPattern === "uniform" && "Uniform Pattern"}
-                      {temporalPattern === "periodic" && "Periodic Pattern"}
-                      {temporalPattern === "trend" && "Trend Pattern"}
-                      {temporalPattern === "long_tail" && "Long Tail Pattern"}
+                      {temporalPattern === "uniform" && t("visualization.temporal.uniformTitle")}
+                      {temporalPattern === "periodic" && t("visualization.temporal.periodicTitle")}
+                      {temporalPattern === "trend" && t("visualization.temporal.trendTitle")}
+                      {temporalPattern === "long_tail" && t("visualization.temporal.tailTitle")}
                     </h4>
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      {temporalPattern === "uniform" &&
-                        "Events arrive at a constant rate. Provides baseline for comparison."}
-                      {temporalPattern === "periodic" &&
-                        "Events follow repeating cycles with regular intervals. Common in daily/weekly patterns."}
-                      {temporalPattern === "trend" &&
-                        "Events show gradual increase over time. Reflects long-term growth."}
-                      {temporalPattern === "long_tail" &&
-                        "High initial activity followed by exponential decay. Common in viral events."}
+                      {temporalPattern === "uniform" && t("visualization.temporal.uniformBody")}
+                      {temporalPattern === "periodic" && t("visualization.temporal.periodicBody")}
+                      {temporalPattern === "trend" && t("visualization.temporal.trendBody")}
+                      {temporalPattern === "long_tail" && t("visualization.temporal.tailBody")}
                     </p>
                   </div>
 
                   <div className="bg-muted p-4 rounded-lg">
-                    <h4 className="text-sm font-semibold mb-2">Use Cases</h4>
+                    <h4 className="text-sm font-semibold mb-2">{t("visualization.temporal.useCases")}</h4>
                     <ul className="text-sm space-y-1">
-                      {temporalPattern === "uniform" && (
-                        <>
-                          <li>• Baseline performance testing</li>
-                          <li>• Steady-state system behavior</li>
-                          <li>• Controlled experiment setup</li>
-                        </>
-                      )}
-                      {temporalPattern === "periodic" && (
-                        <>
-                          <li>• Business hours simulation</li>
-                          <li>• Seasonal workload patterns</li>
-                          <li>• Batch processing cycles</li>
-                        </>
-                      )}
-                      {temporalPattern === "trend" && (
-                        <>
-                          <li>• Growing user base simulation</li>
-                          <li>• Long-term capacity planning</li>
-                          <li>• Scalability testing</li>
-                        </>
-                      )}
-                      {temporalPattern === "long_tail" && (
-                        <>
-                          <li>• Viral content access patterns</li>
-                          <li>• Event-driven workloads</li>
-                          <li>• Flash crowd scenarios</li>
-                        </>
-                      )}
+                      {temporalPattern === "uniform" &&
+                        messages.visualization.temporal.useCasesUniform.map((item) => (
+                          <li key={item}>• {item}</li>
+                        ))}
+                      {temporalPattern === "periodic" &&
+                        messages.visualization.temporal.useCasesPeriodic.map((item) => (
+                          <li key={item}>• {item}</li>
+                        ))}
+                      {temporalPattern === "trend" &&
+                        messages.visualization.temporal.useCasesTrend.map((item) => (
+                          <li key={item}>• {item}</li>
+                        ))}
+                      {temporalPattern === "long_tail" &&
+                        messages.visualization.temporal.useCasesTail.map((item) => (
+                          <li key={item}>• {item}</li>
+                        ))}
                     </ul>
                   </div>
                 </div>

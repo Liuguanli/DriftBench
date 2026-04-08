@@ -3,18 +3,20 @@ import { Database, TrendingUp, Wand2, BarChart3, BookOpen, Menu } from "lucide-r
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useState } from "react";
+import { useI18n } from "../i18n";
 
 const navigation = [
-  { name: "Home", href: "/", icon: Database },
-  { name: "Drift Types", href: "/drift-types", icon: TrendingUp },
-  { name: "Generator", href: "/generator", icon: Wand2 },
-  { name: "Visualization", href: "/visualization", icon: BarChart3 },
-  { name: "Case Studies", href: "/case-studies", icon: BookOpen },
+  { key: "home", href: "/", icon: Database },
+  { key: "driftTypes", href: "/drift-types", icon: TrendingUp },
+  { key: "generator", href: "/generator", icon: Wand2 },
+  { key: "visualization", href: "/visualization", icon: BarChart3 },
+  { key: "caseStudies", href: "/case-studies", icon: BookOpen },
 ];
 
 export function Layout() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const { t, lang, setLang } = useI18n();
 
   const NavLinks = () => (
     <>
@@ -23,7 +25,7 @@ export function Layout() {
         const isActive = location.pathname === item.href;
         return (
           <Link
-            key={item.name}
+            key={item.key}
             to={item.href}
             onClick={() => setOpen(false)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
@@ -33,7 +35,7 @@ export function Layout() {
             }`}
           >
             <Icon className="size-5" />
-            <span>{item.name}</span>
+            <span>{t(`nav.${item.key}`)}</span>
           </Link>
         );
       })}
@@ -48,12 +50,21 @@ export function Layout() {
             <Database className="size-8 text-primary" />
             <div className="flex flex-col">
               <span className="font-bold text-lg leading-none">DriftBench</span>
-              <span className="text-xs text-muted-foreground">Drift-Aware Database Benchmarking</span>
+              <span className="text-xs text-muted-foreground">
+                {t("nav.subtitle")}
+              </span>
             </div>
           </Link>
 
           <nav className="hidden md:flex items-center gap-2">
             <NavLinks />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLang(lang === "en" ? "zh" : "en")}
+            >
+              {t("common.language")}: {lang === "en" ? t("common.english") : t("common.chinese")}
+            </Button>
           </nav>
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -65,6 +76,12 @@ export function Layout() {
             <SheetContent side="right">
               <nav className="flex flex-col gap-2 mt-8">
                 <NavLinks />
+                <Button
+                  variant="outline"
+                  onClick={() => setLang(lang === "en" ? "zh" : "en")}
+                >
+                  {t("common.language")}: {lang === "en" ? t("common.english") : t("common.chinese")}
+                </Button>
               </nav>
             </SheetContent>
           </Sheet>
@@ -77,9 +94,7 @@ export function Layout() {
 
       <footer className="border-t py-6 bg-muted/50">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>
-            Based on the research paper by Guanli Liu and Renata Borovica-Gajic, The University of Melbourne
-          </p>
+          <p>{t("nav.footerLine1")}</p>
           <p className="mt-1">
             <a
               href="https://github.com/Liuguanli/DriftBench"
@@ -87,7 +102,7 @@ export function Layout() {
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              View on GitHub
+              {t("nav.footerLink")}
             </a>
           </p>
         </div>

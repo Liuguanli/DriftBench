@@ -35,6 +35,8 @@ papers
 # Ignore VSCode settings (if used)
 .vscode/
 
+node_modules/
+
 driftbench/config
 
 test_before_restructure

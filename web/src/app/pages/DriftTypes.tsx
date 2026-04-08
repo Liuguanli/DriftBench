@@ -2,16 +2,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Database, Activity, Clock } from "lucide-react";
+import { useI18n } from "../i18n";
 
 export function DriftTypes() {
+  const { t, messages } = useI18n();
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">Drift Taxonomy</h1>
+          <h1 className="text-4xl font-bold mb-4">{t("driftTypes.title")}</h1>
           <p className="text-lg text-muted-foreground">
-            A working taxonomy of data and workload drift that captures recurring patterns observed
-            across prior systems and benchmarks.
+            {t("driftTypes.subtitle")}
           </p>
         </div>
 
@@ -19,31 +20,30 @@ export function DriftTypes() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="data" className="flex items-center gap-2">
               <Database className="size-4" />
-              Data Drift
+              {t("driftTypes.tabs.data")}
             </TabsTrigger>
             <TabsTrigger value="workload" className="flex items-center gap-2">
               <Activity className="size-4" />
-              Workload Drift
+              {t("driftTypes.tabs.workload")}
             </TabsTrigger>
             <TabsTrigger value="temporal" className="flex items-center gap-2">
               <Clock className="size-4" />
-              Temporal Drift
+              {t("driftTypes.tabs.temporal")}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="data" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>What is Data Drift?</CardTitle>
+                <CardTitle>{t("driftTypes.data.introTitle")}</CardTitle>
                 <CardDescription>
-                  Data drift refers to changes in the cardinality or distribution of records within a database.
+                  {t("driftTypes.data.introDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted p-4 rounded-lg">
                   <p className="text-sm font-mono">
-                    <strong>Definition:</strong> Let D₁ and D₂ denote two versions of a dataset over the same schema S.
-                    Data drift is a significant change in the statistical properties or volume of data between D₁ and D₂.
+                    {t("driftTypes.data.definition")}
                   </p>
                 </div>
               </CardContent>
@@ -54,33 +54,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Scaling Cardinality</CardTitle>
+                      <CardTitle>{t("driftTypes.data.scalingTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Changes in the overall number of records
+                        {t("driftTypes.data.scalingDesc")}
                       </CardDescription>
                     </div>
-                    <Badge>Cardinality Drift</Badge>
+                    <Badge>{t("driftTypes.data.cardinalityBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Models net size effects under a new snapshot (e.g., 0.5×, 2×, 10×) without prescribing
-                      how tuples arrived or departed.
+                      {t("driftTypes.data.scalingBody")}
                     </p>
                   </div>
                   <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs font-semibold mb-1 text-blue-900 dark:text-blue-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-blue-900 dark:text-blue-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      Population records gradually increase as coverage expands to new regions or higher birth rates
+                      {t("driftTypes.data.scalingExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Use Cases</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.data.useCases")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Stress storage footprint</li>
-                      <li>• Evaluate plan costs under larger snapshots</li>
-                      <li>• Test system scalability (TPC-H, TPC-DS)</li>
+                      {messages.driftTypes.data.scalingUses.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -90,33 +91,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Updating Cardinality</CardTitle>
+                      <CardTitle>{t("driftTypes.data.updatingTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Time-ordered stream of inserts and deletes
+                        {t("driftTypes.data.updatingDesc")}
                       </CardDescription>
                     </div>
-                    <Badge>Cardinality Drift</Badge>
+                    <Badge>{t("driftTypes.data.cardinalityBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Dataset is mutated over time rather than resized in one shot. Applies continuous
-                      insertions and deletions.
+                      {t("driftTypes.data.updatingBody")}
                     </p>
                   </div>
                   <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                    <p className="text-xs font-semibold mb-1 text-green-900 dark:text-green-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-green-900 dark:text-green-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-green-800 dark:text-green-200">
-                      Individuals continuously added and removed due to births, deaths, and migration
+                      {t("driftTypes.data.updatingExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Use Cases</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.data.useCases")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Index maintenance evaluation</li>
-                      <li>• Statistics freshness testing</li>
-                      <li>• Continuous-update behavior analysis</li>
+                      {messages.driftTypes.data.updatingUses.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -126,33 +128,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Shifting Column Distributions</CardTitle>
+                      <CardTitle>{t("driftTypes.data.shiftingTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Changes in column value distributions
+                        {t("driftTypes.data.shiftingDesc")}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary">Distributional Drift</Badge>
+                    <Badge variant="secondary">{t("driftTypes.data.distributionBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Captures changes such as increased skewness without altering dataset cardinality.
-                      Affects spatial and temporal workloads.
+                      {t("driftTypes.data.shiftingBody")}
                     </p>
                   </div>
                   <div className="bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                    <p className="text-xs font-semibold mb-1 text-purple-900 dark:text-purple-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-purple-900 dark:text-purple-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-purple-800 dark:text-purple-200">
-                      Student concentration during enrollment period shifts distribution of education-related attributes
+                      {t("driftTypes.data.shiftingExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Use Cases</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.data.useCases")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Spatial workload evaluation</li>
-                      <li>• Selectivity estimation testing</li>
-                      <li>• Distribution-aware index performance</li>
+                      {messages.driftTypes.data.shiftingUses.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -162,33 +165,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Injecting Outliers</CardTitle>
+                      <CardTitle>{t("driftTypes.data.outliersTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Rare or extreme values for robustness testing
+                        {t("driftTypes.data.outliersDesc")}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary">Distributional Drift</Badge>
+                    <Badge variant="secondary">{t("driftTypes.data.distributionBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Uses rare or extreme values to test system robustness under distributional anomalies
-                      and potential data poisoning.
+                      {t("driftTypes.data.outliersBody")}
                     </p>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
-                    <p className="text-xs font-semibold mb-1 text-orange-900 dark:text-orange-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-orange-900 dark:text-orange-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-orange-800 dark:text-orange-200">
-                      Small number of records with extremely large household sizes or unusually high incomes
+                      {t("driftTypes.data.outliersExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Use Cases</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.data.useCases")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Optimizer robustness testing</li>
-                      <li>• Learned index data poisoning studies</li>
-                      <li>• Statistics distortion evaluation</li>
+                      {messages.driftTypes.data.outliersUses.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -199,17 +203,15 @@ export function DriftTypes() {
           <TabsContent value="workload" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>What is Workload Drift?</CardTitle>
+                <CardTitle>{t("driftTypes.workload.introTitle")}</CardTitle>
                 <CardDescription>
-                  Workload drift refers to changes in the structure or statistical properties of queries
-                  executed against a database over time.
+                  {t("driftTypes.workload.introDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted p-4 rounded-lg">
                   <p className="text-sm font-mono">
-                    <strong>Definition:</strong> A workload W is defined as a distribution P(Wτ(θ)) over queries
-                    instantiated from a parameterized template τ, where θ ∈ Θ denotes the parameter-generating operator.
+                    {t("driftTypes.workload.definition")}
                   </p>
                 </div>
               </CardContent>
@@ -220,33 +222,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Changing Predicate Distributions</CardTitle>
+                      <CardTitle>{t("driftTypes.workload.predicateTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Statistical distribution of predicates over time
+                        {t("driftTypes.workload.predicateDesc")}
                       </CardDescription>
                     </div>
-                    <Badge>Parametric Drift</Badge>
+                    <Badge>{t("driftTypes.workload.parametricBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Drifts in the statistical distribution of predicates. Affects query optimizers and
-                      learned indices that rely on historical access patterns.
+                      {t("driftTypes.workload.predicateBody")}
                     </p>
                   </div>
                   <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs font-semibold mb-1 text-blue-900 dark:text-blue-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-blue-900 dark:text-blue-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                      Census queries increasingly concentrate on major cities rather than evenly across all regions
+                      {t("driftTypes.workload.predicateExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Impact</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.workload.impactLabel")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Query optimizer accuracy</li>
-                      <li>• Learned index effectiveness</li>
-                      <li>• Access pattern optimization</li>
+                      {messages.driftTypes.workload.predicateImpact.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -256,33 +259,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Varying Selectivity</CardTitle>
+                      <CardTitle>{t("driftTypes.workload.selectivityTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Queries from same template with varying ranges
+                        {t("driftTypes.workload.selectivityDesc")}
                       </CardDescription>
                     </div>
-                    <Badge>Parametric Drift</Badge>
+                    <Badge>{t("driftTypes.workload.parametricBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Queries from the same logical template exhibit varying predicate ranges, leading
-                      to different join strategies or plan choices.
+                      {t("driftTypes.workload.selectivityBody")}
                     </p>
                   </div>
                   <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                    <p className="text-xs font-semibold mb-1 text-green-900 dark:text-green-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-green-900 dark:text-green-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-green-800 dark:text-green-200">
-                      Census workload repeatedly uses same query template while expanding predicate (age) ranges
+                      {t("driftTypes.workload.selectivityExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Impact</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.workload.impactLabel")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Plan stability</li>
-                      <li>• Join strategy selection</li>
-                      <li>• Cardinality estimation accuracy</li>
+                      {messages.driftTypes.workload.selectivityImpact.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -292,33 +296,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Modifying Query Structure</CardTitle>
+                      <CardTitle>{t("driftTypes.workload.structureTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Changes in query templates and conditions
+                        {t("driftTypes.workload.structureDesc")}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary">Structural Drift</Badge>
+                    <Badge variant="secondary">{t("driftTypes.workload.structuralBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Changes in query templates, such as modified predicates or join conditions.
-                      Can trigger re-optimization or impact index usage.
+                      {t("driftTypes.workload.structureBody")}
                     </p>
                   </div>
                   <div className="bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                    <p className="text-xs font-semibold mb-1 text-purple-900 dark:text-purple-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-purple-900 dark:text-purple-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-purple-800 dark:text-purple-200">
-                      Census queries extended with additional joins or predicates (household, employment tables)
+                      {t("driftTypes.workload.structureExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Impact</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.workload.impactLabel")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• Re-optimization requirements</li>
-                      <li>• Index selection changes</li>
-                      <li>• Query plan structure</li>
+                      {messages.driftTypes.workload.structureImpact.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -328,33 +333,34 @@ export function DriftTypes() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle>Changing Payloads</CardTitle>
+                      <CardTitle>{t("driftTypes.workload.payloadTitle")}</CardTitle>
                       <CardDescription className="mt-2">
-                        Changes in projected column sets
+                        {t("driftTypes.workload.payloadDesc")}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary">Structural Drift</Badge>
+                    <Badge variant="secondary">{t("driftTypes.workload.structuralBadge")}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm mb-3">
-                      Changes in the set of projected columns. Distinct impact on I/O cost and
-                      column scan behavior compared to other structural changes.
+                      {t("driftTypes.workload.payloadBody")}
                     </p>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
-                    <p className="text-xs font-semibold mb-1 text-orange-900 dark:text-orange-100">Example</p>
+                    <p className="text-xs font-semibold mb-1 text-orange-900 dark:text-orange-100">
+                      {t("driftTypes.data.exampleLabel")}
+                    </p>
                     <p className="text-sm text-orange-800 dark:text-orange-200">
-                      Workload evolves from lightweight aggregates to detailed record inspection
+                      {t("driftTypes.workload.payloadExample")}
                     </p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs font-semibold mb-1">Impact</p>
+                    <p className="text-xs font-semibold mb-1">{t("driftTypes.workload.impactLabel")}</p>
                     <ul className="text-sm space-y-1">
-                      <li>• I/O cost variations</li>
-                      <li>• Column scan behavior</li>
-                      <li>• Output schema definition</li>
+                      {messages.driftTypes.workload.payloadImpact.map((item) => (
+                        <li key={item}>• {item}</li>
+                      ))}
                     </ul>
                   </div>
                 </CardContent>
@@ -365,17 +371,15 @@ export function DriftTypes() {
           <TabsContent value="temporal" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>What is Temporal Drift?</CardTitle>
+                <CardTitle>{t("driftTypes.temporal.introTitle")}</CardTitle>
                 <CardDescription>
-                  Temporal drift models the evolution of data or workloads over time, following non-stationary
-                  patterns such as bursts, trends, or repeats.
+                  {t("driftTypes.temporal.introDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted p-4 rounded-lg mb-4">
                   <p className="text-sm">
-                    We adopt the classification from <strong>Sibyl</strong>, which defines four representative
-                    temporal patterns. These can be applied independently or in combination with data and workload drift.
+                    {t("driftTypes.temporal.introBody")}
                   </p>
                 </div>
               </CardContent>
@@ -384,13 +388,12 @@ export function DriftTypes() {
             <div className="grid md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Uniform Pattern</CardTitle>
-                  <CardDescription>Constant rate over time</CardDescription>
+                  <CardTitle>{t("driftTypes.temporal.uniformTitle")}</CardTitle>
+                  <CardDescription>{t("driftTypes.temporal.uniformDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm">
-                    Events or queries arrive at a constant rate with uniform distribution across the time window.
-                    Provides a baseline for comparison with other patterns.
+                    {t("driftTypes.temporal.uniformBody")}
                   </p>
                   <div className="h-24 bg-gradient-to-r from-blue-100 to-blue-100 dark:from-blue-950 dark:to-blue-950 rounded-lg flex items-center justify-center">
                     <div className="w-full h-1 bg-blue-500"></div>
@@ -400,13 +403,12 @@ export function DriftTypes() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Periodic Pattern</CardTitle>
-                  <CardDescription>Repeating cycles</CardDescription>
+                  <CardTitle>{t("driftTypes.temporal.periodicTitle")}</CardTitle>
+                  <CardDescription>{t("driftTypes.temporal.periodicDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm">
-                    Events follow repeating cycles with regular intervals. Common in real-world scenarios
-                    with daily, weekly, or seasonal patterns.
+                    {t("driftTypes.temporal.periodicBody")}
                   </p>
                   <div className="h-24 bg-gradient-to-r from-green-100 to-green-100 dark:from-green-950 dark:to-green-950 rounded-lg relative overflow-hidden">
                     <svg viewBox="0 0 200 50" className="w-full h-full">
@@ -424,13 +426,12 @@ export function DriftTypes() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Trend Pattern</CardTitle>
-                  <CardDescription>Gradual increase or decrease</CardDescription>
+                  <CardTitle>{t("driftTypes.temporal.trendTitle")}</CardTitle>
+                  <CardDescription>{t("driftTypes.temporal.trendDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm">
-                    Events show a gradual increasing or decreasing trend over time. Reflects long-term
-                    growth or decline in system usage.
+                    {t("driftTypes.temporal.trendBody")}
                   </p>
                   <div className="h-24 bg-gradient-to-r from-purple-100 to-purple-100 dark:from-purple-950 dark:to-purple-950 rounded-lg relative overflow-hidden">
                     <svg viewBox="0 0 200 50" className="w-full h-full">
@@ -448,13 +449,12 @@ export function DriftTypes() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Long-tail Pattern</CardTitle>
-                  <CardDescription>Burst followed by decay</CardDescription>
+                  <CardTitle>{t("driftTypes.temporal.tailTitle")}</CardTitle>
+                  <CardDescription>{t("driftTypes.temporal.tailDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm">
-                    High initial activity followed by exponential decay. Common in event-driven scenarios
-                    and viral content access patterns.
+                    {t("driftTypes.temporal.tailBody")}
                   </p>
                   <div className="h-24 bg-gradient-to-r from-orange-100 to-orange-100 dark:from-orange-950 dark:to-orange-950 rounded-lg relative overflow-hidden">
                     <svg viewBox="0 0 200 50" className="w-full h-full">
@@ -473,31 +473,17 @@ export function DriftTypes() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Combining Temporal with Data/Workload Drift</CardTitle>
+                <CardTitle>{t("driftTypes.temporal.combineTitle")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   <p>
-                    Temporal patterns can be applied independently or combined with data and workload drift
-                    to create more expressive scenarios:
+                    {t("driftTypes.temporal.combineBody")}
                   </p>
                   <ul className="space-y-2 ml-4">
-                    <li>
-                      <strong>Query timestamps:</strong> Generated per instance to simulate realistic query
-                      streams with temporal variation
-                    </li>
-                    <li>
-                      <strong>Repetitive queries:</strong> Common in real-world cases, can be assigned periodic
-                      timestamps
-                    </li>
-                    <li>
-                      <strong>Data updates:</strong> Insertions and deletions can follow scheduled intervals
-                      to reproduce read-heavy or write-heavy workloads
-                    </li>
-                    <li>
-                      <strong>Cross-effects:</strong> Reveal performance degradation under bursty arrivals or
-                      delayed adaptation to trends
-                    </li>
+                    {messages.driftTypes.temporal.combineItems.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
                   </ul>
                 </div>
               </CardContent>

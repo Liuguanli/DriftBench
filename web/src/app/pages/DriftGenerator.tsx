@@ -12,6 +12,7 @@ import { Upload, Database, TrendingUp, Download, Play, FileText, Table, Activity
 import { toast } from "sonner";
 import { Switch } from "../components/ui/switch";
 import { Separator } from "../components/ui/separator";
+import { useI18n } from "../i18n";
 
 type Column = {
   name: string;
@@ -50,6 +51,7 @@ type WorkloadDriftConfig = {
 };
 
 export function DriftGenerator() {
+  const { t, messages } = useI18n();
   const [step, setStep] = useState(1);
   const [datasetName, setDatasetName] = useState("");
   const [columns, setColumns] = useState<Column[]>([]);
@@ -63,8 +65,18 @@ export function DriftGenerator() {
     type: "predicate_distribution",
     params: { queryCount: 100, distribution: "uniform", columns: [] },
   });
+  const [temporalEnabled, setTemporalEnabled] = useState(false);
   const [temporalPattern, setTemporalPattern] = useState("uniform");
   const [duration, setDuration] = useState(600);
+  const [executionTarget, setExecutionTarget] = useState<"local" | "server">("local");
+  const temporalPatternLabel =
+    temporalPattern === "uniform"
+      ? t("generator.uniform")
+      : temporalPattern === "periodic"
+        ? t("generator.periodicLabel")
+        : temporalPattern === "trend"
+          ? t("generator.trendLabel")
+          : t("generator.longTailLabel");
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -127,7 +139,7 @@ export function DriftGenerator() {
         },
       ];
       setColumns(mockColumns);
-      toast.success("数据集上传成功！已识别 " + mockColumns.length + " 个列");
+      toast.success(`${t("generator.datasetInfo")} ${mockColumns.length}`);
       setStep(2);
     }
   };
@@ -157,7 +169,7 @@ export function DriftGenerator() {
       },
     ];
     setColumns(mockColumns);
-    toast.success("数据库连接成功！");
+    toast.success(t("generator.connectBtn"));
     setStep(2);
   };
 
@@ -191,9 +203,9 @@ ${dataDrift.type === "outlier_injection"
     outlier_percent: ${dataDrift.params.outlierPercent}
     multiplier: ${dataDrift.params.outlierMultiplier}`
     : ""}
-temporal:
+${temporalEnabled ? `temporal:
   pattern: ${temporalPattern}
-  duration_sec: ${duration}`;
+  duration_sec: ${duration}` : ""}`;
       specs.push(dataDriftSpec);
     }
 
@@ -224,9 +236,9 @@ ${workloadDrift.type === "query_structure"
 ${workloadDrift.type === "payload_change"
     ? `    projection_columns: ${workloadDrift.params.projectionColumns}`
     : ""}
-temporal:
+${temporalEnabled ? `temporal:
   pattern: ${temporalPattern}
-  duration_sec: ${duration}`;
+  duration_sec: ${duration}` : ""}`;
       specs.push(workloadDriftSpec);
     }
 
@@ -235,10 +247,10 @@ temporal:
 
   const handleGenerate = () => {
     if (!dataDrift.enabled && !workloadDrift.enabled) {
-      toast.error("请至少启用一种漂移类型");
+      toast.error(t("generator.enableAtLeastOne"));
       return;
     }
-    toast.success("DriftSpec 生成成功！");
+    toast.success(t("generator.driftSpecGenerated"));
     setStep(4);
   };
 
@@ -251,7 +263,7 @@ temporal:
     a.download = `drift-spec-${Date.now()}.yaml`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("DriftSpec 已下载！");
+    toast.success(t("generator.downloadYaml"));
   };
 
   const handleDownloadScript = () => {
@@ -274,7 +286,7 @@ echo "Output files are available in the outputs/ directory"
     a.download = `run-driftbench.sh`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("执行脚本已下载！");
+    toast.success(t("generator.downloadScript"));
   };
 
   const numericColumns = columns.filter((c) => c.type === "numeric");
@@ -284,18 +296,16 @@ echo "Output files are available in the outputs/ directory"
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">漂移生成器</h1>
-          <p className="text-lg text-muted-foreground">
-            上传数据集，配置漂移参数，自动生成 Data Drift 和 Workload Drift
-          </p>
+          <h1 className="text-4xl font-bold mb-4">{t("generator.title")}</h1>
+          <p className="text-lg text-muted-foreground">{t("generator.subtitle")}</p>
         </div>
 
         <div className="flex items-center justify-between mb-8 max-w-2xl mx-auto">
           {[
-            { num: 1, label: "上传数据" },
-            { num: 2, label: "配置漂移" },
-            { num: 3, label: "预览设置" },
-            { num: 4, label: "生成导出" },
+            { num: 1, label: messages.generator.steps[0] },
+            { num: 2, label: messages.generator.steps[1] },
+            { num: 3, label: messages.generator.steps[2] },
+            { num: 4, label: messages.generator.steps[3] },
           ].map((s, idx) => (
             <div key={s.num} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-1">
@@ -325,9 +335,9 @@ echo "Output files are available in the outputs/ directory"
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="size-5" />
-                  上传 CSV 文件
+                  {t("generator.uploadCsv")}
                 </CardTitle>
-                <CardDescription>从本地上传数据集文件</CardDescription>
+                <CardDescription>{t("generator.uploadDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
@@ -340,8 +350,8 @@ echo "Output files are available in the outputs/ directory"
                   />
                   <Label htmlFor="file-upload" className="cursor-pointer">
                     <Upload className="size-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-sm font-medium mb-1">点击上传或拖拽文件</p>
-                    <p className="text-xs text-muted-foreground">支持 CSV 格式</p>
+                    <p className="text-sm font-medium mb-1">{t("generator.clickUpload")}</p>
+                    <p className="text-xs text-muted-foreground">{t("generator.csvOnly")}</p>
                   </Label>
                 </div>
               </CardContent>
@@ -351,13 +361,13 @@ echo "Output files are available in the outputs/ directory"
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="size-5" />
-                  连接数据库
+                  {t("generator.connectDb")}
                 </CardTitle>
-                <CardDescription>从 PostgreSQL 数据库导入</CardDescription>
+                <CardDescription>{t("generator.connectDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="db-uri">连接字符串</Label>
+                  <Label htmlFor="db-uri">{t("generator.connString")}</Label>
                   <Input
                     id="db-uri"
                     placeholder="postgresql://user:pass@host:5432/dbname"
@@ -365,11 +375,11 @@ echo "Output files are available in the outputs/ directory"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="table-name">表名</Label>
+                  <Label htmlFor="table-name">{t("generator.tableName")}</Label>
                   <Input id="table-name" placeholder="public.census" defaultValue="public.census" />
                 </div>
                 <Button onClick={handleDatabaseConnect} className="w-full">
-                  连接数据库
+                  {t("generator.connectBtn")}
                 </Button>
               </CardContent>
             </Card>
@@ -382,26 +392,26 @@ echo "Output files are available in the outputs/ directory"
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Table className="size-5" />
-                  数据集信息
+                  {t("generator.datasetInfo")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-1">数据集</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("generator.dataset")}</p>
                     <p className="font-semibold truncate">{datasetName}</p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-1">总列数</p>
-                    <p className="font-semibold">{columns.length} 列</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("generator.totalColumns")}</p>
+                    <p className="font-semibold">{columns.length}</p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-1">数值列</p>
-                    <p className="font-semibold">{numericColumns.length} 列</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("generator.numericColumns")}</p>
+                    <p className="font-semibold">{numericColumns.length}</p>
                   </div>
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-1">分类列</p>
-                    <p className="font-semibold">{categoricalColumns.length} 列</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("generator.categoricalColumns")}</p>
+                    <p className="font-semibold">{categoricalColumns.length}</p>
                   </div>
                 </div>
 
@@ -409,10 +419,10 @@ echo "Output files are available in the outputs/ directory"
                   <table className="w-full text-sm">
                     <thead className="bg-muted">
                       <tr>
-                        <th className="text-left p-2 font-semibold">列名</th>
-                        <th className="text-left p-2 font-semibold">类型</th>
-                        <th className="text-left p-2 font-semibold">唯一值</th>
-                        <th className="text-left p-2 font-semibold">示例</th>
+                        <th className="text-left p-2 font-semibold">{t("generator.columnName")}</th>
+                        <th className="text-left p-2 font-semibold">{t("generator.columnType")}</th>
+                        <th className="text-left p-2 font-semibold">{t("generator.distinctValues")}</th>
+                        <th className="text-left p-2 font-semibold">{t("generator.samples")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -436,9 +446,9 @@ echo "Output files are available in the outputs/ directory"
 
             <Tabs defaultValue="data-drift" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="data-drift">Data Drift</TabsTrigger>
-                <TabsTrigger value="workload-drift">Workload Drift</TabsTrigger>
-                <TabsTrigger value="temporal">时间模式</TabsTrigger>
+                <TabsTrigger value="data-drift">{t("generator.dataDriftTab")}</TabsTrigger>
+                <TabsTrigger value="workload-drift">{t("generator.workloadDriftTab")}</TabsTrigger>
+                <TabsTrigger value="temporal">{t("generator.temporalTab")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="data-drift" className="space-y-6 mt-6">
@@ -446,8 +456,8 @@ echo "Output files are available in the outputs/ directory"
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle>Data Drift 配置</CardTitle>
-                        <CardDescription>配置数据层面的漂移类型和参数</CardDescription>
+                        <CardTitle>{t("generator.dataDriftConfig")}</CardTitle>
+                        <CardDescription>{t("generator.dataDriftDesc")}</CardDescription>
                       </div>
                       <Switch
                         checked={dataDrift.enabled}
@@ -460,7 +470,7 @@ echo "Output files are available in the outputs/ directory"
                   {dataDrift.enabled && (
                     <CardContent className="space-y-6">
                       <div className="space-y-2">
-                        <Label>漂移类型</Label>
+                        <Label>{t("generator.driftType")}</Label>
                         <Select
                           value={dataDrift.type}
                           onValueChange={(value: DataDriftConfig["type"]) =>
@@ -472,16 +482,16 @@ echo "Output files are available in the outputs/ directory"
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="cardinality_scaling">
-                              基数缩放 (Cardinality Scaling)
+                              {t("generator.cardinalityScaling")}
                             </SelectItem>
                             <SelectItem value="cardinality_updating">
-                              基数更新 (Cardinality Updating)
+                              {t("generator.cardinalityUpdating")}
                             </SelectItem>
                             <SelectItem value="column_shift">
-                              列分布偏移 (Column Shift)
+                              {t("generator.columnShift")}
                             </SelectItem>
                             <SelectItem value="outlier_injection">
-                              异常值注入 (Outlier Injection)
+                              {t("generator.outlierInjection")}
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -493,7 +503,7 @@ echo "Output files are available in the outputs/ directory"
                         <div className="space-y-4">
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>缩放因子</Label>
+                              <Label>{t("generator.scaleFactor")}</Label>
                               <span className="text-sm font-semibold">
                                 {dataDrift.params.scale}×
                               </span>
@@ -511,7 +521,7 @@ echo "Output files are available in the outputs/ directory"
                               step={0.1}
                             />
                             <p className="text-xs text-muted-foreground mt-2">
-                              将数据集大小调整为原来的 {dataDrift.params.scale}× 倍
+                              {t("generator.scaleHelp").replace("{scale}", String(dataDrift.params.scale))}
                             </p>
                           </div>
                         </div>
@@ -521,7 +531,7 @@ echo "Output files are available in the outputs/ directory"
                         <div className="space-y-4">
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>删除百分比</Label>
+                              <Label>{t("generator.deletePercent")}</Label>
                               <span className="text-sm font-semibold">
                                 {dataDrift.params.deletePercent}%
                               </span>
@@ -541,7 +551,7 @@ echo "Output files are available in the outputs/ directory"
                           </div>
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>插入百分比</Label>
+                              <Label>{t("generator.insertPercent")}</Label>
                               <span className="text-sm font-semibold">
                                 {dataDrift.params.insertPercent}%
                               </span>
@@ -560,7 +570,7 @@ echo "Output files are available in the outputs/ directory"
                             />
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            模拟连续的插入和删除操作
+                            {t("generator.updatingHelp")}
                           </p>
                         </div>
                       )}
@@ -568,7 +578,7 @@ echo "Output files are available in the outputs/ directory"
                       {dataDrift.type === "column_shift" && (
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label>目标列</Label>
+                            <Label>{t("generator.targetColumn")}</Label>
                             <Select
                               value={dataDrift.params.column}
                               onValueChange={(column) =>
@@ -579,7 +589,7 @@ echo "Output files are available in the outputs/ directory"
                               }
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="选择列" />
+                              <SelectValue placeholder={t("generator.targetColumn")} />
                               </SelectTrigger>
                               <SelectContent>
                                 {numericColumns.map((col) => (
@@ -593,7 +603,7 @@ echo "Output files are available in the outputs/ directory"
 
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>偏度</Label>
+                              <Label>{t("generator.skewness")}</Label>
                               <span className="text-sm font-semibold">
                                 {dataDrift.params.skewness?.toFixed(2)}
                               </span>
@@ -617,7 +627,7 @@ echo "Output files are available in the outputs/ directory"
                       {dataDrift.type === "outlier_injection" && (
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label>目标列</Label>
+                            <Label>{t("generator.targetColumn")}</Label>
                             <Select
                               value={dataDrift.params.column}
                               onValueChange={(column) =>
@@ -628,7 +638,7 @@ echo "Output files are available in the outputs/ directory"
                               }
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="选择列" />
+                              <SelectValue placeholder={t("generator.targetColumn")} />
                               </SelectTrigger>
                               <SelectContent>
                                 {numericColumns.map((col) => (
@@ -642,7 +652,7 @@ echo "Output files are available in the outputs/ directory"
 
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>异常值比例 (%)</Label>
+                              <Label>{t("generator.outlierPercent")}</Label>
                               <span className="text-sm font-semibold">
                                 {dataDrift.params.outlierPercent}%
                               </span>
@@ -663,7 +673,7 @@ echo "Output files are available in the outputs/ directory"
 
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>异常值倍数</Label>
+                              <Label>{t("generator.outlierMultiplier")}</Label>
                               <span className="text-sm font-semibold">
                                 {dataDrift.params.outlierMultiplier}×
                               </span>
@@ -693,8 +703,8 @@ echo "Output files are available in the outputs/ directory"
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle>Workload Drift 配置</CardTitle>
-                        <CardDescription>配置工作负载漂移类型和参数</CardDescription>
+                        <CardTitle>{t("generator.workloadDriftConfig")}</CardTitle>
+                        <CardDescription>{t("generator.workloadDriftDesc")}</CardDescription>
                       </div>
                       <Switch
                         checked={workloadDrift.enabled}
@@ -707,7 +717,7 @@ echo "Output files are available in the outputs/ directory"
                   {workloadDrift.enabled && (
                     <CardContent className="space-y-6">
                       <div className="space-y-2">
-                        <Label>漂移类型</Label>
+                        <Label>{t("generator.driftType")}</Label>
                         <Select
                           value={workloadDrift.type}
                           onValueChange={(value: WorkloadDriftConfig["type"]) =>
@@ -719,16 +729,16 @@ echo "Output files are available in the outputs/ directory"
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="predicate_distribution">
-                              谓词分布变化 (Predicate Distribution)
+                              {t("generator.predicateDistribution")}
                             </SelectItem>
                             <SelectItem value="selectivity_variation">
-                              选择性变化 (Selectivity Variation)
+                              {t("generator.selectivityVariation")}
                             </SelectItem>
                             <SelectItem value="query_structure">
-                              查询结构变化 (Query Structure)
+                              {t("generator.queryStructure")}
                             </SelectItem>
                             <SelectItem value="payload_change">
-                              负载变化 (Payload Change)
+                              {t("generator.payloadChange")}
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -737,7 +747,7 @@ echo "Output files are available in the outputs/ directory"
                       <Separator />
 
                       <div>
-                        <Label className="mb-2 block">查询数量</Label>
+                        <Label className="mb-2 block">{t("generator.queryCount")}</Label>
                         <Input
                           type="number"
                           value={workloadDrift.params.queryCount || 100}
@@ -755,7 +765,7 @@ echo "Output files are available in the outputs/ directory"
                       {workloadDrift.type === "predicate_distribution" && (
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label>分布类型</Label>
+                            <Label>{t("generator.distributionType")}</Label>
                             <Select
                               value={workloadDrift.params.distribution}
                               onValueChange={(distribution) =>
@@ -769,15 +779,15 @@ echo "Output files are available in the outputs/ directory"
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="uniform">均匀分布 (Uniform)</SelectItem>
-                                <SelectItem value="normal">正态分布 (Normal)</SelectItem>
-                                <SelectItem value="skewed">偏态分布 (Skewed)</SelectItem>
+                              <SelectItem value="uniform">{t("generator.uniform")}</SelectItem>
+                              <SelectItem value="normal">{t("generator.normal")}</SelectItem>
+                              <SelectItem value="skewed">{t("generator.skewed")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
 
                           <div>
-                            <Label className="mb-2 block">选择查询列</Label>
+                            <Label className="mb-2 block">{t("generator.selectColumns")}</Label>
                             <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-3">
                               {columns.map((col) => (
                                 <div key={col.name} className="flex items-center space-x-2">
@@ -813,10 +823,10 @@ echo "Output files are available in the outputs/ directory"
                       {workloadDrift.type === "selectivity_variation" && (
                         <div className="space-y-4">
                           <div>
-                            <Label className="mb-2 block">选择性范围</Label>
+                            <Label className="mb-2 block">{t("generator.selectivityRange")}</Label>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <Label className="text-xs">最小值 (%)</Label>
+                                <Label className="text-xs">{t("generator.minValue")}</Label>
                                 <Input
                                   type="number"
                                   value={workloadDrift.params.selectivityRange?.[0] || 1}
@@ -838,7 +848,7 @@ echo "Output files are available in the outputs/ directory"
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label className="text-xs">最大值 (%)</Label>
+                                <Label className="text-xs">{t("generator.maxValue")}</Label>
                                 <Input
                                   type="number"
                                   value={workloadDrift.params.selectivityRange?.[1] || 50}
@@ -861,7 +871,7 @@ echo "Output files are available in the outputs/ directory"
                               </div>
                             </div>
                             <p className="text-xs text-muted-foreground mt-2">
-                              查询的选择性将在此范围内变化
+                              {t("generator.selectivityHelp")}
                             </p>
                           </div>
                         </div>
@@ -871,9 +881,9 @@ echo "Output files are available in the outputs/ directory"
                         <div className="space-y-4">
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>额外谓词数量</Label>
+                              <Label>{t("generator.additionalPredicates")}</Label>
                               <span className="text-sm font-semibold">
-                                +{workloadDrift.params.additionalPredicates} 个
+                                +{workloadDrift.params.additionalPredicates} {t("generator.unitCount")}
                               </span>
                             </div>
                             <Slider
@@ -889,7 +899,7 @@ echo "Output files are available in the outputs/ directory"
                               step={1}
                             />
                             <p className="text-xs text-muted-foreground mt-2">
-                              在原有查询基础上增加的谓词数量
+                              {t("generator.additionalHelp")}
                             </p>
                           </div>
                         </div>
@@ -899,9 +909,9 @@ echo "Output files are available in the outputs/ directory"
                         <div className="space-y-4">
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <Label>投影列数量</Label>
+                              <Label>{t("generator.projectionColumns")}</Label>
                               <span className="text-sm font-semibold">
-                                {workloadDrift.params.projectionColumns} 列
+                                {workloadDrift.params.projectionColumns} {t("generator.unitColumns")}
                               </span>
                             </div>
                             <Slider
@@ -917,7 +927,7 @@ echo "Output files are available in the outputs/ directory"
                               step={1}
                             />
                             <p className="text-xs text-muted-foreground mt-2">
-                              SELECT 语句中返回的列数量
+                              {t("generator.projectionHelp")}
                             </p>
                           </div>
                         </div>
@@ -930,44 +940,62 @@ echo "Output files are available in the outputs/ directory"
               <TabsContent value="temporal" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>时间模式配置</CardTitle>
-                    <CardDescription>配置漂移随时间的演化模式</CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>{t("generator.temporalConfig")}</CardTitle>
+                        <CardDescription>{t("generator.temporalDesc")}</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground">
+                          {t("generator.temporalEnabledLabel")}
+                        </Label>
+                        <Switch
+                          checked={temporalEnabled}
+                          onCheckedChange={(checked) => setTemporalEnabled(checked)}
+                        />
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>时间模式</Label>
-                      <Select value={temporalPattern} onValueChange={setTemporalPattern}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="uniform">均匀模式 (Uniform)</SelectItem>
-                          <SelectItem value="periodic">周期模式 (Periodic)</SelectItem>
-                          <SelectItem value="trend">趋势模式 (Trend)</SelectItem>
-                          <SelectItem value="long_tail">长尾模式 (Long Tail)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>持续时间（秒）</Label>
-                      <Input
-                        type="number"
-                        value={duration}
-                        onChange={(e) => setDuration(parseInt(e.target.value))}
-                      />
-                    </div>
-                    <div className="bg-muted p-4 rounded-lg">
-                      <p className="text-sm">
-                        {temporalPattern === "uniform" &&
-                          "均匀模式：事件以恒定速率到达，适合基准测试"}
-                        {temporalPattern === "periodic" &&
-                          "周期模式：事件遵循重复的周期，模拟日常/每周模式"}
-                        {temporalPattern === "trend" &&
-                          "趋势模式：事件逐渐增加，反映长期增长"}
-                        {temporalPattern === "long_tail" &&
-                          "长尾模式：高初始活动后指数衰减，模拟病毒式传播"}
+                    {!temporalEnabled && (
+                      <p className="text-sm text-muted-foreground">
+                        {t("generator.temporalDisabledHint")}
                       </p>
-                    </div>
+                    )}
+                    {temporalEnabled && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>{t("generator.temporalPattern")}</Label>
+                          <Select value={temporalPattern} onValueChange={setTemporalPattern}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="uniform">{t("generator.uniform")}</SelectItem>
+                              <SelectItem value="periodic">{t("generator.periodicLabel")}</SelectItem>
+                              <SelectItem value="trend">{t("generator.trendLabel")}</SelectItem>
+                              <SelectItem value="long_tail">{t("generator.longTailLabel")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t("generator.duration")}</Label>
+                          <Input
+                            type="number"
+                            value={duration}
+                            onChange={(e) => setDuration(parseInt(e.target.value))}
+                          />
+                        </div>
+                        <div className="bg-muted p-4 rounded-lg">
+                          <p className="text-sm">
+                            {temporalPattern === "uniform" && t("generator.uniformDesc")}
+                            {temporalPattern === "periodic" && t("generator.periodicDesc")}
+                            {temporalPattern === "trend" && t("generator.trendDesc")}
+                            {temporalPattern === "long_tail" && t("generator.longTailDesc")}
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -975,9 +1003,9 @@ echo "Output files are available in the outputs/ directory"
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)}>
-                上一步
+                {t("common.previous")}
               </Button>
-              <Button onClick={() => setStep(3)}>下一步：预览设置</Button>
+              <Button onClick={() => setStep(3)}>{t("generator.nextPreview")}</Button>
             </div>
           </div>
         )}
@@ -986,46 +1014,46 @@ echo "Output files are available in the outputs/ directory"
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>配置预览</CardTitle>
-                <CardDescription>确认您的漂移配置</CardDescription>
+                <CardTitle>{t("generator.previewTitle")}</CardTitle>
+                <CardDescription>{t("generator.previewDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-4">
                       <Database className="size-5 text-primary" />
-                      <h3 className="font-semibold">Data Drift</h3>
+                      <h3 className="font-semibold">{t("generator.dataDriftLabel")}</h3>
                       {dataDrift.enabled ? (
-                        <Badge>已启用</Badge>
+                        <Badge>{t("generator.enabled")}</Badge>
                       ) : (
-                        <Badge variant="secondary">未启用</Badge>
+                        <Badge variant="secondary">{t("generator.disabled")}</Badge>
                       )}
                     </div>
                     {dataDrift.enabled ? (
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">类型:</span>
+                          <span className="text-muted-foreground">{t("generator.typeLabel")}:</span>
                           <span className="font-medium">
-                            {dataDrift.type === "cardinality_scaling" && "基数缩放"}
-                            {dataDrift.type === "cardinality_updating" && "基数更新"}
-                            {dataDrift.type === "column_shift" && "列分布偏移"}
-                            {dataDrift.type === "outlier_injection" && "异常值注入"}
+                            {dataDrift.type === "cardinality_scaling" && t("generator.cardinalityScaling")}
+                            {dataDrift.type === "cardinality_updating" && t("generator.cardinalityUpdating")}
+                            {dataDrift.type === "column_shift" && t("generator.columnShift")}
+                            {dataDrift.type === "outlier_injection" && t("generator.outlierInjection")}
                           </span>
                         </div>
                         {dataDrift.type === "cardinality_scaling" && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">缩放因子:</span>
+                              <span className="text-muted-foreground">{t("generator.scaleFactor")}:</span>
                             <span className="font-medium">{dataDrift.params.scale}×</span>
                           </div>
                         )}
                         {dataDrift.type === "cardinality_updating" && (
                           <>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">删除:</span>
+                              <span className="text-muted-foreground">{t("generator.deleteLabel")}:</span>
                               <span className="font-medium">{dataDrift.params.deletePercent}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">插入:</span>
+                              <span className="text-muted-foreground">{t("generator.insertLabel")}:</span>
                               <span className="font-medium">{dataDrift.params.insertPercent}%</span>
                             </div>
                           </>
@@ -1033,11 +1061,11 @@ echo "Output files are available in the outputs/ directory"
                         {dataDrift.type === "column_shift" && (
                           <>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">目标列:</span>
+                              <span className="text-muted-foreground">{t("generator.targetColumn")}:</span>
                               <span className="font-medium">{dataDrift.params.column}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">偏度:</span>
+                              <span className="text-muted-foreground">{t("generator.skewness")}:</span>
                               <span className="font-medium">
                                 {dataDrift.params.skewness?.toFixed(2)}
                               </span>
@@ -1047,11 +1075,11 @@ echo "Output files are available in the outputs/ directory"
                         {dataDrift.type === "outlier_injection" && (
                           <>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">目标列:</span>
+                              <span className="text-muted-foreground">{t("generator.targetColumn")}:</span>
                               <span className="font-medium">{dataDrift.params.column}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">异常值比例:</span>
+                              <span className="text-muted-foreground">{t("generator.outlierPercent")}:</span>
                               <span className="font-medium">
                                 {dataDrift.params.outlierPercent}%
                               </span>
@@ -1060,52 +1088,52 @@ echo "Output files are available in the outputs/ directory"
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">未启用数据漂移</p>
+                      <p className="text-sm text-muted-foreground">{t("generator.disabled")}</p>
                     )}
                   </div>
 
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-4">
                       <Activity className="size-5 text-primary" />
-                      <h3 className="font-semibold">Workload Drift</h3>
+                      <h3 className="font-semibold">{t("generator.workloadDriftLabel")}</h3>
                       {workloadDrift.enabled ? (
-                        <Badge>已启用</Badge>
+                        <Badge>{t("generator.enabled")}</Badge>
                       ) : (
-                        <Badge variant="secondary">未启用</Badge>
+                        <Badge variant="secondary">{t("generator.disabled")}</Badge>
                       )}
                     </div>
                     {workloadDrift.enabled ? (
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">类型:</span>
+                          <span className="text-muted-foreground">{t("generator.typeLabel")}:</span>
                           <span className="font-medium">
-                            {workloadDrift.type === "predicate_distribution" && "谓词分布变化"}
-                            {workloadDrift.type === "selectivity_variation" && "选择性变化"}
-                            {workloadDrift.type === "query_structure" && "查询结构变化"}
-                            {workloadDrift.type === "payload_change" && "负载变化"}
+                            {workloadDrift.type === "predicate_distribution" && t("generator.predicateDistribution")}
+                            {workloadDrift.type === "selectivity_variation" && t("generator.selectivityVariation")}
+                            {workloadDrift.type === "query_structure" && t("generator.queryStructure")}
+                            {workloadDrift.type === "payload_change" && t("generator.payloadChange")}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">查询数量:</span>
+                          <span className="text-muted-foreground">{t("generator.queryCount")}:</span>
                           <span className="font-medium">{workloadDrift.params.queryCount}</span>
                         </div>
                         {workloadDrift.type === "predicate_distribution" && (
                           <>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">分布:</span>
+                              <span className="text-muted-foreground">{t("generator.distributionType")}:</span>
                               <span className="font-medium">{workloadDrift.params.distribution}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">查询列:</span>
+                              <span className="text-muted-foreground">{t("generator.selectColumns")}:</span>
                               <span className="font-medium">
-                                {workloadDrift.params.columns?.length || 0} 列
+                                {workloadDrift.params.columns?.length || 0} {t("generator.unitColumns")}
                               </span>
                             </div>
                           </>
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">未启用工作负载漂移</p>
+                      <p className="text-sm text-muted-foreground">{t("generator.disabled")}</p>
                     )}
                   </div>
                 </div>
@@ -1113,29 +1141,40 @@ echo "Output files are available in the outputs/ directory"
                 <div className="border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <TrendingUp className="size-5 text-primary" />
-                    <h3 className="font-semibold">时间模式</h3>
+                    <h3 className="font-semibold">{t("generator.temporalLabel")}</h3>
+                    {temporalEnabled ? (
+                      <Badge>{t("generator.enabled")}</Badge>
+                    ) : (
+                      <Badge variant="secondary">{t("generator.disabled")}</Badge>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">模式:</span>
-                      <span className="font-medium">{temporalPattern}</span>
+                  {temporalEnabled ? (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("generator.temporalPattern")}:</span>
+                        <span className="font-medium">{temporalPatternLabel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t("generator.duration")}:</span>
+                        <span className="font-medium">{duration}s</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">持续时间:</span>
-                      <span className="font-medium">{duration}s</span>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t("generator.temporalDisabledHint")}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(2)}>
-                上一步
+                {t("common.previous")}
               </Button>
               <Button onClick={handleGenerate}>
                 <Play className="size-4 mr-2" />
-                生成 DriftSpec
+                {t("generator.generateDriftSpec")}
               </Button>
             </div>
           </div>
@@ -1147,9 +1186,9 @@ echo "Output files are available in the outputs/ directory"
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="size-5" />
-                  生成的 DriftSpec
+                  {t("generator.generatedSpec")}
                 </CardTitle>
-                <CardDescription>配置文件已生成，可以下载使用</CardDescription>
+                <CardDescription>{t("generator.generatedDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
@@ -1161,21 +1200,21 @@ echo "Output files are available in the outputs/ directory"
                 <div className="grid md:grid-cols-3 gap-4">
                   <Button onClick={handleDownloadSpec} className="w-full">
                     <Download className="size-4 mr-2" />
-                    下载 YAML
+                    {t("generator.downloadYaml")}
                   </Button>
                   <Button onClick={handleDownloadScript} variant="outline" className="w-full">
                     <Download className="size-4 mr-2" />
-                    下载执行脚本
+                    {t("generator.downloadScript")}
                   </Button>
                   <Button
                     onClick={() => {
                       navigator.clipboard.writeText(generateDriftSpec());
-                      toast.success("已复制到剪贴板！");
+                      toast.success(t("generator.copyConfig"));
                     }}
                     variant="outline"
                     className="w-full"
                   >
-                    复制配置
+                    {t("generator.copyConfig")}
                   </Button>
                 </div>
               </CardContent>
@@ -1183,19 +1222,40 @@ echo "Output files are available in the outputs/ directory"
 
             <Card>
               <CardHeader>
-                <CardTitle>下一步操作</CardTitle>
+                <CardTitle>{t("generator.nextSteps")}</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="mb-6 space-y-2">
+                  <Label>{t("generator.executionTarget")}</Label>
+                  <Select
+                    value={executionTarget}
+                    onValueChange={(value) => setExecutionTarget(value as "local" | "server")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="local">{t("generator.executionLocal")}</SelectItem>
+                      <SelectItem value="server">{t("generator.executionServer")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {executionTarget === "local"
+                      ? t("generator.executionLocalDesc")
+                      : t("generator.executionServerDesc")}
+                  </p>
+                </div>
+
                 <div className="space-y-4">
                   <div className="bg-muted p-4 rounded-lg">
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <span className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
                         1
                       </span>
-                      保存 DriftSpec 文件
+                      {t("generator.step1Title")}
                     </h4>
                     <p className="text-sm text-muted-foreground ml-8">
-                      将生成的 YAML 配置保存到您的 DriftBench 项目目录中
+                      {t("generator.step1Body")}
                     </p>
                   </div>
 
@@ -1204,14 +1264,32 @@ echo "Output files are available in the outputs/ directory"
                       <span className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
                         2
                       </span>
-                      运行 DriftBench
+                      {t("generator.step2Title")}
                     </h4>
-                    <p className="text-sm text-muted-foreground ml-8 mb-2">
-                      使用以下命令执行漂移生成：
-                    </p>
-                    <div className="bg-black text-green-400 p-3 rounded ml-8 font-mono text-xs">
-                      $ python driftbench.py generate --spec drift-spec.yaml
-                    </div>
+                    {executionTarget === "local" ? (
+                      <>
+                        <p className="text-sm text-muted-foreground ml-8 mb-2">
+                          {t("generator.step2Body")}
+                        </p>
+                        <div className="bg-black text-green-400 p-3 rounded ml-8 font-mono text-xs">
+                          $ python driftbench.py generate --spec drift-spec.yaml
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground ml-8 mb-3">
+                          {t("generator.executionServerDesc")}
+                        </p>
+                        <div className="ml-8">
+                          <Button
+                            variant="outline"
+                            onClick={() => toast.info(t("generator.serverNotConfigured"))}
+                          >
+                            {t("generator.executeServer")}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="bg-muted p-4 rounded-lg">
@@ -1219,10 +1297,10 @@ echo "Output files are available in the outputs/ directory"
                       <span className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">
                         3
                       </span>
-                      查看输出结果
+                      {t("generator.step3Title")}
                     </h4>
                     <p className="text-sm text-muted-foreground ml-8">
-                      生成的数据和查询将保存在 outputs/ 目录中，可用于评估数据库系统
+                      {t("generator.step3Body")}
                     </p>
                   </div>
                 </div>
@@ -1231,10 +1309,10 @@ echo "Output files are available in the outputs/ directory"
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(1)}>
-                重新开始
+                {t("generator.restart")}
               </Button>
               <Button variant="outline" onClick={() => setStep(2)}>
-                修改配置
+                {t("generator.modify")}
               </Button>
             </div>
           </div>
