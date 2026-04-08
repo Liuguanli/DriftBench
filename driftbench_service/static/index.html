@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DriftBench 服务台</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="layout">
+        <aside class="side-nav">
+          <button
+            id="navToggleBtn"
+            class="side-nav-toggle"
+            type="button"
+            aria-label="收起导航"
+            aria-expanded="true"
+            data-i18n-aria-label="nav_collapse"
+          >
+            <span class="side-nav-toggle-arrow" aria-hidden="true"></span>
+          </button>
+          <nav class="side-nav-card" aria-label="页面导航" data-i18n-aria-label="nav_aria">
+            <div class="side-nav-title" data-i18n="nav_title">导航</div>
+            <a class="side-nav-link active" href="#sec-schema-source" data-i18n="nav_schema_source">Schema 数据源</a>
+            <a class="side-nav-link" href="#sec-schema-run" data-i18n="nav_schema_run">生成 Schema</a>
+            <a class="side-nav-link" href="#sec-schema-preview" data-i18n="nav_schema_preview">Schema 预览</a>
+            <a class="side-nav-link" href="#sec-drift-builder" data-i18n="nav_drift_builder">Drift 设计</a>
+            <a class="side-nav-link" href="#sec-run-spec">Run DriftSpec</a>
+            <a class="side-nav-link" href="#sec-trace-spec">Trace → Spec</a>
+            <a class="side-nav-link" href="#sec-jobs">Jobs</a>
+            <a class="side-nav-link" href="#sec-logs">Logs</a>
+          </nav>
+        </aside>
+
+        <div class="content-area">
+          <header class="hero">
+            <div class="hero-head">
+              <div>
+                <div class="hero-title">
+                  <span class="hero-kicker">DriftBench</span>
+                  <h1 data-i18n="hero_title">本地服务台</h1>
+                </div>
+                <p class="hero-subtitle" data-i18n="hero_subtitle">
+                  在浏览器中启动 DriftSpec 任务、查看日志与结果路径，无需手动命令行。
+                </p>
+                <div class="hero-status" id="serviceStatus">
+                  <span class="dot" id="statusDot"></span>
+                  <span id="statusText" data-i18n="status_connecting">连接服务中...</span>
+                </div>
+              </div>
+              <label class="lang-switcher">
+                <span data-i18n="language_label">语言</span>
+                <select id="languageSelect" aria-label="Language">
+                  <option value="zh" data-i18n="language_zh">中文</option>
+                  <option value="en" data-i18n="language_en">English</option>
+                </select>
+              </label>
+            </div>
+          </header>
+
+          <main class="grid">
+            <section class="card nav-section" id="sec-schema-source">
+              <div class="card-header">
+                <h2 data-i18n="schema_source_title">Schema 数据源</h2>
+                <span class="chip" data-i18n="schema_source_chip">数据源</span>
+              </div>
+              <label class="field">
+                <span data-i18n="source_type_label">Source 类型</span>
+                <select id="schemaSourceType">
+                  <option value="postgres" selected>postgres</option>
+                  <option value="csv">csv</option>
+                </select>
+              </label>
+              <label class="field" id="schemaPathRow">
+                <span data-i18n="data_path_label">数据路径</span>
+                <input id="schemaDataPath" placeholder="data/census_original.csv" data-i18n-placeholder="data_path_placeholder" />
+              </label>
+              <div id="schemaCsvExtras">
+                <label class="field">
+                  <span data-i18n="import_csv_label">导入 CSV 文件</span>
+                  <input id="schemaDataFile" type="file" accept=".csv,text/csv" />
+                  <span class="mini-hint" id="schemaDataUploadStatus"></span>
+                </label>
+                <label class="field">
+                  <span data-i18n="paste_csv_label">粘贴 CSV 内容 (可选)</span>
+                  <textarea id="schemaCsvText" rows="4" placeholder="col1,col2\n1,2" data-i18n-placeholder="csv_text_placeholder"></textarea>
+                  <button id="saveCsvBtn" class="ghost" type="button" data-i18n="save_csv_btn">保存 CSV</button>
+                  <span class="mini-hint" id="schemaCsvSaveStatus"></span>
+                </label>
+              </div>
+              <label class="field" id="schemaDbConfigRow">
+                <span data-i18n="saved_config_path_label">已保存配置路径</span>
+                <input id="schemaDbConfigPath" placeholder="通过上传/粘贴生成" data-i18n-placeholder="saved_config_path_placeholder" readonly />
+              </label>
+              <div id="schemaDbExtras">
+                <label class="field">
+                  <span data-i18n="import_db_config_label">导入 DB 配置文件</span>
+                  <input id="schemaDbConfigFile" type="file" accept=".json,application/json" />
+                  <span class="mini-hint" id="schemaDbUploadStatus"></span>
+                </label>
+                <label class="field">
+                  <span data-i18n="select_saved_config_label">选择已有配置</span>
+                  <div class="inline-row">
+                    <select id="schemaDbConfigSelect">
+                      <option value="" data-i18n="loading_option">加载中...</option>
+                    </select>
+                    <button id="refreshDbConfigs" class="ghost" type="button" data-i18n="refresh_btn">刷新</button>
+                  </div>
+                </label>
+                <label class="field">
+                  <span data-i18n="paste_db_json_label">粘贴 DB 配置 JSON</span>
+                  <textarea id="schemaDbConfigText" rows="6">{
+  "host": "127.0.0.1",
+  "port": 5432,
+  "dbname": "your_db",
+  "user": "your_user",
+  "password": "your_password"
+}</textarea>
+                  <button id="saveDbConfigBtn" class="ghost" type="button" data-i18n="save_config_btn">保存配置</button>
+                  <span class="mini-hint" id="schemaDbSaveStatus"></span>
+                </label>
+              </div>
+              <label class="field" id="schemaNameRow">
+                <span data-i18n="db_schema_name_label">DB schema 名称</span>
+                <input id="schemaName" placeholder="public" data-i18n-placeholder="db_schema_name_placeholder" />
+              </label>
+              <label class="field">
+              </label>
+            </section>
+
+            <section class="card nav-section" id="sec-schema-run">
+              <div class="card-header">
+                <h2 data-i18n="generate_schema_title">生成 Schema</h2>
+                <span class="chip" data-i18n="run_chip">执行</span>
+              </div>
+              <label class="field">
+                <span data-i18n="sample_size_label">Sample Size (可选)</span>
+                <input id="schemaSampleSize" placeholder="1000" data-i18n-placeholder="sample_size_placeholder" />
+              </label>
+              <label class="field">
+                <span data-i18n="schema_output_path_label">输出 schema 路径 (可选)</span>
+                <input id="schemaOutputPath" placeholder="driftbench_service/schemas/my_schema.json" data-i18n-placeholder="schema_output_path_placeholder" />
+              </label>
+              <div class="inline-row">
+                <button id="schemaBtn" class="primary" data-i18n="generate_schema_btn">生成 Schema</button>
+                <button id="visualizeSchemaBtn" class="ghost" type="button" data-i18n="visualize_schema_btn">可视化 Schema</button>
+              </div>
+              <p class="hint" data-i18n="schema_hint">CSV 会抽样统计分布；Postgres 需要 psycopg2。</p>
+              <div class="schema-live-wrap">
+                <div class="card-header">
+                  <h2 data-i18n="schema_live_log_title">Schema 实时日志</h2>
+                  <span class="chip" id="schemaLiveStatus" data-i18n="wait_task">等待任务</span>
+                </div>
+                <pre id="schemaLiveLog" data-i18n="schema_live_log_idle">点击“生成 Schema”后显示实时日志。</pre>
+              </div>
+            </section>
+
+            <section class="card full nav-section" id="sec-schema-preview">
+              <div class="card-header">
+                <h2 data-i18n="schema_preview_title">Schema 预览</h2>
+                <span class="chip" id="schemaPreviewTag" data-i18n="schema_preview_pending">待分析</span>
+              </div>
+              <div class="inline-row">
+                <select id="schemaFileSelect">
+                  <option value="" data-i18n="select_schema_file">选择 schema 文件...</option>
+                </select>
+                <button id="refreshSchemaFiles" class="ghost" type="button" data-i18n="refresh_btn">刷新</button>
+                <button id="loadSchemaBtn" class="ghost" type="button" data-i18n="load_btn">加载</button>
+              </div>
+              <div id="schemaGraph" class="schema-graph">
+                <div class="empty" data-i18n="schema_graph_empty">加载 schema 后显示表关系图。</div>
+              </div>
+              <div id="schemaOverview" class="schema-overview">
+                <div class="empty" data-i18n="schema_overview_empty">加载 schema 后显示整体特征。</div>
+              </div>
+              <div id="schemaTableList" class="table-picker-grid">
+                <div class="empty" data-i18n="schema_table_list_empty">加载 schema 后，直接点击上方关系图中的表节点进行选择（支持多选）。</div>
+              </div>
+              <div id="schemaPreview" class="schema-preview">
+                <div class="empty" data-i18n="schema_preview_empty">点击上方关系图中的表节点后，这里显示前几行与表结构。</div>
+              </div>
+            </section>
+
+            <section class="card full drift-builder-card nav-section" id="sec-drift-builder">
+              <div class="card-header">
+                <h2 data-i18n="drift_builder_title">Drift 设计</h2>
+                <span class="chip" data-i18n="builder_chip">Builder</span>
+              </div>
+              <p class="hint" data-i18n="drift_builder_hint">先在 Schema 预览中点击目标 table，再在这里配置 Data / Workload drift。</p>
+              <div class="drift-builder-grid">
+                <div class="drift-pane" id="dataDriftPane">
+                  <div class="drift-pane-head">
+                    <label class="toggle-row">
+                      <input type="checkbox" id="driftDataEnabled" checked />
+                      <span data-i18n="enable_data_drift">启用 Data Drift</span>
+                    </label>
+                    <button id="addDataDriftBtn" class="ghost" type="button" data-i18n="add_data_drift_btn">添加 Data Drift</button>
+                  </div>
+                  <div id="dataDriftList" class="drift-item-list">
+                    <div class="empty" data-i18n="no_data_drift">暂无 Data drift，点击“添加 Data Drift”。</div>
+                  </div>
+                </div>
+                <div class="drift-pane" id="workloadDriftPane">
+                  <div class="drift-pane-head">
+                    <label class="toggle-row">
+                      <input type="checkbox" id="driftWorkloadEnabled" />
+                      <span data-i18n="enable_workload_drift">启用 Workload Drift</span>
+                    </label>
+                    <button id="addWorkloadDriftBtn" class="ghost" type="button" data-i18n="add_workload_drift_btn">添加 Workload Drift</button>
+                  </div>
+                  <div id="workloadDriftList" class="drift-item-list">
+                    <div class="empty" data-i18n="no_workload_drift">暂无 Workload drift，点击“添加 Workload Drift”。</div>
+                  </div>
+                </div>
+              </div>
+              <label class="field">
+                <span data-i18n="driftspec_output_path_label">输出 DriftSpec 路径</span>
+                <input id="generatedSpecPath" placeholder="driftspec/generated/service_spec.yaml" data-i18n-placeholder="driftspec_output_path_placeholder" />
+              </label>
+              <div class="inline-row">
+                <button id="buildSpecBtn" class="primary" type="button" data-i18n="build_driftspec_btn">生成 DriftSpec</button>
+              </div>
+              <p class="hint" id="buildSpecStatus" data-i18n="build_spec_idle">尚未生成 DriftSpec。</p>
+            </section>
+
+            <section class="card nav-section" id="sec-run-spec">
+              <div class="card-header">
+                <h2 data-i18n="run_driftspec_title">Run DriftSpec</h2>
+                <span class="chip" data-i18n="yaml_chip">YAML</span>
+              </div>
+              <label class="field">
+                <span data-i18n="examples_label">示例</span>
+                <select id="specSelect">
+                  <option value="" data-i18n="loading_option">加载中...</option>
+                </select>
+              </label>
+              <label class="field">
+                <span data-i18n="yaml_path_label">YAML 路径</span>
+                <input id="specPath" placeholder="driftspec/examples/demo_data_single.yaml" data-i18n-placeholder="yaml_path_placeholder" />
+              </label>
+              <button id="runBtn" class="primary" data-i18n="run_job_btn">运行任务</button>
+              <p class="hint" data-i18n="repo_path_hint">路径需在本仓库内，支持相对路径。</p>
+            </section>
+
+            <section class="card nav-section" id="sec-trace-spec">
+              <div class="card-header">
+                <h2 data-i18n="trace_spec_title">Trace → Spec</h2>
+                <span class="chip" data-i18n="generate_chip">生成</span>
+              </div>
+              <label class="field">
+                <span data-i18n="trace_path_label">Trace 路径</span>
+                <input id="tracePath" placeholder="driftspec/trace_inputs/trace_data_mock.csv" data-i18n-placeholder="trace_path_placeholder" />
+              </label>
+              <label class="field">
+                <span data-i18n="trace_output_yaml_label">输出 YAML 路径</span>
+                <input id="outputPath" placeholder="driftspec/generated/trace_data_mock.yaml" data-i18n-placeholder="trace_output_yaml_placeholder" />
+              </label>
+              <label class="field">
+                <span data-i18n="trace_type_label">Trace 类型</span>
+                <select id="traceType">
+                  <option value="" data-i18n="trace_type_auto">自动推断</option>
+                  <option value="data">data</option>
+                  <option value="workload">workload</option>
+                </select>
+              </label>
+              <label class="field">
+                <span data-i18n="mapping_path_label">Mapping 路径 (可选)</span>
+                <input id="mappingPath" placeholder="driftspec/trace_inputs/mapping.json" data-i18n-placeholder="mapping_path_placeholder" />
+              </label>
+              <button id="traceBtn" class="primary" data-i18n="generate_driftspec_btn">生成 DriftSpec</button>
+            </section>
+
+            <section class="card full nav-section" id="sec-jobs">
+              <div class="card-header">
+                <h2 data-i18n="jobs_title">Jobs</h2>
+                <span class="chip" id="jobCount">0</span>
+              </div>
+              <div id="jobsList" class="jobs-list">
+                <div class="empty" data-i18n="no_jobs">暂无任务</div>
+              </div>
+            </section>
+
+            <section class="card full nav-section" id="sec-logs">
+              <div class="card-header">
+                <h2 data-i18n="logs_title">Logs</h2>
+                <span class="chip" id="logStatus" data-i18n="wait_task">等待任务</span>
+              </div>
+              <pre id="logBox" data-i18n="logs_idle">尚未开始任务。</pre>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

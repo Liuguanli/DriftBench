@@ -47,7 +47,30 @@ class PostgresSchemaExtractor(BaseSchemaExtractor):
     def extract_schema(self):
         conn = psycopg2.connect(**self.db_config)
         cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        output = {"tables": {}}
+        output = {"tables": {}, "relationships": []}
+        pk_by_table = {}
+
+        # Collect PK columns once, keyed by "schema.table".
+        cursor.execute(
+            '''
+            SELECT
+                tc.table_schema AS table_schema,
+                tc.table_name AS table_name,
+                kcu.column_name AS column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
+             AND tc.table_name = kcu.table_name
+            WHERE tc.constraint_type = 'PRIMARY KEY'
+              AND tc.table_schema = %s
+            ORDER BY tc.table_name, kcu.ordinal_position
+            ''',
+            (self.schema_name,),
+        )
+        for row in cursor.fetchall():
+            table_full = f"{row['table_schema']}.{row['table_name']}"
+            pk_by_table.setdefault(table_full, []).append(row["column_name"])
 
         cursor.execute(f'''
             SELECT table_schema, table_name
@@ -70,7 +93,9 @@ class PostgresSchemaExtractor(BaseSchemaExtractor):
 
             table_result = {
                 "num_rows": num_rows,
-                "columns": {}
+                "columns": {},
+                "primary_keys": pk_by_table.get(f"{self.schema_name}.{table_name}", []),
+                "foreign_keys": [],
             }
 
             for col in columns:
@@ -118,5 +143,52 @@ class PostgresSchemaExtractor(BaseSchemaExtractor):
 
             output["tables"][f"{self.schema_name}.{table_name}"] = table_result
 
+        # Collect explicit FK relationships from information_schema.
+        cursor.execute(
+            '''
+            SELECT
+                tc.table_schema AS source_schema,
+                tc.table_name AS source_table,
+                kcu.column_name AS source_column,
+                ccu.table_schema AS target_schema,
+                ccu.table_name AS target_table,
+                ccu.column_name AS target_column,
+                tc.constraint_name AS constraint_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage ccu
+              ON tc.constraint_name = ccu.constraint_name
+             AND tc.table_schema = ccu.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND tc.table_schema = %s
+            ORDER BY tc.table_name, kcu.column_name
+            ''',
+            (self.schema_name,),
+        )
+        for row in cursor.fetchall():
+            source_table = f"{row['source_schema']}.{row['source_table']}"
+            target_table = f"{row['target_schema']}.{row['target_table']}"
+            rel = {
+                "source_table": source_table,
+                "source_column": row["source_column"],
+                "target_table": target_table,
+                "target_column": row["target_column"],
+                "constraint_name": row["constraint_name"],
+            }
+            output["relationships"].append(rel)
+            if source_table in output["tables"]:
+                output["tables"][source_table]["foreign_keys"].append(
+                    {
+                        "column": row["source_column"],
+                        "target_table": target_table,
+                        "target_column": row["target_column"],
+                        "constraint_name": row["constraint_name"],
+                    }
+                )
+
         output["source"] = "database"
+        cursor.close()
+        conn.close()
         return output
