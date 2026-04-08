@@ -14,6 +14,20 @@ DriftBench is a benchmarking toolkit that quantifies how data drift and workload
 - Support for CSV, Parquet, and PostgreSQL sources plus downstream workloads.
 - End-to-end assets (schemas, templates, workloads, plots) for paper reproduction.
 
+---
+
+## Web Frontend (Figma Design)
+
+The Figma UI has been ported into a standalone web frontend under `web/`. It provides the DriftBench pages (Home, Drift Types, Generator, Visualization, Case Studies) and is intended for UI demos and walkthroughs.
+
+### Run the UI
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
 ## DriftSpec at a Glance
 
 DriftSpec is the YAML contract that tells DriftBench which drift scenario to build. A single file captures the drift family, data source, variables, and optional workload generation hooks, making experiments portable and versionable.
