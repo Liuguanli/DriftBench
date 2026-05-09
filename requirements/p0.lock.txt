@@ -1,0 +1,7 @@
+# P0 lock tested against Python 3.10/3.11/3.12.
+# Python 3.13 is not yet supported by this lock.
+numpy==1.25.2
+pandas==2.2.3
+scipy==1.9.3
+PyYAML==6.0.2
+psycopg2-binary==2.9.10

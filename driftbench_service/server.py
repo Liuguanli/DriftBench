@@ -6,6 +6,8 @@ import base64
 import json
 import mimetypes
 import os
+import re
+import shutil
 import signal
 import subprocess
 import threading
@@ -22,6 +24,24 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
+STATE_DIR = Path(__file__).resolve().parent / "state"
+JOBS_STATE_PATH = STATE_DIR / "jobs.json"
+PUBLIC_SPECS_CATALOG_PATH = Path(
+    os.environ.get(
+        "DRIFTBENCH_MCP_CATALOG_PATH",
+        str((Path(__file__).resolve().parent / "state" / "public_specs_catalog.json")),
+    )
+)
+if not PUBLIC_SPECS_CATALOG_PATH.is_absolute():
+    PUBLIC_SPECS_CATALOG_PATH = (ROOT_DIR / PUBLIC_SPECS_CATALOG_PATH).resolve()
+SHARED_SPECS_DIR = Path(
+    os.environ.get(
+        "DRIFTBENCH_MCP_SHARED_SPECS_DIR",
+        str((ROOT_DIR / "driftspec" / "shared")),
+    )
+)
+if not SHARED_SPECS_DIR.is_absolute():
+    SHARED_SPECS_DIR = (ROOT_DIR / SHARED_SPECS_DIR).resolve()
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 # Allow in-process imports like `import driftbench...` when running
@@ -30,6 +50,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 MAX_LOG_LINES = 2000
+MAX_PERSISTED_JOBS = 200
 JOBS: dict[int, dict] = {}
 JOB_LOCK = threading.Lock()
 JOB_COUNTER = 1
@@ -106,6 +127,113 @@ def list_schema_files() -> list[str]:
     return files
 
 
+def _slugify(raw: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", raw.strip().lower()).strip("-")
+    return slug or "spec"
+
+
+def _read_public_specs_catalog() -> dict:
+    if not PUBLIC_SPECS_CATALOG_PATH.exists():
+        return {"version": 1, "updated_at": now_iso(), "specs": []}
+    try:
+        payload = json.loads(PUBLIC_SPECS_CATALOG_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"failed to read catalog: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("catalog format invalid: expected object")
+    specs = payload.get("specs")
+    if not isinstance(specs, list):
+        raise ValueError("catalog format invalid: specs must be a list")
+    payload.setdefault("version", 1)
+    payload.setdefault("updated_at", now_iso())
+    return payload
+
+
+def list_public_specs(tag: str | None = None, query: str | None = None, limit: int = 100) -> list[dict]:
+    payload = _read_public_specs_catalog()
+    specs = list(payload.get("specs") or [])
+    if tag:
+        wanted = tag.strip().lower()
+        specs = [s for s in specs if wanted in [str(t).lower() for t in (s.get("tags") or [])]]
+    if query:
+        q = query.strip().lower()
+        if q:
+            specs = [
+                s
+                for s in specs
+                if q in str(s.get("id", "")).lower()
+                or q in str(s.get("title", "")).lower()
+                or q in str(s.get("description", "")).lower()
+            ]
+    specs = sorted(specs, key=lambda s: str(s.get("updated_at", "")), reverse=True)
+    limit = max(0, min(limit, 5000))
+    if limit == 0:
+        return []
+    return specs[:limit]
+
+
+def _find_catalog_entry(spec_id: str) -> dict | None:
+    payload = _read_public_specs_catalog()
+    for entry in payload.get("specs") or []:
+        if entry.get("id") == spec_id:
+            return entry
+    return None
+
+
+def _resolve_source_spec_from_public(spec_id: str | None, spec_path: str | None) -> tuple[Path, str]:
+    if not spec_id and not spec_path:
+        raise ValueError("one of spec_id or spec_path required")
+    if spec_id and spec_path:
+        raise ValueError("provide only one of spec_id or spec_path")
+
+    if spec_id:
+        if not isinstance(spec_id, str) or not spec_id.strip():
+            raise ValueError("spec_id must be a non-empty string")
+        entry = _find_catalog_entry(spec_id.strip())
+        if not entry:
+            raise ValueError(f"spec_id not found in catalog: {spec_id}")
+        shared_path = entry.get("shared_path")
+        if not isinstance(shared_path, str) or not shared_path.strip():
+            raise ValueError(f"invalid shared_path for spec_id: {spec_id}")
+        resolved = resolve_repo_path(shared_path)
+        if not resolved or not resolved.exists():
+            raise ValueError(f"shared spec path missing: {shared_path}")
+        return resolved, spec_id.strip()
+
+    assert spec_path is not None
+    resolved = resolve_repo_path(str(spec_path))
+    if not resolved or not resolved.exists():
+        raise ValueError("spec_path not found or outside repo")
+    return resolved, _slugify(Path(spec_path).stem)
+
+
+def import_public_spec(
+    *,
+    spec_id: str | None = None,
+    spec_path: str | None = None,
+    target_path: str | None = None,
+    overwrite: bool = False,
+) -> dict:
+    source_spec, source_id = _resolve_source_spec_from_public(spec_id, spec_path)
+    if target_path:
+        target_resolved = resolve_repo_path(str(target_path))
+        if not target_resolved:
+            raise ValueError("target_path outside repo")
+    else:
+        ts = int(time.time() * 1000)
+        target_resolved = resolve_repo_path(f"driftspec/generated/imported_{_slugify(source_id)}_{ts}.yaml")
+        if not target_resolved:
+            raise ValueError("failed to resolve default target path")
+    if target_resolved.exists() and not overwrite:
+        raise ValueError(f"target spec already exists: {target_resolved.relative_to(ROOT_DIR).as_posix()}")
+    target_resolved.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_spec, target_resolved)
+    return {
+        "source_spec_path": source_spec.relative_to(ROOT_DIR).as_posix(),
+        "imported_spec_path": target_resolved.relative_to(ROOT_DIR).as_posix(),
+    }
+
+
 def _append_log(job: dict, line: str) -> None:
     if "logs" not in job:
         job["logs"] = []
@@ -116,12 +244,81 @@ def _append_log(job: dict, line: str) -> None:
         job["log_dropped"] = job.get("log_dropped", 0) + drop
 
 
+def _persist_jobs_state_locked() -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    jobs = sorted(JOBS.values(), key=lambda j: j.get("created_ts", 0), reverse=True)[:MAX_PERSISTED_JOBS]
+    payload = {
+        "saved_at": now_iso(),
+        "next_job_counter": JOB_COUNTER,
+        "jobs": jobs,
+    }
+    temp_path = JOBS_STATE_PATH.with_suffix(".json.tmp")
+    temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp_path.replace(JOBS_STATE_PATH)
+
+
+def _load_jobs_state() -> None:
+    global JOB_COUNTER
+    if not JOBS_STATE_PATH.exists():
+        return
+    try:
+        raw = JOBS_STATE_PATH.read_text(encoding="utf-8")
+        payload = json.loads(raw)
+        loaded_jobs = payload.get("jobs") or []
+        loaded_jobs = loaded_jobs[:MAX_PERSISTED_JOBS]
+    except Exception:
+        return
+
+    interrupted_at = now_iso()
+    with JOB_LOCK:
+        JOBS.clear()
+        max_id = 0
+        for rec in loaded_jobs:
+            try:
+                job_id = int(rec.get("id"))
+            except Exception:
+                continue
+            max_id = max(max_id, job_id)
+            job = {
+                "id": job_id,
+                "kind": rec.get("kind"),
+                "cmd": rec.get("cmd"),
+                "meta": rec.get("meta") or {},
+                "status": rec.get("status") or "failed",
+                "created_at": rec.get("created_at"),
+                "created_ts": rec.get("created_ts", 0),
+                "started_at": rec.get("started_at"),
+                "ended_at": rec.get("ended_at"),
+                "exit_code": rec.get("exit_code"),
+                "pid": None,
+                "logs": rec.get("logs") or [],
+                "log_dropped": rec.get("log_dropped", 0),
+            }
+
+            # Jobs cannot resume after a process restart.
+            if job["status"] in {"queued", "running"}:
+                _append_log(job, "[recovered] service restarted before this job finished.")
+                job["status"] = "interrupted"
+                job["exit_code"] = -1
+                if not job.get("ended_at"):
+                    job["ended_at"] = interrupted_at
+
+            JOBS[job_id] = job
+
+        next_counter = payload.get("next_job_counter")
+        if isinstance(next_counter, int) and next_counter > max_id:
+            JOB_COUNTER = next_counter
+        else:
+            JOB_COUNTER = max_id + 1
+
+
 def _run_job(job_id: int, cmd: list[str]) -> None:
     with JOB_LOCK:
         job = JOBS[job_id]
         job["status"] = "running"
         job["started_at"] = now_iso()
         job["pid"] = None
+        _persist_jobs_state_locked()
     try:
         proc = subprocess.Popen(
             cmd,
@@ -133,6 +330,7 @@ def _run_job(job_id: int, cmd: list[str]) -> None:
         )
         with JOB_LOCK:
             job["pid"] = proc.pid
+            _persist_jobs_state_locked()
         if proc.stdout:
             for line in proc.stdout:
                 _append_log(job, line.rstrip("\n"))
@@ -141,11 +339,13 @@ def _run_job(job_id: int, cmd: list[str]) -> None:
             job["exit_code"] = exit_code
             job["status"] = "completed" if exit_code == 0 else "failed"
             job["ended_at"] = now_iso()
+            _persist_jobs_state_locked()
     except Exception as exc:
         with JOB_LOCK:
             _append_log(job, f"[server error] {exc}")
             job["status"] = "failed"
             job["ended_at"] = now_iso()
+            _persist_jobs_state_locked()
 
 
 def _run_func_job(job_id: int, func, *args, **kwargs) -> None:
@@ -153,6 +353,7 @@ def _run_func_job(job_id: int, func, *args, **kwargs) -> None:
         job = JOBS[job_id]
         job["status"] = "running"
         job["started_at"] = now_iso()
+        _persist_jobs_state_locked()
     try:
         result = func(job, *args, **kwargs)
         with JOB_LOCK:
@@ -160,11 +361,13 @@ def _run_func_job(job_id: int, func, *args, **kwargs) -> None:
             job["exit_code"] = 0
             job["status"] = "completed"
             job["ended_at"] = now_iso()
+            _persist_jobs_state_locked()
     except Exception as exc:
         with JOB_LOCK:
             _append_log(job, f"[server error] {exc}")
             job["status"] = "failed"
             job["ended_at"] = now_iso()
+            _persist_jobs_state_locked()
 
 
 def create_job(kind: str, cmd: list[str], meta: dict | None = None) -> dict:
@@ -188,6 +391,7 @@ def create_job(kind: str, cmd: list[str], meta: dict | None = None) -> dict:
             "log_dropped": 0,
         }
         JOBS[job_id] = job
+        _persist_jobs_state_locked()
 
     thread = threading.Thread(target=_run_job, args=(job_id, cmd), daemon=True)
     thread.start()
@@ -215,6 +419,7 @@ def create_func_job(kind: str, func, args: tuple, meta: dict | None = None) -> d
             "log_dropped": 0,
         }
         JOBS[job_id] = job
+        _persist_jobs_state_locked()
 
     thread = threading.Thread(target=_run_func_job, args=(job_id, func, *args), daemon=True)
     thread.start()
@@ -380,6 +585,7 @@ def delete_job(job_id: int) -> tuple[bool, str]:
                 # Process may already have exited; safe to ignore.
                 pass
         del JOBS[job_id]
+        _persist_jobs_state_locked()
     return True, "deleted"
 
 
@@ -540,6 +746,23 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/api/specs":
                 self._send_json({"specs": list_specs()})
+                return
+            if parsed.path == "/api/public-specs":
+                qs = parse_qs(parsed.query or "")
+                tag = (qs.get("tag") or [None])[0]
+                query = (qs.get("query") or [None])[0]
+                limit_raw = (qs.get("limit") or [None])[0]
+                try:
+                    limit = int(limit_raw) if limit_raw is not None else 100
+                except Exception:
+                    self._send_json({"error": "invalid limit"}, status=400)
+                    return
+                try:
+                    specs = list_public_specs(tag=tag, query=query, limit=limit)
+                except Exception as exc:
+                    self._send_json({"error": str(exc)}, status=400)
+                    return
+                self._send_json({"specs": specs, "count": len(specs)})
                 return
             if parsed.path == "/api/uploads":
                 qs = parse_qs(parsed.query or "")
@@ -778,6 +1001,52 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"path": rel})
             return
 
+        if parsed.path == "/api/public-specs/import-run":
+            spec_id = payload.get("spec_id")
+            spec_path = payload.get("spec_path")
+            target_path = payload.get("target_path")
+            overwrite = bool(payload.get("overwrite", False))
+            execute = bool(payload.get("execute", True))
+
+            try:
+                imported = import_public_spec(
+                    spec_id=spec_id,
+                    spec_path=spec_path,
+                    target_path=target_path,
+                    overwrite=overwrite,
+                )
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=400)
+                return
+
+            if not execute:
+                self._send_json({"ok": True, **imported, "executed": False})
+                return
+
+            resolved = resolve_repo_path(imported["imported_spec_path"])
+            if not resolved or not resolved.exists():
+                self._send_json({"error": "imported spec missing after copy"}, status=400)
+                return
+            cmd = [
+                os.environ.get("PYTHON", sys.executable),
+                "-m",
+                "driftbench.cli",
+                "run-yaml",
+                str(resolved),
+            ]
+            job = create_job(
+                "run-yaml",
+                cmd,
+                meta={
+                    "spec_path": str(resolved),
+                    "source_spec_path": imported["source_spec_path"],
+                    "imported_spec_path": imported["imported_spec_path"],
+                    "from_public_specs": True,
+                },
+            )
+            self._send_json({"ok": True, **imported, "executed": True, "job": job})
+            return
+
         self._send_json({"error": "unknown endpoint"}, status=404)
 
 
@@ -786,6 +1055,7 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=int(os.environ.get("DRIFTBENCH_PORT", "8000")))
     args = parser.parse_args()
+    _load_jobs_state()
 
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"DriftBench service running on http://{args.host}:{args.port}")

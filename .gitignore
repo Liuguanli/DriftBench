@@ -7,6 +7,11 @@ COMMANDS.md
 __pycache__/
 *.py[cod]
 
+# Build / packaging artifacts
+dist/
+build/
+*.egg-info/
+
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
@@ -45,6 +50,10 @@ test_before_restructure
 .DS_Store
 lecarb/.DS_Store
 lecarb/estimator/.DS_Store
+
+# Local P0 virtual environments
+.venv-p0/
+.venv-p0*/
 
 
 

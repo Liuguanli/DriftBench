@@ -1,0 +1,31 @@
+pattern_id: p0-multi-table-fixture
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: multi_table
+
+data_source:
+  kind: csv
+
+variables:
+  validate_integrity: false
+  tables:
+    - name: dim_users
+      path: test/fixtures/data/dim_users.csv
+      output_path: __OUTPUT_DIR__/dim_users_out.csv
+      key_column: user_id
+    - name: fact_orders
+      path: test/fixtures/data/fact_orders.csv
+      output_path: __OUTPUT_DIR__/fact_orders_out.csv
+      key_column: order_id
+
+  relationships: []
+  drift_steps:
+    - op: insert_outliers
+      target: dim_users
+      column: age
+      count: 1
+      key_column: user_id
+      extreme_value: auto

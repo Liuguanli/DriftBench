@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "driftbench": {
+      "command": "/Users/guanlil1/Dropbox/PostDoc/topics/WorkloadDatasetGenerator/scripts/run_driftbench_mcp.sh",
+      "env": {
+        "DRIFTBENCH_ROOT": "/Users/guanlil1/Dropbox/PostDoc/topics/WorkloadDatasetGenerator"
+      }
+    }
+  }
+}
