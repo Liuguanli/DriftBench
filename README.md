@@ -391,6 +391,194 @@ driftbench trace-to-spec \
 driftbench list-outputs --root output --glob "**/*.csv" --limit 20 --json
 ```
 
-Bring the HTTP service up with `driftbench-service --port 8000` and the MCP server with `driftbench-mcp` (or via [`scripts/run_driftbench_mcp.sh`](scripts/run_driftbench_mcp.sh) for Cursor / Claude Code MCP clients — see [`docs/mcp_config_example.json`](docs/mcp_config_example.json)).
+Bring the HTTP service up with `driftbench-service --port 8000` and the MCP server with `driftbench-mcp`. See [`docs/mcp_config_example.json`](docs/mcp_config_example.json) for an MCP client configuration template.
 
 Substitute any of the YAML files in [`driftspec/examples/`](driftspec/examples/) to explore alternative drift scenarios.
+
+---
+
+## Tutorials
+
+Three end-to-end walkthroughs you can copy-paste verbatim. Each assumes
+`pip install driftbench-db` is already done (Python 3.10 / 3.11 / 3.12).
+
+### Tutorial 1 — Drift your own CSV in 60 seconds (no clone, no agent)
+
+The wheel does not bundle the `driftspec/examples/` YAML fixtures, so the
+self-contained way is to write a tiny spec inline against a CSV you already
+have.
+
+```bash
+mkdir -p drift_demo && cd drift_demo
+
+# 1) The data we want to drift
+cat > sales.csv <<'CSV'
+sale_id,store_id,amount,quantity,sale_date
+1,3,49.99,2,2024-01-15
+2,1,12.50,1,2024-01-16
+3,2,89.00,3,2024-01-17
+4,1,25.75,1,2024-01-18
+5,3,150.00,5,2024-01-19
+CSV
+
+# 2) A minimal DriftSpec — two stages: scale 2x + skew the amount column
+cat > sales_drift.yaml <<'YAML'
+pattern_id: tutorial-sales-drift
+seed: 42
+type:
+  family: data
+  category: drift
+  subtype: single_table
+data_source:
+  kind: csv
+  path: ./sales.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 5
+    schema_output_path: ./sales_schema.json
+variables:
+  base_table: sales
+  drifts:
+    - name: scale_2x
+      drift_type: vary_cardinality
+      output_path: ./out/sales_2x.csv
+      scale: 2
+    - name: skew_amount
+      drift_type: value_skew
+      output_path: ./out/sales_skewed.csv
+      columns: ["amount"]
+      portion: 1.0
+      skewness: 2
+YAML
+
+# 3) Validate, dry-run, then execute
+driftbench validate-spec sales_drift.yaml --json
+driftbench dry-run sales_drift.yaml --json
+driftbench run-yaml sales_drift.yaml
+
+# 4) Inspect the drifted artifacts
+ls out/
+wc -l sales.csv out/sales_2x.csv      # 5 -> 10 rows after 2x scaling
+```
+
+### Tutorial 2 — Vibe coding with Cursor / Claude Code (MCP)
+
+Skip writing YAML by hand: an MCP-aware agent can use `extract_schema`,
+`build_spec`, `validate_spec`, and `run_spec` to author and execute a spec
+from a natural-language prompt.
+
+**Configure the MCP client.** In Cursor or Claude Code, add to your
+`mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "driftbench": {
+      "command": "driftbench-mcp"
+    }
+  }
+}
+```
+
+If the client cannot find `driftbench-mcp` on its `PATH` (Cursor and
+Claude Desktop sometimes launch with a stripped environment), use the
+absolute path inside your venv. Get it with `which driftbench-mcp`:
+
+```json
+{
+  "mcpServers": {
+    "driftbench": {
+      "command": "/abs/path/to/your/venv/bin/driftbench-mcp"
+    }
+  }
+}
+```
+
+**Drive it in natural language.** Example prompts that exercise the full
+chain:
+
+> Inspect `~/Documents/sales.csv` with driftbench (extract_schema), then
+> propose a single-table drift spec that scales cardinality 2x and skews
+> the amount column. Build, validate, and run it.
+
+> Run `extract_schema` on `data/census_original.csv`, then `build_spec` a
+> multi-stage spec covering cardinality + value-skew + outlier injection.
+> Save under `driftspec/generated/` and dry-run.
+
+> Convert `~/traces/redbench_slice.csv` into a workload-drift spec via
+> `trace_to_spec`, then run it and report row counts per stage.
+
+The agent will call the MCP tools in sequence, write the YAML to disk,
+and report run summaries (paths, row counts) inline. Since 0.1.0b2 the
+MCP server accepts any absolute path, so your data does not need to live
+inside the DriftBench install directory.
+
+The full tool inventory is: `driftbench_health`, `trace_to_spec`,
+`validate_spec`, `dry_run_spec`, `run_spec`, `list_outputs`,
+`extract_schema`, `build_spec`, `save_spec`, `list_public_specs`,
+`import_spec_and_run`.
+
+### Tutorial 3 — Run a curated example spec
+
+The repository ships several mature DriftSpecs under
+[`driftspec/examples/`](driftspec/examples/). For pip-installed users
+who don't want to clone the whole repo, fetch them from the raw URL:
+
+```bash
+mkdir -p data
+curl --create-dirs -o data/census_original.csv \
+  https://raw.githubusercontent.com/Liuguanli/DriftBench/main/data/census_original.csv
+curl --create-dirs -o data/census_outliers.csv \
+  https://raw.githubusercontent.com/Liuguanli/DriftBench/main/data/census_outliers.csv
+curl -O https://raw.githubusercontent.com/Liuguanli/DriftBench/main/driftspec/examples/demo_data_single.yaml
+
+driftbench validate-spec demo_data_single.yaml --json
+driftbench run-yaml demo_data_single.yaml
+ls output/data/                 # cardinality / distributional outputs
+```
+
+Other curated specs you can substitute for `demo_data_single.yaml`:
+
+| Spec | What it demonstrates |
+|---|---|
+| [`demo_data_census_time_patterns.yaml`](driftspec/examples/demo_data_census_time_patterns.yaml) | Uniform / periodic / trend / long-tail temporal arrival patterns |
+| [`workload_census.yaml`](driftspec/examples/workload_census.yaml) | Workload templates × time × selectivity (full SQL workload) |
+| [`demo_postgres.yaml`](driftspec/examples/demo_postgres.yaml) | Same workflow shape but from a live PostgreSQL source |
+| [`demo_template_mix_drift.yaml`](driftspec/examples/demo_template_mix_drift.yaml) | Distribution + structural + selectivity drift composed in one workload |
+
+### Tutorial 4 — Embed the Python API in your own project
+
+If you'd rather call DriftBench from your existing pipeline, the public
+API is intentionally small:
+
+```python
+from driftbench import (
+    load_and_validate_spec,
+    run_spec,
+    run_spec_and_return_summary,
+    trace_to_spec,
+    get_schema_extractor,
+)
+
+# Validate without executing
+spec, type_info = load_and_validate_spec("sales_drift.yaml")
+print(type_info)   # {'family': 'data', 'category': 'drift', 'subtype': 'single_table'}
+
+# Execute end-to-end (returns a structured summary)
+summary = run_spec_and_return_summary("sales_drift.yaml")
+
+# Derive a spec from a trace summary
+trace_to_spec(
+    "/path/to/trace.csv",
+    "driftspec/generated/from_trace.yaml",
+    trace_type="data",
+)
+
+# Use a schema extractor directly
+extractor = get_schema_extractor("csv", csv_path="sales.csv", sample_size=100)
+schema = extractor.extract_schema()
+```
+
+Stick to imports from `driftbench` or `driftbench.api`. Internal modules
+under `driftbench.core.*` are not part of the supported surface and may
+move between releases.
