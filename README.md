@@ -90,6 +90,7 @@ trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated
 Public API details and boundary rules:
 - `docs/p0_api_boundary_freeze.md`
 - `docs/p0_mcp_command_matrix.md`
+- `docs/release_branch_policy.md` (release branch + tag policy for PyPI)
 
 MCP runnable example script:
 - `docs/p0_mcp_examples.sh`
