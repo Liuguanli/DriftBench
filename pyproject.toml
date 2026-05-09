@@ -53,6 +53,25 @@ driftbench = "driftbench.cli:main"
 driftbench-service = "driftbench_service.server:main"
 driftbench-mcp = "driftbench_mcp.server:main"
 
+[tool.hatch.build]
+# Applies to both sdist and wheel: drop dev-only artifacts (notebooks, raw
+# datasets, build/cache directories) so the released package stays small.
+exclude = [
+    "**/__pycache__",
+    "**/*.py[cod]",
+    "**/.DS_Store",
+    "**/.ipynb_checkpoints",
+    "driftbench/notebooks",
+    "driftbench/notebooks/**",
+    "driftbench/data",
+    "driftbench/data/**",
+    "driftbench/output",
+    "driftbench/output/**",
+    "driftbench/config",
+    "driftbench/config/**",
+    "driftbench/main.py",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "driftbench",
@@ -68,14 +87,12 @@ include = [
     "/driftspec/examples",
     "/scripts",
     "/requirements",
-    "/docs",
+    "/docs/p0_*.md",
+    "/docs/p0_mcp_examples.sh",
+    "/docs/mcp_config_example.json",
+    "/docs/driftbench_product_demo_plan.md",
     "/test",
     "/README.md",
     "/LICENSE",
     "/pyproject.toml",
-]
-exclude = [
-    "**/__pycache__",
-    "**/*.pyc",
-    "**/.DS_Store",
 ]

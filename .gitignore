@@ -7,6 +7,11 @@ COMMANDS.md
 __pycache__/
 *.py[cod]
 
+# Build / packaging artifacts
+dist/
+build/
+*.egg-info/
+
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
