@@ -32,6 +32,9 @@ on:
         options: [pypi, testpypi]
         default: pypi
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build sdist + wheel

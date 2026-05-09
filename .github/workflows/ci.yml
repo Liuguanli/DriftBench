@@ -11,6 +11,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Opt into Node 24 early. The default flips on 2026-06-02; opting in now
+# surfaces any breakage well before the forced cut-over.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
