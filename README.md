@@ -340,6 +340,9 @@ All visuals were generated from notebooks in `driftbench/notebooks/` using the a
 DriftBench requires **Python 3.10 / 3.11 / 3.12** (3.13 not yet supported).
 
 ```bash
+# from PyPI (after a release tag is published)
+pip install driftbench-db
+
 # from source (current state of main)
 pip install git+https://github.com/Liuguanli/DriftBench.git
 
@@ -348,6 +351,10 @@ git clone https://github.com/Liuguanli/DriftBench.git
 cd DriftBench
 pip install -e .
 ```
+
+> The PyPI distribution is named **`driftbench-db`** to disambiguate from
+> existing PyPI projects. The Python import name is still `driftbench`
+> — same package, different convention, like `scikit-learn` / `sklearn`.
 
 A single `pip install` brings in:
 
