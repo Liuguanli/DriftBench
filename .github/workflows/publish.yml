@@ -1,4 +1,5 @@
-# Publishes DriftBench to PyPI only via manual trigger (workflow_dispatch).
+# Publishes DriftBench to PyPI on version tags (v*), but only when the tagged
+# commit is reachable from `main` or a `release-*` branch.
 #
 # This workflow uses PyPI **trusted publishing** (OIDC). One-time setup on PyPI:
 #
@@ -11,30 +12,70 @@
 #        Environment:     pypi
 #   3. In this GitHub repo, create an environment named `pypi`
 #      (Settings → Environments → New environment).
-#   4. Trigger this workflow manually from GitHub Actions when you are ready
-#      to publish (no auto-publish on git push/tag).
-#
-# To publish a pre-release to TestPyPI for verification first, run the
-# workflow_dispatch with `target=testpypi` (a separate trusted publisher must
-# be configured on test.pypi.org).
+#   4. Push a version tag like `v0.1.0b4`. The workflow auto-publishes only if
+#      that tagged commit belongs to `main` or `release-*`.
 
 name: Publish to PyPI
 
 on:
-  workflow_dispatch:
-    inputs:
-      target:
-        description: "Index to publish to"
-        type: choice
-        options: [pypi, testpypi]
-        default: pypi
+  push:
+    tags:
+      - "v*"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  guard-release-branch:
+    name: Guard publish source branch
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.guard.outputs.allowed }}
+      matched_ref: ${{ steps.guard.outputs.matched_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tag commit is on main or release-*
+        id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+
+          sha="${GITHUB_SHA}"
+          allowed=false
+          matched_ref=""
+
+          if git merge-base --is-ancestor "$sha" origin/main; then
+            allowed=true
+            matched_ref="origin/main"
+          fi
+
+          if [ "$allowed" = false ]; then
+            while IFS= read -r ref; do
+              [ -z "$ref" ] && continue
+              if git merge-base --is-ancestor "$sha" "$ref"; then
+                allowed=true
+                matched_ref="$ref"
+                break
+              fi
+            done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/release-*')
+          fi
+
+          echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+          echo "matched_ref=$matched_ref" >> "$GITHUB_OUTPUT"
+          echo "matched_ref=$matched_ref"
+
+          if [ "$allowed" != true ]; then
+            echo "::notice::Skipping publish: tag commit is not on main/release-*."
+          fi
+
   build:
     name: Build sdist + wheel
+    needs: guard-release-branch
+    if: ${{ needs.guard-release-branch.outputs.allowed == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,9 +100,9 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: build
+    needs: [guard-release-branch, build]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.target == 'pypi' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release-')) }}
+    if: ${{ needs.guard-release-branch.outputs.allowed == 'true' }}
     environment: pypi
     permissions:
       id-token: write
@@ -72,21 +113,3 @@ jobs:
           path: dist/
 
       - uses: pypa/gh-action-pypi-publish@release/v1
-
-  publish-testpypi:
-    name: Publish to TestPyPI
-    needs: build
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release-')) }}
-    environment: testpypi
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: driftbench-dist
-          path: dist/
-
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
