@@ -105,37 +105,59 @@ Spec sharing tools:
 
 ## MCP Chat Demo (Codex / Claude Code)
 
-After MCP is configured, you can ask your coding assistant in plain language.
-Use prompts like these:
+After MCP is configured, the best pattern is to give your assistant a **case type**
+plus **what change you want to simulate**.
+
+### Case A: Data Drift (data changes)
+
+Use when you care about data size/distribution changes (scaling, skew, outliers, updates).
 
 ```bash
-[Prompt 1]
-Read docs/p0_integration_quickstart.md, then run a full DriftBench MCP workflow:
-1) build a spec from driftspec/trace_inputs/trace_data_mock.csv
-2) validate the generated spec
-3) execute it
-4) list generated outputs
-If a step fails, fix it and continue.
+[Prompt: Data Drift]
+Read docs/p0_integration_quickstart.md.
+I want a DATA drift case on <my dataset path>.
+Goal: <e.g., scale 2x + stronger skew on column amount>.
+Please use MCP tools to:
+1) build a DriftSpec (or trace_to_spec if needed),
+2) validate it,
+3) run it,
+4) list outputs.
+Then summarize what data files were generated and what changed.
 ```
+
+### Case B: Workload Drift (query changes)
+
+Use when you care about query behavior changes (predicate distribution, selectivity, structure, payload).
 
 ```bash
-[Prompt 2]
-Use MCP tools to save the generated spec as a public spec named "demo-trace-spec",
-then list public specs and import-run it to verify the sharing flow works.
+[Prompt: Workload Drift]
+I want a WORKLOAD drift case.
+Query goal: <e.g., predicates shift from uniform to city-focused, selectivity from 10% to 60%>.
+Please create/run a spec via MCP and report:
+- generated workload files,
+- how query distribution/selectivity changed,
+- suggested next workload variant.
 ```
 
-What you should expect from the assistant:
+### Case C: Temporal Drift (time changes)
 
-1. It will call MCP tools in sequence (`trace_to_spec` -> `validate_spec` -> `run_spec` -> `list_outputs`).
-2. It will return concrete artifact paths (e.g., generated YAML under `driftspec/generated/` and output files under `output/`).
-3. It will summarize what was produced (which stages ran, which files were created).
-4. It may suggest the next experiment change (for example, adjusting drift intensity or running a different template).
+Use when you care about how events/queries evolve over time (uniform, periodic, trend, long-tail).
 
-Typical outputs to look for:
+```bash
+[Prompt: Temporal Drift]
+I want a TEMPORAL drift case with pattern <uniform|periodic|trend|long_tail>.
+Please run the MCP workflow end-to-end and summarize:
+1) generated spec path,
+2) output artifacts,
+3) expected temporal behavior in plain language.
+```
 
-1. A new DriftSpec YAML file.
-2. Generated drifted data/workload artifacts.
-3. A machine-readable output list for logging or CI.
+### What users should expect
+
+1. The assistant executes MCP tools in order (`trace_to_spec/build_spec` -> `validate_spec` -> `run_spec` -> `list_outputs`).
+2. You get concrete artifact paths (generated YAML + output files).
+3. You get a short interpretation of what changed for your selected case (data/query/time).
+4. You usually get one or two suggested next iterations for deeper benchmarking.
 
 ## Python API (Stable Entry Points)
 
