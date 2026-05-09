@@ -103,29 +103,39 @@ Spec sharing tools:
 
 ---
 
-## Service (HTTP API) Quickstart
+## MCP Chat Demo (Codex / Claude Code)
 
-Start local service:
-
-```bash
-python driftbench_service/server.py --port 8000
-```
-
-Health check:
+After MCP is configured, you can ask your coding assistant in plain language.
+Use prompts like these:
 
 ```bash
-curl -s http://127.0.0.1:8000/api/health
+[Prompt 1]
+Read docs/p0_integration_quickstart.md, then run a full DriftBench MCP workflow:
+1) build a spec from driftspec/trace_inputs/trace_data_mock.csv
+2) validate the generated spec
+3) execute it
+4) list generated outputs
+If a step fails, fix it and continue.
 ```
-
-Run a spec:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8000/api/run \
-  -H 'Content-Type: application/json' \
-  -d '{"spec_path":"driftspec/examples/demo_data_single.yaml"}'
+[Prompt 2]
+Use MCP tools to save the generated spec as a public spec named "demo-trace-spec",
+then list public specs and import-run it to verify the sharing flow works.
 ```
 
----
+What you should expect from the assistant:
+
+1. It will call MCP tools in sequence (`trace_to_spec` -> `validate_spec` -> `run_spec` -> `list_outputs`).
+2. It will return concrete artifact paths (e.g., generated YAML under `driftspec/generated/` and output files under `output/`).
+3. It will summarize what was produced (which stages ran, which files were created).
+4. It may suggest the next experiment change (for example, adjusting drift intensity or running a different template).
+
+Typical outputs to look for:
+
+1. A new DriftSpec YAML file.
+2. Generated drifted data/workload artifacts.
+3. A machine-readable output list for logging or CI.
 
 ## Python API (Stable Entry Points)
 
@@ -151,7 +161,7 @@ trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated
 ## Core docs
 
 - API boundary: `docs/p0_api_boundary_freeze.md`
-- CLI/MCP/service command matrix: `docs/p0_mcp_command_matrix.md`
+- CLI/MCP command matrix: `docs/p0_mcp_command_matrix.md`
 - Integration quickstart: `docs/p0_integration_quickstart.md`
 - MCP examples script: `docs/p0_mcp_examples.sh`
 - Release branch/tag policy: `docs/release_branch_policy.md`
