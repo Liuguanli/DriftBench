@@ -139,24 +139,26 @@ Please create/run a spec via MCP and report:
 - suggested next workload variant.
 ```
 
-### Case C: Temporal Drift (time changes)
+### Temporal Overlay (applied on top of Case A or B)
 
-Use when you care about how events/queries evolve over time (uniform, periodic, trend, long-tail).
+Temporal drift is usually an overlay, not a standalone base case.
+Use it to add time evolution (uniform / periodic / trend / long-tail) on top of data drift or workload drift.
 
 ```bash
-[Prompt: Temporal Drift]
-I want a TEMPORAL drift case with pattern <uniform|periodic|trend|long_tail>.
-Please run the MCP workflow end-to-end and summarize:
+[Prompt: Temporal Overlay]
+Take my <DATA or WORKLOAD> drift case and add TEMPORAL pattern <uniform|periodic|trend|long_tail>.
+Please run the MCP workflow and summarize:
 1) generated spec path,
 2) output artifacts,
-3) expected temporal behavior in plain language.
+3) expected temporal behavior in plain language,
+4) how temporal behavior changes the base (data/workload) case.
 ```
 
 ### What users should expect
 
 1. The assistant executes MCP tools in order (`trace_to_spec/build_spec` -> `validate_spec` -> `run_spec` -> `list_outputs`).
 2. You get concrete artifact paths (generated YAML + output files).
-3. You get a short interpretation of what changed for your selected case (data/query/time).
+3. You get a short interpretation of what changed for your selected case (data/query), plus temporal overlay effects when requested.
 4. You usually get one or two suggested next iterations for deeper benchmarking.
 
 ## Python API (Stable Entry Points)
