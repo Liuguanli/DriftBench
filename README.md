@@ -18,7 +18,9 @@ DriftBench is a benchmarking toolkit that quantifies how data drift and workload
 
 ## Web Frontend
 
-The deployable frontend (Home, Get Started, Drift Lab, Generator playbook, Case Studies) lives in a sibling repo: [`driftbench-web`](https://github.com/Liuguanli/driftbench-web). Clone that repo to build / run the UI.
+The production website is live at [`driftbench.com`](https://driftbench.com).
+
+The deployable frontend source (Home, Get Started, Drift Lab, Generator playbook, Case Studies) lives in a sibling repo: [`driftbench-web`](https://github.com/Liuguanli/driftbench-web). Clone that repo to build / run the UI locally.
 
 ## DriftSpec at a Glance
 
