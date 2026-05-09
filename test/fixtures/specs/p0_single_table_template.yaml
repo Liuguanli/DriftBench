@@ -1,0 +1,23 @@
+pattern_id: p0-single-table-fixture
+seed: 42
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: test/fixtures/data/single_table_base.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 100
+    schema_output_dir: __OUTPUT_DIR__/schemas
+
+variables:
+  base_table: single_table_base
+  drifts:
+    - name: card_scale_2
+      drift_type: vary_cardinality
+      scale: 2.0
+      output_path: __OUTPUT_DIR__/single_cardinality_scale_2.csv

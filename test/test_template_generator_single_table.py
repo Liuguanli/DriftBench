@@ -1,61 +1,30 @@
-from driftbench.core.workload.template_generator import TemplateGenerator
-from driftbench.core.utils import save_templates
-import json
+"""Legacy manual script retained for reference.
 
-# Load schema
-with open("./output/intermediate/census_original_schema.json") as f:
-    schema = json.load(f)
+This file intentionally avoids generation side effects during test discovery.
+"""
 
-
-selectivity = {
-    "age": [0.1, 0.2],
-    "hours_per_week": [0.1, 0.2]
-}
-
-value_range = {
-    "age": [17, 90],
-    "hours_per_week": [1, 99]
-}
-
-# Generate templates 
-gen = TemplateGenerator(schema, base_table="census_original")
-templates = gen.generate_templates(num_templates=5, selectivity=selectivity, value_range=value_range)
-
-# Save to file
-save_templates(templates, "./output/intermediate/census_original_templates.json")
-
-selectivity = {
-    "age": [0.1, 0.25],
-    "hours_per_week": [0.1, 0.3]
-}
-gen = TemplateGenerator(schema, base_table="census_original")
-templates = gen.generate_templates(num_templates=5, selectivity=selectivity, value_range=value_range)
-save_templates(templates, "./output/intermediate/census_original_templates_selectivity_2.json")
-
-selectivity = {
-    "age": [0.1, 0.4],
-    "hours_per_week": [0.1, 0.3]
-}
-gen = TemplateGenerator(schema, base_table="census_original")
-templates = gen.generate_templates(num_templates=5, selectivity=selectivity, value_range=value_range)
-save_templates(templates, "./output/intermediate/census_original_templates_selectivity_3.json")
+import unittest
 
 
-gen = TemplateGenerator(schema, base_table="census_original")
-templates = gen.generate_templates(
-    num_templates=500,
-    max_predicates = 5,
-    max_payload_columns = 6,
-    selectivity=selectivity
-)
-save_templates(templates, "./output/intermediate/census_original_templates_structual_2.json")
+@unittest.skip("Legacy manual script placeholder; covered by dedicated integration tests.")
+class LegacyTemplateGeneratorSingleScript(unittest.TestCase):
+    def test_placeholder(self) -> None:
+        self.assertTrue(True)
 
 
-gen = TemplateGenerator(schema, base_table="census_original")
-templates = gen.generate_templates(
-    num_templates=500,
-    max_predicates = 7,
-    max_payload_columns = 8,
-    selectivity=selectivity
-)
-save_templates(templates, "./output/intermediate/census_original_templates_structual_3.json")
+if __name__ == "__main__":
+    import json
+    from driftbench.core.utils import save_templates
+    from driftbench.core.workload.template_generator import TemplateGenerator
+
+    with open("./output/intermediate/census_original_schema.json", "r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    gen = TemplateGenerator(schema, base_table="census_original")
+    templates = gen.generate_templates(
+        num_templates=5,
+        selectivity={"age": [0.1, 0.2], "hours_per_week": [0.1, 0.2]},
+        value_range={"age": [17, 90], "hours_per_week": [1, 99]},
+    )
+    save_templates(templates, "./output/intermediate/census_original_templates.json")
+

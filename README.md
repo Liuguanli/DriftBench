@@ -68,6 +68,76 @@ Run any specification with:
 python -m driftbench.cli run-yaml <path-to-yaml>
 ```
 
+Additional operational CLI commands:
+
+```bash
+# Validate spec structure and handler availability
+python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+
+# Preview what a spec would execute (without running handlers)
+python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+
+# Generate a spec from trace summary
+python -m driftbench.cli trace-to-spec driftspec/trace_inputs/trace_data_mock.csv driftspec/generated/trace_data_mock.yaml
+
+# List generated outputs for inspection/automation
+python -m driftbench.cli list-outputs --root output --glob "**/*.csv" --limit 20 --json
+```
+
+### Python Integration API (P0)
+
+For downstream project integration, prefer the stable top-level API:
+
+```python
+from driftbench import run_spec, trace_to_spec, get_schema_extractor
+
+run_spec("driftspec/examples/demo_data_single.yaml")
+trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated/from_trace.yaml")
+```
+
+Public API details and boundary rules:
+- `docs/p0_api_boundary_freeze.md`
+- `docs/p0_mcp_command_matrix.md`
+
+MCP runnable example script:
+- `docs/p0_mcp_examples.sh`
+
+Minimal MCP server runtime (stdio):
+- `driftbench_mcp/server.py`
+- `scripts/run_driftbench_mcp.sh`
+- `docs/p0_mcp_server_minimal.md`
+- `docs/mcp_config_example.json`
+
+Spec sharing MCP tools are included:
+- `save_spec`
+- `list_public_specs`
+- `import_spec_and_run`
+
+## Testing (P0 Foundation)
+
+Run the full test suite:
+
+```bash
+python3 -m unittest discover -s test -p 'test_*.py' -v
+```
+
+Run focused P0 suites:
+
+```bash
+python3 -m unittest -v \
+  test.test_cli_commands \
+  test.test_spec_core_unit \
+  test.test_spec_execution_integration \
+  test.test_smoke_pipeline
+```
+
+Clean-environment bootstrap and verification:
+
+```bash
+./scripts/bootstrap_p0_env.sh
+./scripts/verify_p0_clean_env.sh
+```
+
 ### Custom Deletion Filters (registry + DriftSpec)
 
 DriftSpec cannot serialize Python callables, so use the filter registry to reference a filter by name.

@@ -46,6 +46,10 @@ test_before_restructure
 lecarb/.DS_Store
 lecarb/estimator/.DS_Store
 
+# Local P0 virtual environments
+.venv-p0/
+.venv-p0*/
+
 
 
 # Allow versioning of example templates if needed
