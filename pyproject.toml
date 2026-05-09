@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "driftbench"
+version = "0.1.0b1"
+description = "Drift-aware database benchmarking — generate, share, and replay data and workload drift via DriftSpec."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10,<3.13"
+authors = [
+    { name = "Guanli Liu", email = "liuguanli22@gmail.com" },
+]
+keywords = [
+    "database",
+    "benchmark",
+    "drift",
+    "workload",
+    "data-generation",
+    "reproducibility",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=1.25",
+    "pandas>=2.0",
+    "scipy>=1.9",
+    "PyYAML>=6.0",
+    "psycopg2-binary>=2.9",
+]
+
+[project.urls]
+Homepage = "https://github.com/Liuguanli/DriftBench"
+Repository = "https://github.com/Liuguanli/DriftBench"
+Documentation = "https://github.com/Liuguanli/DriftBench/tree/main/docs"
+"Bug Tracker" = "https://github.com/Liuguanli/DriftBench/issues"
+
+[project.scripts]
+driftbench = "driftbench.cli:main"
+driftbench-service = "driftbench_service.server:main"
+driftbench-mcp = "driftbench_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "driftbench",
+    "driftbench_service",
+    "driftbench_mcp",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/driftbench",
+    "/driftbench_service",
+    "/driftbench_mcp",
+    "/driftspec/examples",
+    "/scripts",
+    "/requirements",
+    "/docs",
+    "/test",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/.DS_Store",
+]

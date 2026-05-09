@@ -16,17 +16,9 @@ DriftBench is a benchmarking toolkit that quantifies how data drift and workload
 
 ---
 
-## Web Frontend (Figma Design)
+## Web Frontend
 
-The Figma UI has been ported into a standalone web frontend under `web/`. It provides the DriftBench pages (Home, Drift Types, Generator, Visualization, Case Studies) and is intended for UI demos and walkthroughs.
-
-### Run the UI
-
-```bash
-cd web
-npm install
-npm run dev
-```
+The deployable frontend (Home, Get Started, Drift Lab, Generator playbook, Case Studies) lives in a sibling repo: [`driftbench-web`](https://github.com/Liuguanli/driftbench-web). Clone that repo to build / run the UI.
 
 ## DriftSpec at a Glance
 
@@ -345,47 +337,53 @@ All visuals were generated from notebooks in `driftbench/notebooks/` using the a
 
 ## Installation
 
-- Requires Python 3.9 or later.
-- Optional: PostgreSQL instance if you plan to run the database-backed examples.
-- Create a virtual environment and install the runtime libraries used across the repo:
+DriftBench requires **Python 3.10 / 3.11 / 3.12** (3.13 not yet supported).
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install pandas numpy scipy scikit-learn PyYAML psycopg2-binary
+# from source (current state of main)
+pip install git+https://github.com/Liuguanli/DriftBench.git
+
+# editable / development
+git clone https://github.com/Liuguanli/DriftBench.git
+cd DriftBench
+pip install -e .
 ```
 
-Run commands from the repository root so `python -m driftbench.cli ...` resolves local modules.
+A single `pip install` brings in:
+
+- The `driftbench` engine and its public Python API.
+- The `driftbench` CLI (entry point: `driftbench`).
+- The `driftbench-service` HTTP server (entry point: `driftbench-service`).
+- The `driftbench-mcp` MCP server (entry point: `driftbench-mcp`).
+
+Optional: a PostgreSQL instance if you plan to run the postgres-backed examples (`psycopg2-binary` is already pulled in).
 
 ---
 
 ## Quickstart Workflow
 
-1. **Extract Schemas**
-   ```bash
-   python -m test.test_csv_schema_extractor
-   python -m test.test_postgresql_extractor
-   ```
-   Outputs appear in `output/intermediate/`.
+After install, the bundled CLI exposes the full P0 workflow:
 
-2. **Generate Workload Templates**
-   ```bash
-   python -m test.test_template_generator_single_table
-   python -m test.test_template_generator_multi_table
-   ```
-   Templates are written to `output/intermediate/`.
+```bash
+# 1) Validate a spec without executing it
+driftbench validate-spec driftspec/examples/demo_data_single.yaml --json
 
-3. **Produce Drifted Data**
-   ```bash
-   python -m test.test_data_generator_single_table
-   ```
-   Generated datasets land in `output/data/…`.
+# 2) Preview the planned stages
+driftbench dry-run driftspec/examples/demo_data_single.yaml --json
 
-4. **Produce Drifted Workloads**
-   ```bash
-   python -m test.test_sql_generator_single_table
-   python -m test.test_sql_generator_multi_table
-   ```
-   Workloads are saved under `output/workload/`.
+# 3) Execute the spec end-to-end
+driftbench run-yaml driftspec/examples/demo_data_single.yaml
 
-These scripts mirror the pipeline used for the case studies and figures. Substitute any of the provided DriftSpec YAML files in `driftspec/examples/` to experiment with alternative drift scenarios.
+# 4) Convert a real trace into a runnable spec
+driftbench trace-to-spec \
+  driftspec/trace_inputs/trace_data_mock.csv \
+  driftspec/generated/from_trace.yaml \
+  --trace-type data
+
+# 5) List generated outputs for inspection / automation
+driftbench list-outputs --root output --glob "**/*.csv" --limit 20 --json
+```
+
+Bring the HTTP service up with `driftbench-service --port 8000` and the MCP server with `driftbench-mcp` (or via [`scripts/run_driftbench_mcp.sh`](scripts/run_driftbench_mcp.sh) for Cursor / Claude Code MCP clients — see [`docs/mcp_config_example.json`](docs/mcp_config_example.json)).
+
+Substitute any of the YAML files in [`driftspec/examples/`](driftspec/examples/) to explore alternative drift scenarios.

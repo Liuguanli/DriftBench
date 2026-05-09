@@ -4,6 +4,8 @@ Use exports from this module (or `driftbench.api`) as the stable integration
 surface for P0 instead of importing deep internal modules.
 """
 
+__version__ = "0.1.0b1"
+
 from driftbench.api import (
     get_filter,
     get_schema_extractor,
@@ -17,6 +19,7 @@ from driftbench.api import (
 )
 
 __all__ = [
+    "__version__",
     "get_filter",
     "get_schema_extractor",
     "load_and_validate_spec",
