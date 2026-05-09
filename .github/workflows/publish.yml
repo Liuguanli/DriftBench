@@ -1,4 +1,4 @@
-# Publishes DriftBench to PyPI when a v* tag is pushed.
+# Publishes DriftBench to PyPI only via manual trigger (workflow_dispatch).
 #
 # This workflow uses PyPI **trusted publishing** (OIDC). One-time setup on PyPI:
 #
@@ -11,8 +11,8 @@
 #        Environment:     pypi
 #   3. In this GitHub repo, create an environment named `pypi`
 #      (Settings → Environments → New environment).
-#   4. Push a tag like `v0.1.0b1` and this workflow will publish without any
-#      stored token.
+#   4. Trigger this workflow manually from GitHub Actions when you are ready
+#      to publish (no auto-publish on git push/tag).
 #
 # To publish a pre-release to TestPyPI for verification first, run the
 # workflow_dispatch with `target=testpypi` (a separate trusted publisher must
@@ -21,9 +21,6 @@
 name: Publish to PyPI
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       target:
@@ -64,7 +61,7 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.target == 'pypi' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release-')) }}
     environment: pypi
     permissions:
       id-token: write
@@ -80,7 +77,7 @@ jobs:
     name: Publish to TestPyPI
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi' && (github.ref_name == 'main' || startsWith(github.ref_name, 'release-')) }}
     environment: testpypi
     permissions:
       id-token: write
