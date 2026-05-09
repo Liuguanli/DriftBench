@@ -12,7 +12,12 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import yaml
 
-from driftbench import load_and_validate_spec, run_spec_and_return_summary, trace_to_spec
+from driftbench import (
+    get_schema_extractor,
+    load_and_validate_spec,
+    run_spec_and_return_summary,
+    trace_to_spec,
+)
 
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION = "2024-11-05"
@@ -37,6 +42,13 @@ def _repo_root() -> Path:
 
 
 def _resolve_repo_path(raw_path: str, *, must_exist: bool) -> Path:
+    """Resolve a user-supplied path.
+
+    Relative paths are anchored to the repo root (so existing examples like
+    ``driftspec/examples/demo_data_single.yaml`` keep working). Absolute paths
+    and ``~`` expansions are accepted as-is — DriftBench is shipped via pip,
+    so users routinely point at data in their own project directories.
+    """
     if not isinstance(raw_path, str) or not raw_path.strip():
         raise ToolExecutionError("path must be a non-empty string")
 
@@ -45,11 +57,6 @@ def _resolve_repo_path(raw_path: str, *, must_exist: bool) -> Path:
         candidate = _repo_root() / candidate
 
     candidate = candidate.resolve()
-    root = _repo_root()
-    try:
-        candidate.relative_to(root)
-    except ValueError as exc:
-        raise ToolExecutionError(f"path escapes repository root: {raw_path}") from exc
 
     if must_exist and not candidate.exists():
         raise ToolExecutionError(f"path does not exist: {raw_path}")
@@ -334,6 +341,129 @@ def _tool_list_outputs(arguments: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _tool_extract_schema(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    source_type = _require_str(arguments, "source_type")
+    if source_type not in ("csv", "postgres"):
+        raise ToolExecutionError("source_type must be 'csv' or 'postgres'")
+
+    output_path_arg = arguments.get("output_path")
+
+    if source_type == "csv":
+        csv_path_raw = _require_str(arguments, "path")
+        csv_path = _resolve_repo_path(csv_path_raw, must_exist=True)
+        sample_size = arguments.get("sample_size")
+        if sample_size is None:
+            sample_size = 1000
+        if not isinstance(sample_size, int) or sample_size < 0:
+            raise ToolExecutionError("sample_size must be a non-negative integer")
+        extractor = get_schema_extractor(
+            "csv", csv_path=str(csv_path), sample_size=sample_size
+        )
+    else:
+        db_config_raw = _require_str(arguments, "db_config_path")
+        db_config_path = _resolve_repo_path(db_config_raw, must_exist=True)
+        with open(db_config_path, "r", encoding="utf-8") as f:
+            db_config = json.load(f)
+        if not isinstance(db_config, dict):
+            raise ToolExecutionError("db_config_path must contain a JSON object")
+        schema_name = arguments.get("schema_name", "public")
+        if not isinstance(schema_name, str) or not schema_name.strip():
+            raise ToolExecutionError("schema_name must be a non-empty string")
+        extractor = get_schema_extractor(
+            "postgres", db_config=db_config, schema_name=schema_name
+        )
+
+    schema_obj = extractor.extract_schema()
+
+    if output_path_arg is not None:
+        output_path = _resolve_repo_path(str(output_path_arg), must_exist=False)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(schema_obj, f, indent=2, ensure_ascii=False, default=str)
+        written_path: Any = _as_rel(output_path)
+    else:
+        written_path = None
+
+    summary = _summarize_schema(schema_obj)
+    return {
+        "ok": True,
+        "source_type": source_type,
+        "schema_path": written_path,
+        "schema": schema_obj,
+        "summary": summary,
+    }
+
+
+def _summarize_schema(schema_obj: Any) -> Dict[str, Any]:
+    """Compact view useful for an LLM picking columns to drift on."""
+    if isinstance(schema_obj, dict) and "tables" in schema_obj:
+        tables = schema_obj.get("tables") or {}
+        if isinstance(tables, dict):
+            return {
+                "table_names": list(tables.keys()),
+                "column_count_per_table": {
+                    name: (len(tbl.get("columns", [])) if isinstance(tbl, dict) else None)
+                    for name, tbl in tables.items()
+                },
+            }
+        if isinstance(tables, list):
+            return {
+                "table_names": [t.get("name") for t in tables if isinstance(t, dict)],
+            }
+    if isinstance(schema_obj, dict) and "columns" in schema_obj:
+        cols = schema_obj.get("columns") or []
+        if isinstance(cols, list):
+            return {
+                "column_count": len(cols),
+                "column_names": [
+                    c.get("name") for c in cols if isinstance(c, dict)
+                ][:64],
+            }
+    return {"shape": type(schema_obj).__name__}
+
+
+def _tool_build_spec(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    spec_obj = arguments.get("spec")
+    if not isinstance(spec_obj, dict):
+        raise ToolExecutionError("argument 'spec' must be a JSON object")
+
+    output_path_raw = arguments.get("output_path")
+    if output_path_raw is None:
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        slug = _slugify(str(spec_obj.get("pattern_id") or "agent_spec"))
+        output_path_raw = f"driftspec/generated/{slug}_{timestamp}.yaml"
+
+    output_path = _resolve_repo_path(str(output_path_raw), must_exist=False)
+    overwrite = _require_bool(arguments, "overwrite", False)
+    if output_path.exists() and not overwrite:
+        raise ToolExecutionError(
+            f"spec already exists at {_as_rel(output_path)} (set overwrite=true to replace)"
+        )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(spec_obj, f, sort_keys=False, allow_unicode=True)
+
+    try:
+        _, type_info = _load_spec_for_summary(output_path)
+    except Exception as exc:
+        # Don't leave a half-written invalid spec on disk.
+        try:
+            output_path.unlink()
+        except OSError:
+            pass
+        raise ToolExecutionError(f"spec failed validation: {exc}") from exc
+
+    declared = _collect_declared_outputs(spec_obj)
+    return {
+        "ok": True,
+        "spec_path": _as_rel(output_path),
+        "pattern_id": str(spec_obj.get("pattern_id", "")),
+        "type": type_info,
+        "declared_outputs": declared,
+    }
+
+
 def _tool_save_spec(arguments: Dict[str, Any]) -> Dict[str, Any]:
     spec_path = _resolve_repo_path(_require_str(arguments, "spec_path"), must_exist=True)
     _load_yaml_file(spec_path)
@@ -570,6 +700,55 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_tool_list_outputs,
+    ),
+    ToolDef(
+        name="extract_schema",
+        description=(
+            "Extract a schema from a CSV file or a PostgreSQL connection so the agent can "
+            "ground a new DriftSpec on real columns / dtypes / value samples."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "source_type": {"type": "string", "enum": ["csv", "postgres"]},
+                "path": {"type": "string", "description": "CSV file path (required when source_type=csv)"},
+                "db_config_path": {
+                    "type": "string",
+                    "description": "JSON config with PostgreSQL connection (required when source_type=postgres)",
+                },
+                "schema_name": {"type": "string"},
+                "sample_size": {"type": "integer"},
+                "output_path": {
+                    "type": "string",
+                    "description": "Optional path to persist the extracted schema as JSON.",
+                },
+            },
+            "required": ["source_type"],
+            "additionalProperties": False,
+        },
+        handler=_tool_extract_schema,
+    ),
+    ToolDef(
+        name="build_spec",
+        description=(
+            "Materialize a DriftSpec from a JSON object the agent constructed, write it as "
+            "YAML, and validate it. Returns the resolved spec_path on success; deletes the "
+            "file if validation fails so disk never holds a half-written spec."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "spec": {"type": "object"},
+                "output_path": {
+                    "type": "string",
+                    "description": "Where to write the YAML. Defaults to driftspec/generated/<slug>_<ts>.yaml.",
+                },
+                "overwrite": {"type": "boolean"},
+            },
+            "required": ["spec"],
+            "additionalProperties": False,
+        },
+        handler=_tool_build_spec,
     ),
     ToolDef(
         name="save_spec",

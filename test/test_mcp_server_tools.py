@@ -92,6 +92,111 @@ class DriftbenchMCPToolTests(unittest.TestCase):
         self.assertEqual(listed["count"], 1)
         self.assertEqual(listed["specs"][0]["id"], "demo-public-spec")
 
+    def test_extract_schema_csv(self) -> None:
+        out_dir = REPO_ROOT / "tmp" / "mcp_schema_test"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            schema_out = out_dir / "trace_schema.json"
+            result = call_tool(
+                "extract_schema",
+                {
+                    "source_type": "csv",
+                    "path": TRACE_INPUT,
+                    "output_path": str(schema_out.relative_to(REPO_ROOT)),
+                    "sample_size": 50,
+                },
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["source_type"], "csv")
+            self.assertTrue(schema_out.exists())
+            self.assertIn("summary", result)
+        finally:
+            if out_dir.exists():
+                shutil.rmtree(out_dir)
+
+    def test_build_spec_writes_and_validates(self) -> None:
+        out_dir = REPO_ROOT / "tmp" / "mcp_build_spec_test"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "agent_spec.yaml"
+        try:
+            spec = {
+                "pattern_id": "agent-built-demo",
+                "seed": 7,
+                "type": {
+                    "family": "data",
+                    "category": "drift",
+                    "subtype": "single_table",
+                },
+                "data_source": {
+                    "kind": "csv",
+                    "path": "./data/census_original.csv",
+                    "schema_extractor": {
+                        "source_type": "csv",
+                        "sample_size": 100,
+                    },
+                },
+                "variables": {
+                    "base_table": "census_original",
+                    "drifts": [
+                        {
+                            "name": "scale_2x",
+                            "drift_type": "vary_cardinality",
+                            "output_path": "./tmp/mcp_build_spec_test/scale_2x.csv",
+                            "scale": 2,
+                        }
+                    ],
+                },
+            }
+            result = call_tool(
+                "build_spec",
+                {
+                    "spec": spec,
+                    "output_path": str(out_path.relative_to(REPO_ROOT)),
+                    "overwrite": True,
+                },
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["pattern_id"], "agent-built-demo")
+            self.assertTrue(out_path.exists())
+            self.assertEqual(result["type"]["family"], "data")
+        finally:
+            if out_dir.exists():
+                shutil.rmtree(out_dir)
+
+    def test_build_spec_rejects_invalid_and_cleans_up(self) -> None:
+        out_dir = REPO_ROOT / "tmp" / "mcp_build_spec_invalid"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "broken.yaml"
+        try:
+            with self.assertRaises(ToolExecutionError):
+                call_tool(
+                    "build_spec",
+                    {
+                        "spec": {"pattern_id": "broken-spec"},  # missing type / data_source
+                        "output_path": str(out_path.relative_to(REPO_ROOT)),
+                        "overwrite": True,
+                    },
+                )
+            self.assertFalse(out_path.exists(), "broken spec must not be left on disk")
+        finally:
+            if out_dir.exists():
+                shutil.rmtree(out_dir)
+
+    def test_resolve_path_accepts_absolute_outside_repo(self) -> None:
+        # Validate that the relaxed _resolve_repo_path no longer rejects paths
+        # outside the repo root — this is required for users running pip-installed
+        # driftbench against data in their own project directories.
+        import tempfile
+        from driftbench_mcp.server import _resolve_repo_path
+
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as fh:
+            external_path = Path(fh.name)
+        try:
+            resolved = _resolve_repo_path(str(external_path), must_exist=True)
+            self.assertEqual(resolved, external_path.resolve())
+        finally:
+            external_path.unlink(missing_ok=True)
+
     def test_import_spec_and_run_execute_false(self) -> None:
         call_tool(
             "save_spec",
