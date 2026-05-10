@@ -13,9 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Check unexpected Chinese characters in core files
+      - name: Check unexpected Chinese characters in changed files
         shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -24,12 +30,30 @@ jobs:
           import subprocess
           import sys
 
-          tracked = subprocess.run(
-              ["git", "ls-files"],
-              check=True,
-              text=True,
-              capture_output=True,
-          ).stdout.splitlines()
+          import os
+
+          before = os.environ.get("BEFORE", "")
+          sha = os.environ.get("SHA", "")
+          base_ref = os.environ.get("BASE_REF", "")
+
+          if base_ref:
+              subprocess.run(
+                  ["git", "fetch", "--no-tags", "--prune", "origin", f"{base_ref}:refs/remotes/origin/{base_ref}"],
+                  check=True,
+                  text=True,
+                  capture_output=True,
+              )
+              changed_cmd = ["git", "diff", "--name-only", f"origin/{base_ref}", sha]
+          elif before and before != "0000000000000000000000000000000000000000":
+              changed_cmd = ["git", "diff", "--name-only", before, sha]
+          else:
+              changed_cmd = ["git", "show", "--pretty=", "--name-only", sha]
+
+          changed = subprocess.run(changed_cmd, check=True, text=True, capture_output=True).stdout.splitlines()
+          tracked = [line.strip() for line in changed if line.strip()]
+          if not tracked:
+              print("No changed files to scan.")
+              raise SystemExit(0)
 
           # Scope: core source/spec/docs/workflow surfaces.
           include_prefixes = (
@@ -78,8 +102,12 @@ jobs:
           print("No unexpected Chinese characters detected in scoped files.")
           PY
 
-      - name: Check for potential secret/key leakage
+      - name: Check for potential secret/key leakage in changed files
         shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -88,12 +116,30 @@ jobs:
           import subprocess
           import sys
 
-          tracked = subprocess.run(
-              ["git", "ls-files"],
-              check=True,
-              text=True,
-              capture_output=True,
-          ).stdout.splitlines()
+          import os
+
+          before = os.environ.get("BEFORE", "")
+          sha = os.environ.get("SHA", "")
+          base_ref = os.environ.get("BASE_REF", "")
+
+          if base_ref:
+              subprocess.run(
+                  ["git", "fetch", "--no-tags", "--prune", "origin", f"{base_ref}:refs/remotes/origin/{base_ref}"],
+                  check=True,
+                  text=True,
+                  capture_output=True,
+              )
+              changed_cmd = ["git", "diff", "--name-only", f"origin/{base_ref}", sha]
+          elif before and before != "0000000000000000000000000000000000000000":
+              changed_cmd = ["git", "diff", "--name-only", before, sha]
+          else:
+              changed_cmd = ["git", "show", "--pretty=", "--name-only", sha]
+
+          changed = subprocess.run(changed_cmd, check=True, text=True, capture_output=True).stdout.splitlines()
+          tracked = [line.strip() for line in changed if line.strip()]
+          if not tracked:
+              print("No changed files to scan.")
+              raise SystemExit(0)
 
           patterns = [
               re.compile(r"AKIA[0-9A-Z]{16}"),

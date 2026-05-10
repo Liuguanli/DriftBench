@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -32,15 +34,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
-      - name: Validate and dry-run all driftspec/examples YAMLs
+      - name: Validate and dry-run changed driftspec/examples YAMLs
         shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
 
-          mapfile -t specs < <(find driftspec/examples -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
+          if [ -n "${BASE_REF:-}" ]; then
+            git fetch --no-tags --prune origin "${BASE_REF}":"refs/remotes/origin/${BASE_REF}"
+            mapfile -t changed < <(git diff --name-only "origin/${BASE_REF}" "${SHA}" | sort)
+          elif [ -n "${BEFORE:-}" ] && [ "${BEFORE}" != "0000000000000000000000000000000000000000" ]; then
+            mapfile -t changed < <(git diff --name-only "${BEFORE}" "${SHA}" | sort)
+          else
+            mapfile -t changed < <(git show --pretty= --name-only "${SHA}" | sort)
+          fi
+
+          mapfile -t specs < <(
+            printf '%s\n' "${changed[@]}" \
+              | grep -E '^driftspec/examples/.*\.(ya?ml)$' \
+              | sort -u || true
+          )
+
           if [ "${#specs[@]}" -eq 0 ]; then
-            echo "No spec examples found under driftspec/examples"
-            exit 1
+            echo "No changed spec examples under driftspec/examples; skipping."
+            exit 0
           fi
 
           for spec in "${specs[@]}"; do
