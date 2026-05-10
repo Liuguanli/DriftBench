@@ -73,6 +73,29 @@ python -m driftbench.cli trace-to-spec \
   --trace-type data
 ```
 
+### Orchestrate Across Benchmark Targets (MVP)
+
+Use one DriftSpec across multiple benchmark targets defined in `benchmark_target.yaml`.
+
+```bash
+python -m driftbench.cli orchestrate \
+  --spec driftspec/examples/demo_data_single.yaml \
+  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
+  --manifest-out output/orchestrate_manifest.json \
+  --json
+```
+
+Execute setup/run commands for each target:
+
+```bash
+python -m driftbench.cli orchestrate \
+  --spec driftspec/examples/demo_data_single.yaml \
+  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
+  --manifest-out output/orchestrate_manifest.json \
+  --execute \
+  --json
+```
+
 ---
 
 ## MCP Quickstart

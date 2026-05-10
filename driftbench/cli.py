@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
 from driftbench.agent_init import init_agent_directory
+from driftbench.orchestrate import TargetConfigError, orchestrate_targets
 import driftbench.spec.types  # ensure handlers registered
 from driftbench.spec.core import (
     get_type_triple,
@@ -200,6 +201,29 @@ def _cmd_init_agent(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_orchestrate(args: argparse.Namespace) -> int:
+    _validate_and_resolve(args.spec)
+    manifest = orchestrate_targets(
+        spec_path=args.spec,
+        targets_file=args.targets,
+        manifest_path=args.manifest_out,
+        execute=bool(args.execute),
+    )
+    _emit(
+        {
+            "ok": True,
+            "command": "orchestrate",
+            "spec_path": manifest["spec_path"],
+            "targets_file": manifest["targets_file"],
+            "manifest_path": str(Path(args.manifest_out).expanduser().resolve()),
+            "execute": manifest["execute"],
+            "summary": manifest["summary"],
+        },
+        as_json=args.json,
+    )
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("driftbench-db")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -264,6 +288,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ia.set_defaults(func=_cmd_init_agent)
 
+    orch = sub.add_parser(
+        "orchestrate",
+        help="Run one DriftSpec suite across multiple benchmark targets (MVP)",
+    )
+    orch.add_argument("--spec", required=True, help="Path to DriftSpec YAML")
+    orch.add_argument("--targets", required=True, help="Path to benchmark_target YAML config")
+    orch.add_argument(
+        "--manifest-out",
+        default="output/orchestrate_manifest.json",
+        help="Path to output manifest JSON",
+    )
+    orch.add_argument(
+        "--execute",
+        action="store_true",
+        help="Execute setup/run commands (default: plan-only dry orchestration)",
+    )
+    orch.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
+    orch.set_defaults(func=_cmd_orchestrate)
+
     return parser
 
 
@@ -272,7 +315,7 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return int(args.func(args))
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, FileNotFoundError, TargetConfigError) as exc:
         print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
         return EXIT_VALIDATION_ERROR
     except CLIError as exc:

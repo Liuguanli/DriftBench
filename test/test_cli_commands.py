@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VALID_SPEC = "driftspec/examples/demo_data_single.yaml"
@@ -116,6 +118,135 @@ class DriftbenchCLITests(unittest.TestCase):
             agents_text = agents_path.read_text(encoding="utf-8")
             self.assertIn("DriftBench-specific guidance for coding agents", agents_text)
             self.assertEqual(custom_path.read_text(encoding="utf-8"), "keep-me")
+
+    def test_orchestrate_dry_run_generates_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            target_a = tmp / "target_a"
+            target_b = tmp / "target_b"
+            target_a.mkdir(parents=True, exist_ok=True)
+            target_b.mkdir(parents=True, exist_ok=True)
+
+            targets_yaml = tmp / "benchmark_targets.yaml"
+            manifest_out = tmp / "manifest.json"
+            targets_yaml.write_text(
+                yaml.safe_dump(
+                    {
+                        "targets": [
+                            {
+                                "name": "a",
+                                "workdir": str(target_a),
+                                "run_command": "echo run-a",
+                                "output_globs": ["**/*.txt"],
+                            },
+                            {
+                                "name": "b",
+                                "workdir": str(target_b),
+                                "run_command": "echo run-b",
+                                "output_globs": ["**/*.txt"],
+                            },
+                        ]
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            proc = run_cli(
+                "orchestrate",
+                "--spec",
+                VALID_SPEC,
+                "--targets",
+                str(targets_yaml),
+                "--manifest-out",
+                str(manifest_out),
+                "--json",
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            payload = json.loads(proc.stdout)
+            self.assertEqual(payload["command"], "orchestrate")
+            self.assertFalse(payload["execute"])
+            self.assertTrue(manifest_out.exists())
+
+            manifest = json.loads(manifest_out.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["summary"]["total_targets"], 2)
+            self.assertEqual(manifest["summary"]["planned"], 2)
+
+    def test_orchestrate_execute_runs_commands_and_collects_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            target_a = tmp / "target_exec_a"
+            target_b = tmp / "target_exec_b"
+            target_a.mkdir(parents=True, exist_ok=True)
+            target_b.mkdir(parents=True, exist_ok=True)
+
+            targets_yaml = tmp / "benchmark_targets_exec.yaml"
+            manifest_out = tmp / "manifest_exec.json"
+            targets_yaml.write_text(
+                yaml.safe_dump(
+                    {
+                        "targets": [
+                            {
+                                "name": "exec-a",
+                                "workdir": str(target_a),
+                                "setup_command": "python -c \"from pathlib import Path; Path('setup_ok.txt').write_text('ok', encoding='utf-8')\"",
+                                "run_command": "python -c \"from pathlib import Path; Path('artifact_a.txt').write_text('a', encoding='utf-8')\"",
+                                "output_globs": ["**/*.txt"],
+                            },
+                            {
+                                "name": "exec-b",
+                                "workdir": str(target_b),
+                                "run_command": "python -c \"from pathlib import Path; Path('artifact_b.txt').write_text('b', encoding='utf-8')\"",
+                                "output_globs": ["**/*.txt"],
+                            },
+                        ]
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            proc = run_cli(
+                "orchestrate",
+                "--spec",
+                VALID_SPEC,
+                "--targets",
+                str(targets_yaml),
+                "--manifest-out",
+                str(manifest_out),
+                "--execute",
+                "--json",
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            manifest = json.loads(manifest_out.read_text(encoding="utf-8"))
+
+            self.assertEqual(manifest["summary"]["total_targets"], 2)
+            self.assertEqual(manifest["summary"]["completed"], 2)
+            self.assertEqual(manifest["summary"]["failed"], 0)
+            statuses = {x["target"]: x["status"] for x in manifest["targets"]}
+            self.assertEqual(statuses["exec-a"], "completed")
+            self.assertEqual(statuses["exec-b"], "completed")
+
+            self.assertTrue((target_a / "artifact_a.txt").exists())
+            self.assertTrue((target_b / "artifact_b.txt").exists())
+
+    def test_orchestrate_invalid_targets_returns_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            targets_yaml = tmp / "invalid_targets.yaml"
+            targets_yaml.write_text("targets: []\n", encoding="utf-8")
+            manifest_out = tmp / "manifest_invalid.json"
+            proc = run_cli(
+                "orchestrate",
+                "--spec",
+                VALID_SPEC,
+                "--targets",
+                str(targets_yaml),
+                "--manifest-out",
+                str(manifest_out),
+            )
+            self.assertEqual(proc.returncode, 3)
+            self.assertIn("[VALIDATION ERROR]", proc.stderr)
 
 
 if __name__ == "__main__":
