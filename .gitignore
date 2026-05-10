@@ -19,7 +19,10 @@ build/
 
 # Ignore output logs and generated files
 # autoquerybench/output/
-driftbench/data/
+driftbench/data/*
+!driftbench/data/*.py
+!driftbench/data/resources/
+!driftbench/data/resources/**
 *.log
 # *.csv
 # *.json
