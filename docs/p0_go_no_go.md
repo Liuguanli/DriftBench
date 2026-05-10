@@ -20,7 +20,7 @@ The following release-critical signals are positive:
 ## Verification References
 
 - `docs/p0_test_report.md`
-- `docs/p0_foundation_release_todo.md`
+- `docs/driftbench_todo.md`
 - `docs/p0_mcp_command_matrix.md`
 
 ## Conditions and Follow-Ups
