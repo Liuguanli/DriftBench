@@ -39,6 +39,13 @@ driftbench-db orchestrate \
   --json
 ```
 
+## Adapter demos included in this repo
+
+- TPC-H adapter demo target:
+  - `driftspec/examples/adapters/benchmark_target_tpch_demo.yaml`
+- Trace adapter demo target:
+  - `driftspec/examples/adapters/benchmark_target_trace_demo.yaml`
+
 Execute setup/run commands:
 
 ```bash
@@ -49,4 +56,3 @@ driftbench-db orchestrate \
   --execute \
   --json
 ```
-
