@@ -3,6 +3,8 @@ TODO.md
 PLAN.md
 COMMANDS.md
 docs/driftbench_upgrade_todo.md
+docs/driftbench_todo.md
+docs/driftbench_product_demo_plan.md
 
 # Ignore Python bytecode cache
 __pycache__/
