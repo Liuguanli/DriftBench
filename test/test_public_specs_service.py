@@ -57,6 +57,7 @@ class PublicSpecsServiceTests(unittest.TestCase):
         specs = self.svc.list_public_specs(tag="demo", limit=100)
         self.assertEqual(len(specs), 1)
         self.assertEqual(specs[0]["id"], "demo-public-spec")
+        self.assertEqual(specs[0]["spec_version"], 1)
 
     def test_import_run_execute_false(self) -> None:
         target_path = "tmp/public_specs_service_test/imported/imported_from_public.yaml"

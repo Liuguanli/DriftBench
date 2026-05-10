@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import unittest
 from pathlib import Path
@@ -84,13 +85,42 @@ class DriftbenchMCPToolTests(unittest.TestCase):
         )
         self.assertTrue(saved["ok"])
         self.assertEqual(saved["spec"]["id"], "demo-public-spec")
+        self.assertEqual(saved["spec"]["spec_version"], 1)
+        self.assertIn("metadata", saved["spec"])
+        self.assertEqual(len(saved["spec"]["metadata"]["content_sha256"]), 64)
         self.assertTrue((self.shared_dir / "demo-public-spec.yaml").exists())
         self.assertTrue(self.catalog_file.exists())
+        payload = json.loads(self.catalog_file.read_text(encoding="utf-8"))
+        self.assertEqual(payload["version"], 2)
+        self.assertEqual(payload["kind"], "driftbench.public_specs")
 
         listed = call_tool("list_public_specs", {"tag": "demo"})
         self.assertTrue(listed["ok"])
+        self.assertEqual(listed["catalog_version"], 2)
         self.assertEqual(listed["count"], 1)
         self.assertEqual(listed["specs"][0]["id"], "demo-public-spec")
+
+    def test_list_public_specs_upgrades_legacy_catalog(self) -> None:
+        legacy_catalog = {
+            "version": 1,
+            "updated_at": "2026-01-01T00:00:00Z",
+            "specs": [
+                {
+                    "id": "legacy-spec",
+                    "title": "Legacy",
+                    "description": "legacy entry",
+                    "tags": ["legacy"],
+                    "owner": "ci",
+                    "shared_path": "driftspec/shared/legacy-spec.yaml",
+                }
+            ],
+        }
+        self.catalog_file.write_text(json.dumps(legacy_catalog, ensure_ascii=False, indent=2), encoding="utf-8")
+        listed = call_tool("list_public_specs", {"tag": "legacy"})
+        self.assertTrue(listed["ok"])
+        self.assertEqual(listed["catalog_version"], 2)
+        self.assertEqual(listed["count"], 1)
+        self.assertEqual(listed["specs"][0]["spec_version"], 1)
 
     def test_extract_schema_csv(self) -> None:
         out_dir = REPO_ROOT / "tmp" / "mcp_schema_test"

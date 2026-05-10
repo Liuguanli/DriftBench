@@ -19,6 +19,7 @@ from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
+from driftbench.public_spec_catalog import read_catalog
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -133,19 +134,10 @@ def _slugify(raw: str) -> str:
 
 
 def _read_public_specs_catalog() -> dict:
-    if not PUBLIC_SPECS_CATALOG_PATH.exists():
-        return {"version": 1, "updated_at": now_iso(), "specs": []}
     try:
-        payload = json.loads(PUBLIC_SPECS_CATALOG_PATH.read_text(encoding="utf-8"))
+        payload = read_catalog(PUBLIC_SPECS_CATALOG_PATH, now_iso)
     except Exception as exc:
         raise ValueError(f"failed to read catalog: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("catalog format invalid: expected object")
-    specs = payload.get("specs")
-    if not isinstance(specs, list):
-        raise ValueError("catalog format invalid: specs must be a list")
-    payload.setdefault("version", 1)
-    payload.setdefault("updated_at", now_iso())
     return payload
 
 
