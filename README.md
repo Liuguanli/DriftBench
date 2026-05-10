@@ -15,6 +15,7 @@ This README is intentionally focused on **how to use the latest DriftBench**.
 - Production site: [driftbench.com](https://driftbench.com)
 - Frontend source repo: [driftbench-web](https://github.com/Liuguanli/driftbench-web)
 - Release branch note: pushes to `release/**` with user-facing DriftBench changes auto-dispatch a docs update event to `driftbench-web`.
+- Dispatch verification note (2026-05-10): this README line is used to validate cross-repo release notifications.
 
 ---
 
