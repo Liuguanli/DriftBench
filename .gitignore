@@ -69,3 +69,7 @@ lecarb/estimator/.DS_Store
 existing_benchmarks
 
 .codex/
+
+# Local development helper directories (agent/skill prompts)
+agents/
+skills/
