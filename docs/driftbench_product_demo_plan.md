@@ -81,7 +81,7 @@ Current execution backlog:
 - Extend CLI coverage for operational workflows.
 - Add automation contract doc for MCP actions.
 - Add smoke tests for `schema extract -> spec build -> run`.
-- Execution checklist: `docs/p0_foundation_release_todo.md`.
+- Execution checklist: `docs/driftbench_todo.md`.
 
 ### B2: P1 Sharing and Catalog
 - Implement spec metadata model and storage layout.
