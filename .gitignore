@@ -2,6 +2,7 @@
 TODO.md
 PLAN.md
 COMMANDS.md
+docs/driftbench_upgrade_todo.md
 
 # Ignore Python bytecode cache
 __pycache__/
@@ -64,3 +65,5 @@ lecarb/estimator/.DS_Store
 !autoquerybench/config/templates/
 
 existing_benchmarks
+
+.codex/
