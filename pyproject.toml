@@ -52,6 +52,7 @@ Documentation = "https://github.com/Liuguanli/DriftBench/tree/main/docs"
 
 [project.scripts]
 driftbench = "driftbench.cli:main"
+driftbench-db = "driftbench.cli:main"
 driftbench-service = "driftbench_service.server:main"
 driftbench-mcp = "driftbench_mcp.server:main"
 

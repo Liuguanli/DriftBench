@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
+from driftbench.agent_init import init_agent_directory
 import driftbench.spec.types  # ensure handlers registered
 from driftbench.spec.core import (
     get_type_triple,
@@ -74,14 +75,17 @@ def _cmd_run_yaml(args: argparse.Namespace) -> int:
 
 
 def _cmd_trace_to_spec(args: argparse.Namespace) -> int:
+    output = args.output_opt or args.output
+    if not output:
+        raise CLIError("trace-to-spec requires an output path (positional OUTPUT or --output).")
     spec = trace_to_spec(
         args.trace,
-        args.output,
+        output,
         trace_type=args.trace_type,
         mapping_path=args.mapping,
     )
     pattern_id = spec.get("pattern_id", "")
-    print(f"[OK] trace-to-spec generated: {args.output} (pattern_id={pattern_id})")
+    print(f"[OK] trace-to-spec generated: {output} (pattern_id={pattern_id})")
     return EXIT_OK
 
 
@@ -178,8 +182,26 @@ def _cmd_list_outputs(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_init_agent(args: argparse.Namespace) -> int:
+    result = init_agent_directory(
+        output_dir=args.output,
+        force=bool(args.force),
+        dry_run=bool(args.dry_run),
+    )
+
+    if result.dry_run:
+        print(f"[DRY-RUN] would initialize DriftBench agent files under: {result.output_dir}")
+    else:
+        print(f"[OK] initialized DriftBench agent files under: {result.output_dir}")
+
+    for path in result.created_files:
+        rel = path.relative_to(result.output_dir).as_posix()
+        print(f"- {rel}")
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser("driftbench")
+    parser = argparse.ArgumentParser("driftbench-db")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     y = sub.add_parser("run-yaml", help="Run a DriftSpec YAML")
@@ -188,7 +210,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     t = sub.add_parser("trace-to-spec", help="Generate a DriftSpec YAML from a trace summary")
     t.add_argument("trace", help="Path to trace summary (CSV or JSON)")
-    t.add_argument("output", help="Path to output DriftSpec YAML")
+    t.add_argument("output", nargs="?", help="Path to output DriftSpec YAML")
+    t.add_argument("--output", dest="output_opt", help="Path to output DriftSpec YAML")
     t.add_argument("--trace-type", choices=["data", "workload"], help="Override trace_type inference")
     t.add_argument("--mapping", help="Optional mapping JSON for trace column selection")
     t.set_defaults(func=_cmd_trace_to_spec)
@@ -219,6 +242,27 @@ def build_parser() -> argparse.ArgumentParser:
     lo.add_argument("--include-dirs", action="store_true", help="Include directories in results")
     lo.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
     lo.set_defaults(func=_cmd_list_outputs)
+
+    ia = sub.add_parser(
+        "init-agent",
+        help="Generate DriftBench agent support files in the current project",
+    )
+    ia.add_argument(
+        "--output",
+        default="./driftbench-agent",
+        help="Output directory (default: ./driftbench-agent)",
+    )
+    ia.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite managed generated files if the output directory is not empty",
+    )
+    ia.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print files that would be generated without writing",
+    )
+    ia.set_defaults(func=_cmd_init_agent)
 
     return parser
 
