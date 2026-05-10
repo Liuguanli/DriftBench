@@ -54,7 +54,7 @@ Goal: convert the current vision-style manuscript into a true demo paper centere
 
 Current status:
 - The main vision content is already drafted in Overleaf at:
-  `/Users/guanlil1/Dropbox/应用/Overleaf/Driftbench-demo`
+  `Overleaf project: Driftbench-demo`
 - The current draft is still primarily "vision", not yet "demo-product evidence".
 
 Required transition:
