@@ -1,5 +1,5 @@
 # Publishes DriftBench to PyPI on version tags (v*), but only when the tagged
-# commit is reachable from `main` or a `release-*` branch.
+# commit is reachable from `main` or a `release-*` / `release/**` branch.
 #
 # This workflow uses PyPI **trusted publishing** (OIDC). One-time setup on PyPI:
 #
@@ -37,7 +37,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure tag commit is on main or release-*
+      - name: Ensure tag commit is on main or release-* / release/**
         id: guard
         shell: bash
         run: |
@@ -64,12 +64,23 @@ jobs:
             done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/release-*')
           fi
 
+          if [ "$allowed" = false ]; then
+            while IFS= read -r ref; do
+              [ -z "$ref" ] && continue
+              if git merge-base --is-ancestor "$sha" "$ref"; then
+                allowed=true
+                matched_ref="$ref"
+                break
+              fi
+            done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/release/*')
+          fi
+
           echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
           echo "matched_ref=$matched_ref" >> "$GITHUB_OUTPUT"
           echo "matched_ref=$matched_ref"
 
           if [ "$allowed" != true ]; then
-            echo "::notice::Skipping publish: tag commit is not on main/release-*."
+            echo "::notice::Skipping publish: tag commit is not on main/release-* or release/**."
           fi
 
   build:

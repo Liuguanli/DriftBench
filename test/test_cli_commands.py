@@ -61,7 +61,62 @@ class DriftbenchCLITests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, msg=proc.stderr)
             self.assertTrue(out_path.exists())
 
+    def test_trace_to_spec_with_output_flag_success(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = Path(tmpdir) / "generated_from_trace_flag.yaml"
+            proc = run_cli("trace-to-spec", TRACE_INPUT, "--output", str(out_path))
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertTrue(out_path.exists())
+
+    def test_init_agent_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "driftbench-agent"
+            proc = run_cli("init-agent", "--output", str(out_dir), "--dry-run")
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertIn("[DRY-RUN]", proc.stdout)
+            self.assertIn("AGENTS.md", proc.stdout)
+            self.assertFalse(out_dir.exists())
+
+    def test_init_agent_generates_expected_structure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "driftbench-agent"
+            proc = run_cli("init-agent", "--output", str(out_dir))
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            self.assertTrue((out_dir / "AGENTS.md").exists())
+            self.assertTrue((out_dir / "README.md").exists())
+            self.assertTrue((out_dir / "skills" / "driftbench" / "SKILL.md").exists())
+            self.assertTrue((out_dir / "references" / "cli-commands.md").exists())
+            self.assertTrue((out_dir / "references" / "spec-guidelines.md").exists())
+            self.assertTrue((out_dir / "examples" / "workload-drift.yaml").exists())
+            self.assertTrue((out_dir / "examples" / "data-drift.yaml").exists())
+
+    def test_init_agent_non_empty_dir_requires_force(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "driftbench-agent"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / "custom.txt").write_text("hello", encoding="utf-8")
+            proc = run_cli("init-agent", "--output", str(out_dir))
+            self.assertEqual(proc.returncode, 3)
+            self.assertIn("Output directory already exists and is not empty", proc.stderr)
+
+    def test_init_agent_force_overwrites_managed_files_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "driftbench-agent"
+            proc1 = run_cli("init-agent", "--output", str(out_dir))
+            self.assertEqual(proc1.returncode, 0, msg=proc1.stderr)
+
+            agents_path = out_dir / "AGENTS.md"
+            agents_path.write_text("modified", encoding="utf-8")
+            custom_path = out_dir / "custom.txt"
+            custom_path.write_text("keep-me", encoding="utf-8")
+
+            proc2 = run_cli("init-agent", "--output", str(out_dir), "--force")
+            self.assertEqual(proc2.returncode, 0, msg=proc2.stderr)
+
+            agents_text = agents_path.read_text(encoding="utf-8")
+            self.assertIn("DriftBench-specific guidance for coding agents", agents_text)
+            self.assertEqual(custom_path.read_text(encoding="utf-8"), "keep-me")
+
 
 if __name__ == "__main__":
     unittest.main()
-

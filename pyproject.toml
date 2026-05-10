@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 # PyPI distribution name. The Python import name is still `driftbench`
 # (analogous to scikit-learn / sklearn).
 name = "driftbench-db"
-version = "0.1.0b3"
+version = "0.1.0b4"
 description = "Drift-aware database benchmarking — generate, share, and replay data and workload drift via DriftSpec."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -52,6 +52,7 @@ Documentation = "https://github.com/Liuguanli/DriftBench/tree/main/docs"
 
 [project.scripts]
 driftbench = "driftbench.cli:main"
+driftbench-db = "driftbench.cli:main"
 driftbench-service = "driftbench_service.server:main"
 driftbench-mcp = "driftbench_mcp.server:main"
 
@@ -65,8 +66,11 @@ exclude = [
     "**/.ipynb_checkpoints",
     "driftbench/notebooks",
     "driftbench/notebooks/**",
-    "driftbench/data",
-    "driftbench/data/**",
+    "driftbench/data/**/*.csv",
+    "driftbench/data/**/*.json",
+    "driftbench/data/**/*.parquet",
+    "driftbench/data/**/*.png",
+    "driftbench/data/**/*.pdf",
     "driftbench/output",
     "driftbench/output/**",
     "driftbench/config",

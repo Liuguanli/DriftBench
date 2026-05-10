@@ -2,6 +2,7 @@
 TODO.md
 PLAN.md
 COMMANDS.md
+docs/driftbench_upgrade_todo.md
 
 # Ignore Python bytecode cache
 __pycache__/
@@ -19,7 +20,10 @@ build/
 
 # Ignore output logs and generated files
 # autoquerybench/output/
-driftbench/data/
+driftbench/data/*
+!driftbench/data/*.py
+!driftbench/data/resources/
+!driftbench/data/resources/**
 *.log
 # *.csv
 # *.json
@@ -61,3 +65,5 @@ lecarb/estimator/.DS_Store
 !autoquerybench/config/templates/
 
 existing_benchmarks
+
+.codex/

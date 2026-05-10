@@ -14,6 +14,9 @@ This README is intentionally focused on **how to use the latest DriftBench**.
 
 - Production site: [driftbench.com](https://driftbench.com)
 - Frontend source repo: [driftbench-web](https://github.com/Liuguanli/driftbench-web)
+- Release branch note: pushes to `release/**` with user-facing DriftBench changes auto-dispatch a docs update event to `driftbench-web`.
+- Dispatch verification note (2026-05-10): this README line is used to validate cross-repo release notifications.
+- Dispatch verification note (retry): confirms the receiver workflow on driftbench-web is active after workflow fix.
 
 ---
 
@@ -171,6 +174,72 @@ from driftbench import run_spec, trace_to_spec, get_schema_extractor
 run_spec("driftspec/examples/demo_data_single.yaml")
 trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated/from_trace.yaml")
 ```
+
+## Benchmark Objects (`driftbench.data.xxx`)
+
+Use benchmark-specific objects to generate artifacts into a user-chosen directory.
+
+### 1) Choose an output directory
+
+`output_dir` is required. DriftBench will write files only under this directory.
+
+### 2) Generate data and queries
+
+```python
+from pathlib import Path
+from driftbench.data.tpch import data as tpch_data, queries as tpch_queries
+from driftbench.data.ycsb import data as ycsb_data, queries as ycsb_queries
+from driftbench.data.tpcds import data as tpcds_data, queries as tpcds_queries
+from driftbench.data.dsb import data as dsb_data, queries as dsb_queries
+
+out = Path("./artifacts")
+
+tpch_data(scale_factor=1).generate(output_dir=out)
+tpch_queries(query_ids=[1, 3, 5], queries_per_template=2, mode="qgen").generate(output_dir=out)
+
+# For very large scale factors, generate a server-side execution plan only.
+tpch_data(scale_factor=1000, mode="plan").generate(output_dir=out)
+
+ycsb_data(scale_factor=1).generate(output_dir=out)
+ycsb_queries(workload="B").generate(output_dir=out)
+
+tpcds_data(scale_factor=10).generate(output_dir=out)
+tpcds_queries().generate(output_dir=out)
+
+dsb_data(scale_factor=10).generate(output_dir=out)
+dsb_queries().generate(output_dir=out)
+```
+
+### 3) Find generated files
+
+Artifacts are written to:
+
+```text
+<output_dir>/
+  tpch/
+    data/
+    queries/
+  ycsb/
+    data/
+    queries/
+  tpcds/
+    data/
+    queries/
+  dsb/
+    data/
+    queries/
+```
+
+Each generation creates a manifest (`*_manifest.json`) in its folder.  
+Use the manifest `files` field to see exactly which files were generated.
+
+### 4) Programmatic path retrieval
+
+`generate()` returns a `GenerationResult` with:
+- `result.files`: generated file paths
+- `result.metadata`: manifest path
+
+This is the recommended way to chain into downstream benchmarking scripts.
 
 ---
 
