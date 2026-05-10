@@ -248,6 +248,70 @@ class DriftbenchCLITests(unittest.TestCase):
             self.assertEqual(proc.returncode, 3)
             self.assertIn("[VALIDATION ERROR]", proc.stderr)
 
+    def test_bootstrap_dataset_from_preset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "bootstrap"
+            proc = run_cli(
+                "bootstrap",
+                "dataset",
+                "--source",
+                "census_original",
+                "--output-dir",
+                str(out_dir),
+                "--json",
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            payload = json.loads(proc.stdout)
+            self.assertEqual(payload["command"], "bootstrap dataset")
+            self.assertEqual(payload["source_kind"], "preset")
+            self.assertTrue(Path(payload["dataset_path"]).exists())
+            self.assertTrue(Path(payload["schema_path"]).exists())
+
+    def test_bootstrap_dataset_from_local_with_checksum(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            src = tmp / "input.csv"
+            src.write_text("a,b\n1,2\n3,4\n", encoding="utf-8")
+            out_dir = tmp / "out"
+
+            import hashlib
+
+            digest = hashlib.sha256(src.read_bytes()).hexdigest()
+            proc = run_cli(
+                "bootstrap",
+                "dataset",
+                "--source",
+                str(src),
+                "--output-dir",
+                str(out_dir),
+                "--checksum",
+                f"sha256:{digest}",
+                "--json",
+            )
+            self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+            payload = json.loads(proc.stdout)
+            self.assertEqual(payload["source_kind"], "local")
+            self.assertEqual(payload["sha256"], digest)
+
+    def test_bootstrap_dataset_checksum_mismatch_returns_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            src = tmp / "input.csv"
+            src.write_text("x,y\n10,20\n", encoding="utf-8")
+            out_dir = tmp / "out"
+            proc = run_cli(
+                "bootstrap",
+                "dataset",
+                "--source",
+                str(src),
+                "--output-dir",
+                str(out_dir),
+                "--checksum",
+                "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            )
+            self.assertEqual(proc.returncode, 3)
+            self.assertIn("[VALIDATION ERROR]", proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -96,6 +96,27 @@ python -m driftbench.cli orchestrate \
   --json
 ```
 
+### Bootstrap Dataset (download/copy + checksum + schema extract)
+
+Bootstrap from preset, local path, or URL:
+
+```bash
+python -m driftbench.cli bootstrap dataset \
+  --source census_original \
+  --output-dir output/bootstrap/datasets \
+  --json
+```
+
+With checksum verification:
+
+```bash
+python -m driftbench.cli bootstrap dataset \
+  --source /path/to/my_dataset.csv \
+  --output-dir output/bootstrap/datasets \
+  --checksum sha256:<hex> \
+  --json
+```
+
 ---
 
 ## MCP Quickstart
