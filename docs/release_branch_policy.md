@@ -26,12 +26,17 @@ Example:
    - `release_branch=release/...`
    - run with `dry_run=true` first, then `dry_run=false`
 4. Update version in `pyproject.toml` on release branch if needed.
-5. Build and verify artifacts locally:
+5. Update `CHANGELOG.md` with a new section for the exact tag version:
+   - heading format: `## [vX.Y.ZbN] - YYYY-MM-DD`
+   - include at least:
+     - `### Services`
+     - `### Added` / `### Changed` (as applicable)
+6. Build and verify artifacts locally:
    - `python3 -m build`
-6. Verify long description includes tutorials:
+7. Verify long description includes tutorials:
    - inspect `dist/*.whl` metadata and `dist/*.tar.gz` PKG-INFO
-7. Commit release prep and push to the same release branch.
-8. Tag from that release branch head:
+8. Commit release prep and push to the same release branch.
+9. Tag from that release branch head:
    - `git tag vX.Y.ZbN`
    - `git push origin vX.Y.ZbN`
 

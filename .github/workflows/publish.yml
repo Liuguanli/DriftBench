@@ -91,6 +91,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate changelog entry for release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          python - <<'PY'
+          import pathlib
+          import re
+          import sys
+          import os
+
+          tag = os.environ["TAG"]
+          p = pathlib.Path("CHANGELOG.md")
+          if not p.exists():
+            print("CHANGELOG.md is required for publish.")
+            sys.exit(1)
+
+          text = p.read_text(encoding="utf-8")
+          heading = f"## [{tag}]"
+          idx = text.find(heading)
+          if idx < 0:
+            print(f"Missing changelog heading for tag: {heading}")
+            sys.exit(1)
+
+          rest = text[idx + len(heading):]
+          next_idx = rest.find("\n## [")
+          section = rest if next_idx < 0 else rest[:next_idx]
+
+          if "### Services" not in section:
+            print(f"Changelog section for {tag} must include '### Services'.")
+            sys.exit(1)
+
+          if ("### Added" not in section) and ("### Changed" not in section) and ("### Fixed" not in section):
+            print(f"Changelog section for {tag} must include at least one of: ### Added / ### Changed / ### Fixed.")
+            sys.exit(1)
+
+          print(f"Changelog validation passed for {tag}.")
+          PY
+        env:
+          TAG: ${{ github.ref_name }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"

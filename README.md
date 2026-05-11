@@ -8,6 +8,9 @@ DriftBench is a toolkit for generating and replaying **data drift** and **worklo
 
 This README is intentionally focused on **how to use the latest DriftBench**.
 
+Version-by-version updates and service coverage:
+- [CHANGELOG.md](./CHANGELOG.md)
+
 ---
 
 ## Web Frontend
