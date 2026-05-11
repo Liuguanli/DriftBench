@@ -4,27 +4,34 @@ Starting from `v0.1.0b3`, each PyPI version is prepared on a dedicated release b
 
 ## Naming
 
-- Branch: `release-vX.Y.Z` or `release-vX.Y.ZbN`
+- Branch: `release/vX.Y.Z`, `release/vX.Y.ZbN`, `release-vX.Y.Z`, or `release-vX.Y.ZbN`
 - Tag: `vX.Y.Z` or `vX.Y.ZbN`
 
 Example:
 
-- Branch: `release-v0.1.0b3`
+- Branch: `release/v0.1.0b3`
 - Tag: `v0.1.0b3`
 
 ## Workflow
 
-1. Create release branch from the stable tip:
-   - `git checkout -b release-vX.Y.ZbN`
-2. Update version in `pyproject.toml`.
-3. Build and verify artifacts locally:
+1. Finish development on `dev/**`.
+2. Wait for source-branch CI to be green:
+   - `CI`
+   - `CLI Contract`
+   - `Schema and Spec Validation`
+   - `Content Safety Check`
+3. Create release branch using the gated workflow:
+   - GitHub Actions -> `Prepare Release Branch`
+   - `source_dev_branch=dev/...`
+   - `release_branch=release/...`
+   - run with `dry_run=true` first, then `dry_run=false`
+4. Update version in `pyproject.toml` on release branch if needed.
+5. Build and verify artifacts locally:
    - `python3 -m build`
-4. Verify long description includes tutorials:
+6. Verify long description includes tutorials:
    - inspect `dist/*.whl` metadata and `dist/*.tar.gz` PKG-INFO
-5. Commit release prep.
-6. Push branch:
-   - `git push -u origin release-vX.Y.ZbN`
-7. Tag from that branch head:
+7. Commit release prep and push to the same release branch.
+8. Tag from that release branch head:
    - `git tag vX.Y.ZbN`
    - `git push origin vX.Y.ZbN`
 

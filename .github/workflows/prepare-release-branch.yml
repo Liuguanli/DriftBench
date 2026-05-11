@@ -1,0 +1,136 @@
+name: Prepare Release Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_dev_branch:
+        description: "Source dev branch (must be dev/**)"
+        required: true
+        default: "dev/v0.1.0b5-agent-collab"
+        type: string
+      release_branch:
+        description: "Release branch to create (must be release/**)"
+        required: true
+        default: "release/v0.1.0b5"
+        type: string
+      dry_run:
+        description: "Validate gates only; do not create branch"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  gate-and-create:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_DEV_BRANCH: ${{ inputs.source_dev_branch }}
+      RELEASE_BRANCH: ${{ inputs.release_branch }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate branch naming contract
+        run: |
+          set -euo pipefail
+          case "${SOURCE_DEV_BRANCH}" in
+            dev/*) ;;
+            *)
+              echo "source_dev_branch must match dev/**"
+              exit 1
+              ;;
+          esac
+          case "${RELEASE_BRANCH}" in
+            release/*) ;;
+            *)
+              echo "release_branch must match release/**"
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify required CI checks on source dev head
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SOURCE_DEV_BRANCH}" --jq '.sha')"
+          echo "source_sha=${SOURCE_SHA}"
+          export SOURCE_SHA
+
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs" \
+            -f branch="${SOURCE_DEV_BRANCH}" \
+            -f event=push \
+            -f per_page=100 > /tmp/workflow-runs.json
+
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          source_sha = os.environ["SOURCE_SHA"]
+          required = [
+              "CI",
+              "CLI Contract",
+              "Schema and Spec Validation",
+              "Content Safety Check",
+          ]
+
+          with open("/tmp/workflow-runs.json", "r", encoding="utf-8") as f:
+              payload = json.load(f)
+
+          runs = payload.get("workflow_runs", [])
+          by_name = {}
+          for run in runs:
+              if run.get("head_sha") != source_sha:
+                  continue
+              name = run.get("name")
+              if name in required and name not in by_name:
+                  by_name[name] = run
+
+          missing = []
+          bad = []
+          for name in required:
+              run = by_name.get(name)
+              if not run:
+                  missing.append(name)
+                  continue
+              status = run.get("status")
+              conclusion = run.get("conclusion")
+              if status != "completed" or conclusion != "success":
+                  bad.append((name, status, conclusion, run.get("html_url")))
+
+          if missing or bad:
+              if missing:
+                  print("Missing required runs on source head:")
+                  for name in missing:
+                      print(f"  - {name}")
+              if bad:
+                  print("Non-success required runs on source head:")
+                  for name, status, conclusion, url in bad:
+                      print(f"  - {name}: status={status} conclusion={conclusion} url={url}")
+              sys.exit(1)
+
+          print("All required source dev checks are green.")
+          PY
+
+      - name: Create release branch from source dev head
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          git fetch origin "${SOURCE_DEV_BRANCH}":"refs/remotes/origin/${SOURCE_DEV_BRANCH}"
+          if git ls-remote --exit-code --heads origin "${RELEASE_BRANCH}" >/dev/null 2>&1; then
+            echo "Release branch already exists: ${RELEASE_BRANCH}"
+            exit 1
+          fi
+          git push origin "refs/remotes/origin/${SOURCE_DEV_BRANCH}:refs/heads/${RELEASE_BRANCH}"
+          echo "Created release branch: ${RELEASE_BRANCH}"
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "Dry run completed. Gate checks passed."
+          echo "Would create: ${RELEASE_BRANCH} from ${SOURCE_DEV_BRANCH}"
