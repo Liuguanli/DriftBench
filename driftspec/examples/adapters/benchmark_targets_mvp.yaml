@@ -1,0 +1,22 @@
+targets:
+  - name: tpch-local
+    workdir: ../../../existing_benchmarks/TPC-H V3.0.1
+    repo_url: https://github.com/example/tpch-benchmark
+    ref: main
+    setup_command: echo "[setup] tpch-local"
+    run_command: echo "[run] tpch-local with {spec_path}"
+    output_globs:
+      - "**/*.sql"
+    env:
+      DRIFTBENCH_TARGET: tpch-local
+
+  - name: redbench-trace-local
+    workdir: ../../../existing_benchmarks/RedBench
+    repo_url: https://github.com/example/redbench
+    ref: main
+    run_command: echo "[run] redbench-trace-local with {spec_path}"
+    output_globs:
+      - "**/*.json"
+    env:
+      DRIFTBENCH_TARGET: redbench-trace-local
+

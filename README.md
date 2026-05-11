@@ -20,6 +20,17 @@ This README is intentionally focused on **how to use the latest DriftBench**.
 
 ---
 
+## Release Reproducibility
+
+- Workflow: `.github/workflows/reproducible-drift-runs.yml`
+- Trigger manually from GitHub Actions (`workflow_dispatch`) or call from other workflows (`workflow_call`).
+- Default run executes and validates:
+  - `driftspec/examples/demo_data_single.yaml`
+  - `driftspec/examples/workload_census.yaml`
+- Artifacts are uploaded as `driftbench-reproducible-run-artifacts`.
+
+---
+
 ## Install (Latest)
 
 ### From PyPI (recommended)
@@ -71,6 +82,50 @@ python -m driftbench.cli trace-to-spec \
   driftspec/trace_inputs/trace_data_mock.csv \
   driftspec/generated/from_trace.yaml \
   --trace-type data
+```
+
+### Orchestrate Across Benchmark Targets (MVP)
+
+Use one DriftSpec across multiple benchmark targets defined in `benchmark_target.yaml`.
+
+```bash
+python -m driftbench.cli orchestrate \
+  --spec driftspec/examples/demo_data_single.yaml \
+  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
+  --manifest-out output/orchestrate_manifest.json \
+  --json
+```
+
+Execute setup/run commands for each target:
+
+```bash
+python -m driftbench.cli orchestrate \
+  --spec driftspec/examples/demo_data_single.yaml \
+  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
+  --manifest-out output/orchestrate_manifest.json \
+  --execute \
+  --json
+```
+
+### Bootstrap Dataset (download/copy + checksum + schema extract)
+
+Bootstrap from preset, local path, or URL:
+
+```bash
+python -m driftbench.cli bootstrap dataset \
+  --source census_original \
+  --output-dir output/bootstrap/datasets \
+  --json
+```
+
+With checksum verification:
+
+```bash
+python -m driftbench.cli bootstrap dataset \
+  --source /path/to/my_dataset.csv \
+  --output-dir output/bootstrap/datasets \
+  --checksum sha256:<hex> \
+  --json
 ```
 
 ---

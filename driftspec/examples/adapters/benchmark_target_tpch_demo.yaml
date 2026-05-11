@@ -1,0 +1,13 @@
+targets:
+  - name: tpch-adapter-demo
+    workdir: ../../../driftbench/data/resources/tpch
+    repo_url: https://github.com/example/tpch-benchmark
+    ref: main
+    setup_command: echo "[setup] tpch-adapter-demo"
+    run_command: echo "[run] tpch-adapter-demo spec={spec_path}"
+    output_globs:
+      - "queries/*.sql"
+      - "dists.dss"
+    env:
+      DRIFTBENCH_ADAPTER: tpch
+

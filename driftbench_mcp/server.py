@@ -18,6 +18,13 @@ from driftbench import (
     run_spec_and_return_summary,
     trace_to_spec,
 )
+from driftbench.public_spec_catalog import (
+    CATALOG_VERSION,
+    file_sha256,
+    parse_spec_version,
+    read_catalog,
+    write_catalog,
+)
 
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION = "2024-11-05"
@@ -88,29 +95,19 @@ def _slugify(raw: str) -> str:
 
 def _read_catalog() -> Dict[str, Any]:
     path = _catalog_path()
-    if not path.exists():
-        return {"version": 1, "updated_at": _now_iso(), "specs": []}
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = read_catalog(path, _now_iso)
     except Exception as exc:
         raise ToolExecutionError(f"failed to read catalog: {path}") from exc
-    if not isinstance(payload, dict):
-        raise ToolExecutionError("catalog format invalid: expected object")
-    specs = payload.get("specs")
-    if not isinstance(specs, list):
-        raise ToolExecutionError("catalog format invalid: 'specs' must be a list")
-    payload.setdefault("version", 1)
-    payload.setdefault("updated_at", _now_iso())
     return payload
 
 
 def _write_catalog(payload: Dict[str, Any]) -> None:
     path = _catalog_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload["updated_at"] = _now_iso()
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
+    try:
+        write_catalog(path, payload, _now_iso)
+    except Exception as exc:
+        raise ToolExecutionError(f"failed to write catalog: {path}") from exc
 
 
 def _find_catalog_entry(catalog: Dict[str, Any], spec_id: str) -> Dict[str, Any] | None:
@@ -515,6 +512,9 @@ def _tool_save_spec(arguments: Dict[str, Any]) -> Dict[str, Any]:
             raise ToolExecutionError(f"catalog entry already exists for id: {spec_id}")
         created_at = str(existing.get("created_at") or created_at)
 
+    spec_version = parse_spec_version(spec.get("spec_version"), default=1)
+    content_hash = file_sha256(target_path)
+
     entry = {
         "id": spec_id,
         "title": title,
@@ -522,11 +522,16 @@ def _tool_save_spec(arguments: Dict[str, Any]) -> Dict[str, Any]:
         "tags": tags,
         "owner": owner,
         "pattern_id": str(spec.get("pattern_id", "")),
+        "spec_version": spec_version,
         "type": type_info,
         "source_path": _as_rel(spec_path),
         "shared_path": _as_rel(target_path),
         "created_at": created_at,
         "updated_at": _now_iso(),
+        "metadata": {
+            "content_sha256": content_hash,
+            "saved_with_mcp_version": SERVER_VERSION,
+        },
     }
 
     if existing:
@@ -572,7 +577,12 @@ def _tool_list_public_specs(arguments: Dict[str, Any]) -> Dict[str, Any]:
         specs = specs[:limit]
     else:
         specs = []
-    return {"ok": True, "count": len(specs), "specs": specs}
+    return {
+        "ok": True,
+        "catalog_version": catalog.get("version", CATALOG_VERSION),
+        "count": len(specs),
+        "specs": specs,
+    }
 
 
 def _tool_import_spec_and_run(arguments: Dict[str, Any]) -> Dict[str, Any]:

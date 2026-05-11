@@ -1,0 +1,13 @@
+targets:
+  - name: trace-adapter-demo
+    workdir: ../../../driftspec/trace_inputs
+    repo_url: https://github.com/example/redbench-traces
+    ref: main
+    setup_command: echo "[setup] trace-adapter-demo"
+    run_command: echo "[run] trace-adapter-demo spec={spec_path}"
+    output_globs:
+      - "*.csv"
+      - "*.json"
+    env:
+      DRIFTBENCH_ADAPTER: trace
+
