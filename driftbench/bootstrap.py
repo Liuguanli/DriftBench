@@ -28,11 +28,34 @@ class DatasetBootstrapResult:
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_PRESET_DATASETS = {
-    "census_original": _REPO_ROOT / "driftbench" / "data" / "census_original.csv",
-    "sample": _REPO_ROOT / "driftbench" / "data" / "sample.csv",
-    "sample_rich": _REPO_ROOT / "driftbench" / "data" / "sample_rich.csv",
+_PRESET_DATASET_CANDIDATES = {
+    # Prefer tracked repository fixtures under data/ for CI/source builds;
+    # fall back to package-local driftbench/data/ for pip-style layouts.
+    "census_original": [
+        _REPO_ROOT / "data" / "census_original.csv",
+        _REPO_ROOT / "driftbench" / "data" / "census_original.csv",
+    ],
+    "sample": [
+        _REPO_ROOT / "data" / "sample.csv",
+        _REPO_ROOT / "driftbench" / "data" / "sample.csv",
+    ],
+    "sample_rich": [
+        _REPO_ROOT / "data" / "sample_rich.csv",
+        _REPO_ROOT / "driftbench" / "data" / "sample_rich.csv",
+    ],
 }
+
+
+def _resolve_preset_source_path(preset_name: str) -> Path:
+    candidates = _PRESET_DATASET_CANDIDATES.get(preset_name, [])
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    searched = ", ".join(str(p) for p in candidates) or "<none>"
+    raise BootstrapError(
+        f"Preset dataset missing from repository/package for '{preset_name}'. "
+        f"Searched: {searched}"
+    )
 
 
 def _sha256_file(path: Path) -> str:
@@ -57,7 +80,7 @@ def _normalize_checksum(checksum: str) -> str:
 
 
 def _detect_source_kind(source: str) -> str:
-    if source in _PRESET_DATASETS:
+    if source in _PRESET_DATASET_CANDIDATES:
         return "preset"
     parsed = urlparse(source)
     if parsed.scheme in {"http", "https"}:
@@ -72,7 +95,7 @@ def _resolve_dest_file(output_dir: Path, source: str, source_kind: str, filename
             raise BootstrapError("--filename cannot be empty.")
         return output_dir / name
     if source_kind == "preset":
-        return output_dir / Path(_PRESET_DATASETS[source]).name
+        return output_dir / _resolve_preset_source_path(source).name
     if source_kind == "url":
         parsed = urlparse(source)
         fallback = "dataset.csv"
@@ -84,9 +107,7 @@ def _resolve_dest_file(output_dir: Path, source: str, source_kind: str, filename
 def _copy_or_download_dataset(source: str, source_kind: str, dst: Path) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     if source_kind == "preset":
-        src = _PRESET_DATASETS[source]
-        if not src.exists():
-            raise BootstrapError(f"Preset dataset missing from repository: {src}")
+        src = _resolve_preset_source_path(source)
         shutil.copy2(src, dst)
         return
     if source_kind == "local":
@@ -165,4 +186,3 @@ def bootstrap_dataset(
         sample_size=sample_size,
         schema_summary=summary,
     )
-
