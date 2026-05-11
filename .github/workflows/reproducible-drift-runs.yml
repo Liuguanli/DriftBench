@@ -1,0 +1,91 @@
+name: Reproducible Drift Runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec_path:
+        description: "Primary DriftSpec path"
+        required: true
+        default: "driftspec/examples/demo_data_single.yaml"
+        type: string
+      second_spec_path:
+        description: "Secondary DriftSpec path"
+        required: true
+        default: "driftspec/examples/workload_census.yaml"
+        type: string
+      python_version:
+        description: "Python version"
+        required: true
+        default: "3.11"
+        type: string
+  workflow_call:
+    inputs:
+      spec_path:
+        required: false
+        default: "driftspec/examples/demo_data_single.yaml"
+        type: string
+      second_spec_path:
+        required: false
+        default: "driftspec/examples/workload_census.yaml"
+        type: string
+      python_version:
+        required: false
+        default: "3.11"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  reproducible-run:
+    name: Reproducible run (${{ inputs.python_version || '3.11' }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version || '3.11' }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install DriftBench
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Validate specs
+        run: |
+          SPEC_A="${{ inputs.spec_path || 'driftspec/examples/demo_data_single.yaml' }}"
+          SPEC_B="${{ inputs.second_spec_path || 'driftspec/examples/workload_census.yaml' }}"
+          python -m driftbench.cli validate-spec "${SPEC_A}" --json
+          python -m driftbench.cli validate-spec "${SPEC_B}" --json
+
+      - name: Dry-run specs
+        run: |
+          SPEC_A="${{ inputs.spec_path || 'driftspec/examples/demo_data_single.yaml' }}"
+          SPEC_B="${{ inputs.second_spec_path || 'driftspec/examples/workload_census.yaml' }}"
+          python -m driftbench.cli dry-run "${SPEC_A}" --json
+          python -m driftbench.cli dry-run "${SPEC_B}" --json
+
+      - name: Execute specs
+        run: |
+          SPEC_A="${{ inputs.spec_path || 'driftspec/examples/demo_data_single.yaml' }}"
+          SPEC_B="${{ inputs.second_spec_path || 'driftspec/examples/workload_census.yaml' }}"
+          python -m driftbench.cli run-yaml "${SPEC_A}"
+          python -m driftbench.cli run-yaml "${SPEC_B}"
+
+      - name: Snapshot outputs
+        run: |
+          mkdir -p output/release-evidence
+          python -m driftbench.cli list-outputs --root output --glob "**/*" --limit 400 --json > output/release-evidence/list-outputs.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: driftbench-reproducible-run-artifacts
+          path: |
+            output/**

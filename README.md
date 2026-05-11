@@ -20,6 +20,17 @@ This README is intentionally focused on **how to use the latest DriftBench**.
 
 ---
 
+## Release Reproducibility
+
+- Workflow: `.github/workflows/reproducible-drift-runs.yml`
+- Trigger manually from GitHub Actions (`workflow_dispatch`) or call from other workflows (`workflow_call`).
+- Default run executes and validates:
+  - `driftspec/examples/demo_data_single.yaml`
+  - `driftspec/examples/workload_census.yaml`
+- Artifacts are uploaded as `driftbench-reproducible-run-artifacts`.
+
+---
+
 ## Install (Latest)
 
 ### From PyPI (recommended)
