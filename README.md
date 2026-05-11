@@ -11,6 +11,64 @@ This README is intentionally focused on **how to use the latest DriftBench**.
 Version-by-version updates and service coverage:
 - [CHANGELOG.md](./CHANGELOG.md)
 
+## Who Is This For?
+
+DriftBench is designed for three common user roles.
+
+### 1) Researcher (Database / Systems / Benchmarking)
+
+Use DriftBench to create reproducible drift scenarios for experiments and ablations.
+
+Typical workflow:
+
+```bash
+python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
+```
+
+Best when you need:
+- controlled data/workload shift factors,
+- repeatable artifact generation,
+- comparable experiment setup across versions.
+
+### 2) Industry Engineer (Database Vendor / Performance Team)
+
+Use DriftBench to stress-test workloads and data evolution against engine behavior.
+
+Typical workflow:
+
+```bash
+python -m driftbench.cli orchestrate \
+  --spec driftspec/examples/demo_data_single.yaml \
+  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
+  --manifest-out output/orchestrate_manifest.json \
+  --execute \
+  --json
+```
+
+Best when you need:
+- multi-target execution planning,
+- repeatable benchmark runs in CI/release validation,
+- structured output manifests for regression analysis.
+
+### 3) New User (No DriftBench Background)
+
+Use the built-in scaffold and examples to start from a known-good path.
+
+Typical workflow:
+
+```bash
+driftbench-db init-agent
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
+python -m driftbench.cli list-outputs --root output --glob "**/*" --limit 30 --json
+```
+
+Best when you need:
+- zero-to-first-run onboarding,
+- guided agent-assisted usage (Codex/Claude Code),
+- concrete output files you can inspect immediately.
+
 ---
 
 ## Web Frontend
