@@ -9,21 +9,28 @@ Format notes:
 ## [Unreleased]
 
 ### Services
-- `CLI`: adds multi-target orchestration (`orchestrate`) and dataset bootstrapping (`bootstrap dataset`).
-- `MCP`: adds public spec catalog metadata/versioning for share/import flows.
-- `CI/Release`: adds reproducible drift-run workflow, dev-branch CI coverage, and release branch gating checks.
+- (No unreleased service changes recorded yet.)
+
+## [v0.1.0b5] - 2026-05-11
+
+### Services
+- `CLI`: multi-target orchestration and dataset bootstrap flows are now part of the release line.
+- `MCP`: public spec catalog now includes version/metadata support for share/import workflows.
+- `CI/Release`: stronger release governance with dev-gate checks and reproducible-run workflow.
+- `Packaging/Docs`: simpler user-facing PyPI description with clearer audience coverage.
 
 ### Added
-- Multi-target benchmark orchestration MVP via `driftbench-db orchestrate`.
+- `driftbench-db orchestrate` MVP for multi-target benchmark execution planning.
 - Adapter demo target configs for TPC-H and trace-style integration.
-- Dataset bootstrap command with checksum and schema extraction.
-- Reproducible drift-run workflow artifact pipeline.
-- Release branch preparation workflow that blocks release creation unless required dev checks are green.
+- `driftbench-db bootstrap dataset` with checksum verification and schema extraction.
+- `Reproducible Drift Runs` workflow for evidence artifact generation.
+- `Prepare Release Branch` workflow to block release creation unless required dev checks are green.
 
 ### Changed
-- Public spec catalog upgraded to metadata-aware versioned format.
+- Public spec catalog upgraded to metadata-aware, versioned format.
 - Bootstrap preset dataset resolution made CI-safe (tracked `data/` first, package fallback second).
-- Schema-spec validation workflow now skips `driftspec/examples/adapters/*` (non-DriftSpec files).
+- Schema-spec validation workflow now skips `driftspec/examples/adapters/*` (non-DriftSpec YAMLs).
+- PyPI short description rewritten to be clearer for researcher/industry/newcomer audiences.
 
 ## [v0.1.0b4] - 2026-05-10
 

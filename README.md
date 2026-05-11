@@ -11,6 +11,11 @@ This README is intentionally focused on **how to use the latest DriftBench**.
 Version-by-version updates and service coverage:
 - [CHANGELOG.md](./CHANGELOG.md)
 
+Who typically uses DriftBench:
+- `Researcher`: design reproducible drift experiments and ablations.
+- `Database Vendor / Performance Team`: run drift regression checks across targets before release.
+- `New User`: start from validated examples and get first outputs quickly.
+
 ---
 
 ## Web Frontend
