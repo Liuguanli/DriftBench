@@ -25,6 +25,15 @@ def run_cli(*args: str) -> subprocess.CompletedProcess:
 
 
 class DriftbenchCLITests(unittest.TestCase):
+    def test_help_commands_do_not_emit_scipy_numpy_warning(self) -> None:
+        root_help = run_cli("--help")
+        self.assertEqual(root_help.returncode, 0, msg=root_help.stderr)
+        self.assertNotIn("A NumPy version >=", root_help.stderr)
+
+        validate_help = run_cli("validate-spec", "--help")
+        self.assertEqual(validate_help.returncode, 0, msg=validate_help.stderr)
+        self.assertNotIn("A NumPy version >=", validate_help.stderr)
+
     def test_validate_spec_json_success(self) -> None:
         proc = run_cli("validate-spec", VALID_SPEC, "--json")
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
@@ -55,6 +64,18 @@ class DriftbenchCLITests(unittest.TestCase):
         proc = run_cli("validate-spec", "driftspec/examples/does_not_exist.yaml")
         self.assertEqual(proc.returncode, 3)
         self.assertIn("[VALIDATION ERROR]", proc.stderr)
+
+    def test_validate_spec_invalid_type_shape_returns_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bad_spec = Path(tmpdir) / "invalid_type.yaml"
+            bad_spec.write_text(
+                "type: not_a_mapping\nvariables: {}\n",
+                encoding="utf-8",
+            )
+            proc = run_cli("validate-spec", str(bad_spec), "--json")
+            self.assertEqual(proc.returncode, 3)
+            self.assertIn("[VALIDATION ERROR]", proc.stderr)
+            self.assertIn("Invalid 'type'", proc.stderr)
 
     def test_trace_to_spec_success(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

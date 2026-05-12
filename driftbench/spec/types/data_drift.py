@@ -4,8 +4,6 @@ from typing import Any, Dict
 import re
 from ..registry import register
 from ...core.schema.factory import get_schema_extractor
-from ...core.data.single_table import SingleTableDriftGenerator
-from ...core.data.multi_table import MultiTableDriftGenerator
 import pandas as pd
 
 def _ensure_dir(p: str):
@@ -80,6 +78,8 @@ def _load_filter_modules(modules: Any) -> None:
 
 def _run_single_table(local_path: str, schema: Dict[str, Any], base_table: str,
                       drifts: list[Dict[str, Any]], filter_registry_modules: Any = None) -> None:
+    from ...core.data.single_table import SingleTableDriftGenerator
+
     gen = SingleTableDriftGenerator(local_path, schema, base_table=base_table)
     _load_filter_modules(filter_registry_modules)
     for drift in drifts:
@@ -210,6 +210,8 @@ def handle_data_multi_table(spec: Dict[str, Any]) -> None:
     drift_steps = variables.get("drift_steps")
     relationships = variables.get("relationships")
     if drift_steps:
+        from ...core.data.multi_table import MultiTableDriftGenerator
+
         tables_data: Dict[str, pd.DataFrame] = {}
         output_paths: Dict[str, str] = {}
         table_keys: Dict[str, str] = {}

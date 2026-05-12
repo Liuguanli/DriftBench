@@ -10,8 +10,8 @@ from typing import Any, Dict, Iterable, List, Tuple
 from driftbench.agent_init import init_agent_directory
 from driftbench.bootstrap import BootstrapError, bootstrap_dataset
 from driftbench.orchestrate import TargetConfigError, orchestrate_targets
-import driftbench.spec.types  # ensure handlers registered
 from driftbench.spec.core import (
+    ensure_handlers_loaded,
     get_type_triple,
     load_spec,
     migrate_spec,
@@ -64,6 +64,7 @@ def _validate_and_resolve(spec_path: str) -> Tuple[Dict[str, Any], Tuple[str, st
     spec = load_spec(spec_path)
     spec = migrate_spec(spec)
     validate_spec(spec)
+    ensure_handlers_loaded()
     triple = get_type_triple(spec)
     # Ensure a runnable handler exists for the declared type.
     get_handler(triple)

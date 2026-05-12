@@ -26,6 +26,10 @@ class SpecCoreUnitTests(unittest.TestCase):
             validate_spec({"type": {"family": "data"}})
         with self.assertRaises(ValueError):
             validate_spec({"variables": {}})
+        with self.assertRaises(ValueError):
+            validate_spec({"type": "bad-shape", "variables": {}})
+        with self.assertRaises(ValueError):
+            validate_spec({"type": {"family": "data"}, "variables": []})
         validate_spec({"type": {"family": "data"}, "variables": {}})
 
     def test_get_type_triple(self) -> None:
@@ -53,4 +57,3 @@ class SpecCoreUnitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
