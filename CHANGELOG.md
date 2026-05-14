@@ -9,6 +9,11 @@ Format notes:
 ## [Unreleased]
 
 ### Services
+- (No unreleased service changes recorded yet.)
+
+## [v0.1.0b6] - 2026-05-14
+
+### Services
 - `CLI`: all user-facing commands normalized to `driftbench-db` across docs and examples.
 - `Adapters`: TPCH and TPCDS benchmark adapters hardened with explicit mode contracts and row-count test coverage.
 - `UX`: onboarding friction reduced — clearer PyPI description, persona quick-paths, troubleshooting table, MCP conversation template.
