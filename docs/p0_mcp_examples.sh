@@ -8,8 +8,8 @@ curl -s "${BASE_URL}/api/health"
 echo
 
 echo "[2/5] validate + dry-run (CLI)"
-python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
-python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
+driftbench-db dry-run driftspec/examples/demo_data_single.yaml --json
 
 echo "[3/5] trace-to-spec (service job)"
 TRACE_RESP="$(curl -s -X POST "${BASE_URL}/api/trace-to-spec" \
@@ -30,6 +30,6 @@ echo "${RUN_RESP}"
 echo "[5/5] list jobs + list outputs (CLI)"
 curl -s "${BASE_URL}/api/jobs"
 echo
-python -m driftbench.cli list-outputs --root output --glob "**/*.csv" --limit 20 --json
+driftbench-db list-outputs --root output --glob "**/*.csv" --limit 20 --json
 
 echo "[DONE] P0 MCP examples completed."

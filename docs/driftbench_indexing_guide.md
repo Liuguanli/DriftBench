@@ -258,8 +258,8 @@ Save the data drift YAML and workload drift YAML into files (for example,
 then run:
 
 ```bash
-python -m driftbench.cli run-yaml driftspec/examples/base_data.yaml
-python -m driftbench.cli run-yaml driftspec/examples/base_workload.yaml
+driftbench-db run-yaml driftspec/examples/base_data.yaml
+driftbench-db run-yaml driftspec/examples/base_workload.yaml
 ```
 
 ## Summary

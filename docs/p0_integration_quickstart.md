@@ -41,20 +41,20 @@ run_spec("driftspec/generated/trace_data_from_integration.yaml")
 Validation + planning:
 
 ```bash
-python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
-python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
+driftbench-db dry-run driftspec/examples/demo_data_single.yaml --json
 ```
 
 Execution:
 
 ```bash
-python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
+driftbench-db run-yaml driftspec/examples/demo_data_single.yaml
 ```
 
 Trace conversion:
 
 ```bash
-python -m driftbench.cli trace-to-spec \
+driftbench-db trace-to-spec \
   driftspec/trace_inputs/trace_data_mock.csv \
   driftspec/generated/trace_data_cli.yaml \
   --trace-type data
@@ -63,7 +63,7 @@ python -m driftbench.cli trace-to-spec \
 Output inspection:
 
 ```bash
-python -m driftbench.cli list-outputs --root output --glob "**/*.csv" --limit 20 --json
+driftbench-db list-outputs --root output --glob "**/*.csv" --limit 20 --json
 ```
 
 ## 3) Service (API) Integration
