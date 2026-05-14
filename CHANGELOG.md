@@ -9,7 +9,24 @@ Format notes:
 ## [Unreleased]
 
 ### Services
-- (No unreleased service changes recorded yet.)
+- `CLI`: all user-facing commands normalized to `driftbench-db` across docs and examples.
+- `Adapters`: TPCH and TPCDS benchmark adapters hardened with explicit mode contracts and row-count test coverage.
+- `UX`: onboarding friction reduced — clearer PyPI description, persona quick-paths, troubleshooting table, MCP conversation template.
+
+### Added
+- `docs/ux_flow_contract_b5.md`: canonical command order, `init-agent` first-run flow, output location contract, minimal MCP conversation pattern with expected artifact outputs, cross-doc consistency rules.
+- Troubleshooting table in README covering top 6 first-run failure modes.
+- Persona quick-paths (Researcher / Vendor / New User) in README — max 3 commands to first success each.
+- TPCH adapter: `mode="download"` manifest now explicitly documents the 4-table limit and alternatives.
+- Test: `test_tpch_synth_row_counts_scale_with_sf` — asserts all 8 tables present and scaled tables grow with `sf`.
+- Test: `test_tpcds_synth_row_counts_scale_with_sf` — asserts all 4 tables present and row counts grow with `scale_factor`.
+- Test: `test_tpch_download_mode_covers_four_sample_tables_only` — locks 4-table output as an explicit product contract.
+
+### Changed
+- README opening rewritten: explains what drift means in plain language, states input → output expectation before commands.
+- PyPI description rewritten: names supported benchmarks (TPC-H, TPC-DS, YCSB, DSB) and key constraint (no external tools required).
+- Fixed network-dependent `test_tpch_data_auto_mode_fallback_generates_synthetic_tbls`: now mocks `urlopen` to force synth fallback deterministically.
+- `driftbench-db` normalized across all docs: `p0_integration_quickstart.md`, `p0_mcp_command_matrix.md`, `p0_mcp_examples.sh`, `driftbench_indexing_guide.md`.
 
 ## [v0.1.0b5] - 2026-05-11
 

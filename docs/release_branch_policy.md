@@ -36,12 +36,51 @@ Example:
 7. Verify long description includes tutorials:
    - inspect `dist/*.whl` metadata and `dist/*.tar.gz` PKG-INFO
 8. Commit release prep and push to the same release branch.
-9. Tag from that release branch head:
-   - `git tag vX.Y.ZbN`
-   - `git push origin vX.Y.ZbN`
+9. Tag from that release branch head and create a GitHub Release with a description:
+
+```bash
+# Tag and push
+git tag vX.Y.ZbN
+git push origin vX.Y.ZbN
+
+# Create GitHub Release — body pulled from the CHANGELOG section for this version
+gh release create vX.Y.ZbN \
+  --title "DriftBench vX.Y.ZbN" \
+  --notes "$(sed -n '/^## \[vX.Y.ZbN\]/,/^## \[/p' CHANGELOG.md | head -n -1)" \
+  --target release/vX.Y.ZbN
+```
+
+The release description must include (copy from the CHANGELOG section):
+- `### Services` — which surfaces gained new capabilities
+- `### Added` — new commands, APIs, or files
+- `### Changed` — behaviour changes users need to know about
+
+Do not publish a GitHub Release with an empty or placeholder description.
 
 The publish workflow is tag-driven, so tagging from the release branch ensures
 clear provenance for each PyPI version.
+
+## README and CHANGELOG Update Rule
+
+**Every feature addition or behaviour change must update both files before the branch is merged or released.**
+
+- `README.md`: update the relevant section (CLI Quickstart, Benchmark Objects, Troubleshooting, etc.) to reflect the new behaviour.
+- `CHANGELOG.md` `[Unreleased]` section: add a bullet under `### Added` or `### Changed` immediately when the work is committed — not at release time.
+
+When cutting a release branch, promote `[Unreleased]` to a versioned section:
+
+```
+## [vX.Y.ZbN] - YYYY-MM-DD   ← rename this line
+```
+
+Leave a fresh empty `[Unreleased]` block above it for the next cycle:
+
+```markdown
+## [Unreleased]
+
+### Services
+- (No unreleased service changes recorded yet.)
+```
 
 ## Branch Lifecycle
 
