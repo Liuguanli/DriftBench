@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 # (analogous to scikit-learn / sklearn).
 name = "driftbench-db"
 version = "0.1.0b5"
-description = "Database drift benchmarking for researchers, DB vendors, and new users: generate, validate, and run data/workload drift with CLI or MCP."
+description = "Generate reproducible benchmark datasets with controlled data and workload drift (TPC-H, TPC-DS, YCSB, DSB) — CLI and MCP, no external tools required."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10,<3.13"

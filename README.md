@@ -4,27 +4,64 @@
 
 # DriftBench
 
-DriftBench helps researchers and database engineers generate and replay **data drift** and **workload drift** from DriftSpec using **CLI** and **MCP** workflows.
+DriftBench generates benchmark datasets where **data and queries change in controlled ways** — simulating the distribution shifts, skew, and workload changes that real database systems encounter over time. You give it a DriftSpec (a YAML file describing what should change and how much), and it produces data files and SQL workloads ready for benchmarking.
 
-Who this is for:
-- `Researcher`: run reproducible drift experiments and ablations.
-- `Database Vendor / Performance Team`: run drift regression checks across benchmark targets.
-- `New User`: start from validated examples and get first outputs quickly.
+Works via **CLI** (`driftbench-db`) or **MCP** (Claude / Codex assistant). Supports TPC-H, TPC-DS, YCSB, and DSB out of the box — no external data-generation tools required.
+
+**Who this is for:**
+- `Researcher` — reproduce drift scenarios, run ablations, compare estimators under shift.
+- `Database Vendor / Performance Team` — run drift regression checks across benchmark targets.
+- `New User` — start from a working example and see output in under 5 minutes.
 
 ## Start Here (5-minute path)
 
 ```bash
-python3 -m pip install -U driftbench-db
-python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
-python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
-python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
-python -m driftbench.cli list-outputs --root output --glob "**/*" --limit 20 --json
+pip install -U driftbench-db
+driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
+driftbench-db dry-run driftspec/examples/demo_data_single.yaml --json
+driftbench-db run-yaml driftspec/examples/demo_data_single.yaml
+driftbench-db list-outputs --root output --glob "**/*" --limit 20 --json
 ```
+
+**What you get:** a folder under `output/` containing generated data files, a SQL workload, and a manifest (`*_manifest.json`) listing every artifact path.
+
+> **Stuck?** See [Troubleshooting](#troubleshooting) below.
 
 More:
 - Version-by-version updates and service coverage: [CHANGELOG.md](./CHANGELOG.md)
 - Production site: [driftbench.com](https://driftbench.com)
 - Frontend source: [driftbench-web](https://github.com/Liuguanli/driftbench-web)
+
+---
+
+## Quick Paths by Role
+
+### Researcher
+```bash
+pip install -U driftbench-db
+driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
+driftbench-db run-yaml driftspec/examples/demo_data_single.yaml
+```
+→ Outputs drift datasets + workload files ready for estimator evaluation.
+
+### Database Vendor / Performance Team
+```bash
+pip install -U driftbench-db
+driftbench-db orchestrate \
+  --spec driftspec/examples/demo_data_single.yaml \
+  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
+  --manifest-out output/orchestrate_manifest.json --json
+driftbench-db list-outputs --root output --glob "**/*" --limit 30 --json
+```
+→ Runs one DriftSpec across multiple benchmark targets; outputs per-target manifests.
+
+### New User
+```bash
+pip install -U driftbench-db
+driftbench-db --help
+driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
+```
+→ Validates the example spec and shows you what a passing spec looks like before running anything.
 
 ---
 
@@ -60,22 +97,22 @@ Use this flow for most users:
 
 ```bash
 # 1) Validate a DriftSpec
-python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
 
 # 2) Preview execution plan
-python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+driftbench-db dry-run driftspec/examples/demo_data_single.yaml --json
 
 # 3) Execute
-python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
+driftbench-db run-yaml driftspec/examples/demo_data_single.yaml
 
 # 4) Inspect outputs
-python -m driftbench.cli list-outputs --root output --glob "**/*" --limit 30 --json
+driftbench-db list-outputs --root output --glob "**/*" --limit 30 --json
 ```
 
 ### Trace to DriftSpec
 
 ```bash
-python -m driftbench.cli trace-to-spec \
+driftbench-db trace-to-spec \
   driftspec/trace_inputs/trace_data_mock.csv \
   driftspec/generated/from_trace.yaml \
   --trace-type data
@@ -86,7 +123,7 @@ python -m driftbench.cli trace-to-spec \
 Use one DriftSpec across multiple benchmark targets defined in `benchmark_target.yaml`.
 
 ```bash
-python -m driftbench.cli orchestrate \
+driftbench-db orchestrate \
   --spec driftspec/examples/demo_data_single.yaml \
   --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
   --manifest-out output/orchestrate_manifest.json \
@@ -96,7 +133,7 @@ python -m driftbench.cli orchestrate \
 Execute setup/run commands for each target:
 
 ```bash
-python -m driftbench.cli orchestrate \
+driftbench-db orchestrate \
   --spec driftspec/examples/demo_data_single.yaml \
   --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
   --manifest-out output/orchestrate_manifest.json \
@@ -109,7 +146,7 @@ python -m driftbench.cli orchestrate \
 Bootstrap from preset, local path, or URL:
 
 ```bash
-python -m driftbench.cli bootstrap dataset \
+driftbench-db bootstrap dataset \
   --source census_original \
   --output-dir output/bootstrap/datasets \
   --json
@@ -118,7 +155,7 @@ python -m driftbench.cli bootstrap dataset \
 With checksum verification:
 
 ```bash
-python -m driftbench.cli bootstrap dataset \
+driftbench-db bootstrap dataset \
   --source /path/to/my_dataset.csv \
   --output-dir output/bootstrap/datasets \
   --checksum sha256:<hex> \
@@ -319,6 +356,21 @@ This is the recommended way to chain into downstream benchmarking scripts.
 - Integration quickstart: `docs/p0_integration_quickstart.md`
 - MCP examples script: `docs/p0_mcp_examples.sh`
 - Release branch/tag policy: `docs/release_branch_policy.md`
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `command not found: driftbench-db` | Entry point not on PATH | Run `pip install -U driftbench-db` again; check your venv is active |
+| `[VALIDATION ERROR] Spec root must be a YAML mapping` | YAML file is a list or scalar, not a mapping | Open the spec file and ensure the top level is `type: ...` / `variables: ...` |
+| `[VALIDATION ERROR] Invalid 'type': expected mapping` | `type:` field is a plain string, not a nested object | Use `type: {family: ..., category: ..., subtype: ...}` |
+| `[VALIDATION ERROR] No such file or directory` | Wrong spec path | Check the path with `ls driftspec/examples/` and retry |
+| `Missing 'type' in spec` | Spec file is empty or missing the `type` key | Add `type:` block; see `driftspec/examples/demo_data_single.yaml` for reference |
+| Output folder is empty after `run-yaml` | Spec has no enabled variables | Ensure at least one variable in `variables:` is not commented out |
+
+For anything not listed here, run with `--json` to get a machine-readable error, then check `docs/p0_known_issues.md`.
 
 ---
 
