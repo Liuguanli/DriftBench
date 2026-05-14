@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 import json
 from unittest.mock import patch
+from urllib.error import URLError
 
 from driftbench.data import GenerationResult, OutputDirRequiredError
 from driftbench.data.dsb import DSBData, DSBQueries
@@ -69,11 +70,18 @@ class BenchmarkAdapterTests(unittest.TestCase):
             self.assertTrue(any(path.name == "customer.tbl" for path in result.files))
 
     def test_tpch_data_auto_mode_fallback_generates_synthetic_tbls(self) -> None:
+        # Force download to fail so auto-mode takes the synth fallback path.
+        # Without this mock the test is network-dependent and flaky.
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             out = tmp_path / "out"
 
-            result = TPCHData(scale_factor=1, mode="auto").generate(output_dir=out)
+            with patch(
+                "driftbench.data.tpch.urlopen",
+                side_effect=URLError("network unavailable"),
+            ):
+                result = TPCHData(scale_factor=1, mode="auto").generate(output_dir=out)
+
             self._assert_result_is_filesystem_contract(result, out)
             self.assertEqual(len(result.files), 8)
             names = {path.name for path in result.files}
@@ -213,6 +221,82 @@ class BenchmarkAdapterTests(unittest.TestCase):
                 dsb_queries,
             ]:
                 self._assert_result_is_filesystem_contract(result, out)
+
+
+    def test_tpch_synth_row_counts_scale_with_sf(self) -> None:
+        # Synth row counts must increase with sf and cover all 8 TPC-H tables.
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+
+            with patch("driftbench.data.tpch.urlopen", side_effect=URLError("offline")):
+                r1 = TPCHData(scale_factor=1, mode="synth").generate(output_dir=out)
+                r2 = TPCHData(scale_factor=2, mode="synth").generate(output_dir=out)
+
+            def row_count(files: list, name: str) -> int:
+                path = next(f for f in files if f.name == name)
+                return sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+
+            # Fixed tables: region (5) and nation (25) do not scale
+            self.assertEqual(row_count(r1.files, "region.tbl"), 5)
+            self.assertEqual(row_count(r1.files, "nation.tbl"), 25)
+            self.assertEqual(row_count(r2.files, "region.tbl"), 5)
+            self.assertEqual(row_count(r2.files, "nation.tbl"), 25)
+
+            # Scaled tables: sf=2 must produce strictly more rows than sf=1
+            for table in ("supplier.tbl", "customer.tbl", "part.tbl", "orders.tbl", "lineitem.tbl"):
+                self.assertGreater(
+                    row_count(r2.files, table),
+                    row_count(r1.files, table),
+                    msg=f"{table} should have more rows at sf=2 than sf=1",
+                )
+
+    def test_tpcds_synth_row_counts_scale_with_sf(self) -> None:
+        # TPC-DS synth generates 4 tables; row counts must increase with scale.
+        # Use separate output dirs so sf=2 does not overwrite sf=1 (no scale subdir in TPCDS).
+        def csv_row_count(files: list, name: str) -> int:
+            path = next(f for f in files if f.name == name)
+            lines = path.read_text(encoding="utf-8").splitlines()
+            return len(lines) - 1  # subtract header
+
+        with tempfile.TemporaryDirectory() as tmp1, tempfile.TemporaryDirectory() as tmp2:
+            r1 = TPCDSData(scale_factor=1, mode="synth").generate(output_dir=Path(tmp1) / "out")
+            r2 = TPCDSData(scale_factor=2, mode="synth").generate(output_dir=Path(tmp2) / "out")
+
+            # All 4 tables must exist
+            self.assertEqual(
+                {f.name for f in r1.files},
+                {"customer.csv", "item.csv", "date_dim.csv", "store_sales.csv"},
+            )
+
+            # sf=2 strictly more rows than sf=1 for scaled tables
+            for table in ("customer.csv", "item.csv", "store_sales.csv"):
+                self.assertGreater(
+                    csv_row_count(r2.files, table),
+                    csv_row_count(r1.files, table),
+                    msg=f"{table} should have more rows at scale=2 than scale=1",
+                )
+
+    def test_tpch_download_mode_covers_four_sample_tables_only(self) -> None:
+        # download mode fetches only the 4 SAP sample tables, not all 8 TPC-H tables.
+        # This is by design: document the contract so regressions are caught.
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+
+            def fake_urlopen(url: str, timeout: int = 60):
+                return _MockHTTPResponse(b"col1|col2|\n")
+
+            with patch("driftbench.data.tpch.urlopen", side_effect=fake_urlopen):
+                result = TPCHData(scale_factor=1, mode="download").generate(output_dir=out)
+
+            names = {f.name for f in result.files}
+            self.assertEqual(
+                names,
+                {"customer.tbl", "nation.tbl", "region.tbl", "supplier.tbl"},
+            )
+            payload = json.loads(result.metadata.read_text(encoding="utf-8"))
+            self.assertEqual(payload.get("source"), "downloaded_sample_tbl")
+            # Manifest must document the partial-table nature of this mode
+            self.assertIn("4", payload.get("note", "") + str(len(result.files)))
 
 
 if __name__ == "__main__":

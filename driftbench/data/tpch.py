@@ -32,6 +32,9 @@ _DEFAULT_SAMPLE_TPCH_BASE_URL = (
     "https://raw.githubusercontent.com/"
     "SAP-samples/hana-cloud-relational-data-lake-onboarding/main/TPCH"
 )
+# download mode fetches only these 4 tables from the SAP sample repository.
+# This is intentional: the sample source does not provide all 8 TPC-H tables.
+# Use mode="synth" to get all 8 tables locally, or mode="plan" for server-side dbgen.
 _SAMPLE_TBL_FILENAMES = ("customer.tbl", "nation.tbl", "region.tbl", "supplier.tbl")
 
 
@@ -123,7 +126,13 @@ class TPCHData(BenchmarkArtifact):
                     "Synthetic mode creates lightweight TPC-H-like .tbl files for onboarding and API usage tests; "
                     "it is not a standards-compliant TPC-H benchmark dataset."
                     if source_kind.startswith("synthetic")
-                    else "Copied .tbl files from local source."
+                    else (
+                        "Download mode fetches 4 of the 8 TPC-H tables (customer, nation, region, supplier) "
+                        "from a public sample repository. Use mode='synth' for all 8 tables locally, "
+                        "or mode='plan' for full-scale server-side generation."
+                        if "downloaded" in source_kind
+                        else "Copied .tbl files from local source."
+                    )
                 ),
             },
         )
