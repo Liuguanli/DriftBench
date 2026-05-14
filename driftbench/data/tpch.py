@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import csv
 import shutil
+from datetime import date, timedelta
 from typing import Any, Iterable, Literal
+from urllib.error import URLError
+from urllib.request import urlopen
 
 from driftbench.core.workload.tpch_sql_generator import (
     generate_tpch_queries_indexed,
@@ -25,6 +28,12 @@ _REPO_TEMPLATE_DIR = _REPO_TPCH_DIR / "dbgen" / "queries"
 _REPO_DISTS_FILE = _REPO_TPCH_DIR / "dbgen" / "dists.dss"
 _REPO_REF_DATA_DIR = _REPO_TPCH_DIR / "ref_data"
 
+_DEFAULT_SAMPLE_TPCH_BASE_URL = (
+    "https://raw.githubusercontent.com/"
+    "SAP-samples/hana-cloud-relational-data-lake-onboarding/main/TPCH"
+)
+_SAMPLE_TBL_FILENAMES = ("customer.tbl", "nation.tbl", "region.tbl", "supplier.tbl")
+
 
 @dataclass
 class TPCHData(BenchmarkArtifact):
@@ -32,7 +41,8 @@ class TPCHData(BenchmarkArtifact):
 
     scale_factor: str | int | float = 1
     source_dir: str | Path | None = None
-    mode: Literal["copy", "plan"] = "copy"
+    mode: Literal["auto", "copy", "synth", "download", "plan"] = "auto"
+    sample_base_url: str = _DEFAULT_SAMPLE_TPCH_BASE_URL
 
     benchmark: str = "tpch"
     artifact_type: str = "data"
@@ -64,17 +74,40 @@ class TPCHData(BenchmarkArtifact):
             )
             return self._result(root, [script], metadata)
 
-        src = self._resolve_source_dir()
-        copied: list[Path] = []
-        for path in sorted(src.glob("*.tbl")):
-            target = out_dir / path.name
-            shutil.copy2(path, target)
-            copied.append(target)
+        materialized: list[Path] = []
+        source_kind = ""
+        if self.mode == "synth":
+            materialized = self._generate_synthetic_tbl_data(out_dir)
+            source_kind = "synthetic_generator"
+        elif self.mode == "copy":
+            src = self._resolve_source_dir()
+            materialized = self._copy_tbl_files(src, out_dir)
+            source_kind = "explicit_source_dir" if self.source_dir is not None else "default_ref_data"
+        elif self.mode == "download":
+            materialized = self._download_sample_tbl_files(out_dir)
+            source_kind = "downloaded_sample_tbl"
+        else:
+            try:
+                src = self._resolve_source_dir()
+                materialized = self._copy_tbl_files(src, out_dir)
+                source_kind = (
+                    "explicit_source_dir" if self.source_dir is not None else "default_ref_data"
+                )
+            except FileNotFoundError:
+                if self._is_unit_scale():
+                    try:
+                        materialized = self._download_sample_tbl_files(out_dir)
+                        source_kind = "downloaded_sample_tbl_auto_fallback"
+                    except Exception:
+                        materialized = self._generate_synthetic_tbl_data(out_dir)
+                        source_kind = "synthetic_auto_fallback"
+                else:
+                    materialized = self._generate_synthetic_tbl_data(out_dir)
+                    source_kind = "synthetic_auto_fallback"
 
-        if not copied:
+        if not materialized:
             raise FileNotFoundError(
-                f"No .tbl files found in source_dir={src}. "
-                "Provide a TPC-H data directory that contains table .tbl files."
+                f"Failed to materialize TPC-H data for mode={self.mode} at output_dir={out_dir}"
             )
 
         metadata = self._write_json(
@@ -84,11 +117,51 @@ class TPCHData(BenchmarkArtifact):
                 "artifact_type": self.artifact_type,
                 "mode": self.mode,
                 "scale_factor": self._scale_key(),
-                "source": "explicit_source_dir" if self.source_dir is not None else "default_ref_data",
-                "files": self._paths_relative_to(root, copied),
+                "source": source_kind,
+                "files": self._paths_relative_to(root, materialized),
+                "note": (
+                    "Synthetic mode creates lightweight TPC-H-like .tbl files for onboarding and API usage tests; "
+                    "it is not a standards-compliant TPC-H benchmark dataset."
+                    if source_kind.startswith("synthetic")
+                    else "Copied .tbl files from local source."
+                ),
             },
         )
-        return self._result(root, copied, metadata)
+        return self._result(root, materialized, metadata)
+
+    def _download_sample_tbl_files(self, out_dir: Path) -> list[Path]:
+        downloaded: list[Path] = []
+        base = self.sample_base_url.rstrip("/")
+        for filename in _SAMPLE_TBL_FILENAMES:
+            url = f"{base}/{filename}"
+            target = out_dir / filename
+            try:
+                with urlopen(url, timeout=60) as response:
+                    target.write_bytes(response.read())
+            except URLError as exc:
+                raise FileNotFoundError(
+                    f"Failed to download TPC-H sample file: {url}. "
+                    "Check network access or set source_dir/mode='synth'."
+                ) from exc
+            if not target.exists() or target.stat().st_size == 0:
+                raise FileNotFoundError(
+                    f"Downloaded empty TPC-H sample file from {url}."
+                )
+            downloaded.append(target)
+        return downloaded
+
+    def _copy_tbl_files(self, src: Path, out_dir: Path) -> list[Path]:
+        copied: list[Path] = []
+        for path in sorted(src.glob("*.tbl")):
+            target = out_dir / path.name
+            shutil.copy2(path, target)
+            copied.append(target)
+        if not copied:
+            raise FileNotFoundError(
+                f"No .tbl files found in source_dir={src}. "
+                "Provide a TPC-H data directory that contains table .tbl files."
+            )
+        return copied
 
     def _plan_script_body(self) -> str:
         return (
@@ -131,6 +204,165 @@ class TPCHData(BenchmarkArtifact):
                 f"{self._scale_key()}. Available scales: [{available}]. "
                 "Set source_dir explicitly (directory with .tbl files)."
             )
+        return path
+
+    def _generate_synthetic_tbl_data(self, out_dir: Path) -> list[Path]:
+        sf = self._scaled_units()
+        region_count = 5
+        nation_count = 25
+        supplier_count = min(20000, max(100, 100 * sf))
+        customer_count = min(50000, max(1000, 1000 * sf))
+        part_count = min(60000, max(2000, 2000 * sf))
+        orders_count = min(150000, max(5000, 5000 * sf))
+        lineitems_per_order = 2
+        partsupp_per_part = 2
+
+        region_rows = [
+            (r, f"REGION#{r}", f"Synthetic region {r}")
+            for r in range(region_count)
+        ]
+        nation_rows = [
+            (n, f"NATION#{n}", n % region_count, f"Synthetic nation {n}")
+            for n in range(nation_count)
+        ]
+        supplier_rows = [
+            (
+                s,
+                f"Supplier#{s:09d}",
+                f"Address#{s}",
+                s % nation_count,
+                f"{10 + (s % 90):02d}-{100 + (s % 900):03d}-{1000 + (s % 9000):04d}",
+                f"{(s % 10000) / 100:.2f}",
+                f"Synthetic supplier comment {s}",
+            )
+            for s in range(1, supplier_count + 1)
+        ]
+        customer_rows = [
+            (
+                c,
+                f"Customer#{c:09d}",
+                f"Address#{c}",
+                c % nation_count,
+                f"{10 + (c % 90):02d}-{100 + (c % 900):03d}-{1000 + (c % 9000):04d}",
+                f"{(c % 20000) / 100:.2f}",
+                f"SEGMENT{c % 5}",
+                f"Synthetic customer comment {c}",
+            )
+            for c in range(1, customer_count + 1)
+        ]
+        part_rows = [
+            (
+                p,
+                f"Part#{p:09d}",
+                f"MFGR#{1 + (p % 5)}",
+                f"BRAND#{1 + (p % 25)}",
+                f"TYPE#{1 + (p % 10)}",
+                1 + (p % 50),
+                f"BOX{1 + (p % 8)}",
+                f"{10 + (p % 10000) / 10:.2f}",
+                f"Synthetic part comment {p}",
+            )
+            for p in range(1, part_count + 1)
+        ]
+        partsupp_rows = []
+        for p in range(1, part_count + 1):
+            for offset in range(partsupp_per_part):
+                supp = ((p + offset) % supplier_count) + 1
+                partsupp_rows.append(
+                    (
+                        p,
+                        supp,
+                        1 + ((p + offset) % 9999),
+                        f"{5 + ((p + offset) % 5000) / 10:.2f}",
+                        f"Synthetic partsupp comment p{p}s{supp}",
+                    )
+                )
+
+        start = date(1992, 1, 1)
+        orders_rows = []
+        lineitem_rows = []
+        for o in range(1, orders_count + 1):
+            cust = ((o - 1) % customer_count) + 1
+            odate = (start + timedelta(days=o % 2555)).isoformat()
+            total_price = 0.0
+            for lno in range(1, lineitems_per_order + 1):
+                part = ((o * 7 + lno) % part_count) + 1
+                supp = ((part + lno) % supplier_count) + 1
+                quantity = 1 + ((o + lno) % 50)
+                ext_price = float(quantity * (5 + (part % 100)))
+                discount = (o + lno) % 10 / 100
+                tax = (o + lno) % 8 / 100
+                ship_date = (start + timedelta(days=(o + lno) % 2555)).isoformat()
+                commit_date = (start + timedelta(days=(o + lno + 3) % 2555)).isoformat()
+                receipt_date = (start + timedelta(days=(o + lno + 7) % 2555)).isoformat()
+                total_price += ext_price * (1 - discount) * (1 + tax)
+                lineitem_rows.append(
+                    (
+                        o,
+                        part,
+                        supp,
+                        lno,
+                        quantity,
+                        f"{ext_price:.2f}",
+                        f"{discount:.2f}",
+                        f"{tax:.2f}",
+                        "N" if (o + lno) % 2 else "R",
+                        "O" if (o + lno) % 2 else "F",
+                        ship_date,
+                        commit_date,
+                        receipt_date,
+                        "DELIVER IN PERSON",
+                        "AIR",
+                        f"Synthetic lineitem comment o{o}l{lno}",
+                    )
+                )
+            orders_rows.append(
+                (
+                    o,
+                    cust,
+                    "O",
+                    f"{total_price:.2f}",
+                    odate,
+                    f"{1 + (o % 5)}-URGENT",
+                    f"Clerk#{(o % 1000):09d}",
+                    0,
+                    f"Synthetic order comment {o}",
+                )
+            )
+
+        files = [
+            self._write_tbl(out_dir / "region.tbl", region_rows),
+            self._write_tbl(out_dir / "nation.tbl", nation_rows),
+            self._write_tbl(out_dir / "supplier.tbl", supplier_rows),
+            self._write_tbl(out_dir / "customer.tbl", customer_rows),
+            self._write_tbl(out_dir / "part.tbl", part_rows),
+            self._write_tbl(out_dir / "partsupp.tbl", partsupp_rows),
+            self._write_tbl(out_dir / "orders.tbl", orders_rows),
+            self._write_tbl(out_dir / "lineitem.tbl", lineitem_rows),
+        ]
+        return files
+
+    def _scaled_units(self) -> int:
+        try:
+            value = float(str(self.scale_factor).strip())
+        except ValueError as exc:
+            raise ValueError(f"Invalid scale_factor: {self.scale_factor}") from exc
+        if value <= 0:
+            return 1
+        return max(1, int(round(value)))
+
+    def _is_unit_scale(self) -> bool:
+        try:
+            value = float(str(self.scale_factor).strip())
+        except ValueError:
+            return False
+        return abs(value - 1.0) < 1e-9
+
+    def _write_tbl(self, path: Path, rows: Iterable[tuple[Any, ...]]) -> Path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            for row in rows:
+                f.write("|".join(str(col) for col in row) + "|\n")
         return path
 
 
@@ -255,9 +487,15 @@ class TPCHQueries(BenchmarkArtifact):
 def data(
     scale_factor: str | int | float = 1,
     source_dir: str | Path | None = None,
-    mode: Literal["copy", "plan"] = "copy",
+    mode: Literal["auto", "copy", "synth", "download", "plan"] = "auto",
+    sample_base_url: str = _DEFAULT_SAMPLE_TPCH_BASE_URL,
 ) -> TPCHData:
-    return TPCHData(scale_factor=scale_factor, source_dir=source_dir, mode=mode)
+    return TPCHData(
+        scale_factor=scale_factor,
+        source_dir=source_dir,
+        mode=mode,
+        sample_base_url=sample_base_url,
+    )
 
 
 def queries(

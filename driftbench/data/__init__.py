@@ -3,6 +3,7 @@
 Examples:
     from driftbench.data.tpch import data as tpch_data, queries as tpch_queries
 
+    # Default auto mode: tries local source, then Python download (sf=1), then synthetic fallback.
     tpch_data(scale_factor=1).generate(output_dir="./artifacts")
     tpch_queries(mode="qgen", queries_per_template=3).generate(output_dir="./artifacts")
 """

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import csv
+from typing import Iterable, Literal
 
 from .base import BenchmarkArtifact, GenerationResult
 
@@ -11,6 +13,7 @@ class TPCDSData(BenchmarkArtifact):
     """Generate TPC-DS data-generation artifacts."""
 
     scale_factor: int | float = 10
+    mode: Literal["synth", "plan"] = "synth"
 
     benchmark: str = "tpcds"
     artifact_type: str = "data"
@@ -19,6 +22,24 @@ class TPCDSData(BenchmarkArtifact):
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpcds" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if self.mode == "synth":
+            files = self._generate_synthetic_tables(out_dir)
+            metadata = self._write_json(
+                out_dir / "tpcds_data_manifest.json",
+                {
+                    "benchmark": self.benchmark,
+                    "artifact_type": self.artifact_type,
+                    "scale_factor": self.scale_factor,
+                    "mode": self.mode,
+                    "files": self._paths_relative_to(root, files),
+                    "note": (
+                        "Synthetic TPC-DS-like data generated locally for quick onboarding "
+                        "and API validation."
+                    ),
+                },
+            )
+            return self._result(root, files, metadata)
 
         script = self._write_text(out_dir / "generate_tpcds_data.sh", self._script_body())
         script.chmod(0o755)
@@ -39,6 +60,7 @@ class TPCDSData(BenchmarkArtifact):
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
                 "scale_factor": self.scale_factor,
+                "mode": self.mode,
                 "files": self._paths_relative_to(root, [script, readme]),
                 "note": "TPC-DS data is generated externally by dsdgen; DriftBench exports reproducible generation scripts.",
             },
@@ -59,10 +81,78 @@ class TPCDSData(BenchmarkArtifact):
             "echo \"Generate TPC-DS data using dsdgen into: ${OUT_DIR}\"\n"
         )
 
+    def _generate_synthetic_tables(self, out_dir: Path) -> list[Path]:
+        scale = self._scale_value()
+        customer_rows = max(1, int(round(1000 * scale)))
+        item_rows = max(1, int(round(500 * scale)))
+        date_rows = max(1, int(round(365 * max(1.0, scale))))
+        store_sales_rows = max(1, int(round(5000 * scale)))
+
+        customer = out_dir / "customer.csv"
+        item = out_dir / "item.csv"
+        date_dim = out_dir / "date_dim.csv"
+        store_sales = out_dir / "store_sales.csv"
+
+        self._write_csv(
+            customer,
+            ["customer_sk", "customer_id", "current_cdemo_sk", "current_addr_sk", "first_name", "last_name"],
+            (
+                [i, f"CUST{i:09d}", (i % 1000) + 1, (i % 5000) + 1, f"First{i}", f"Last{i}"]
+                for i in range(1, customer_rows + 1)
+            ),
+        )
+        self._write_csv(
+            item,
+            ["item_sk", "item_id", "category", "class", "current_price"],
+            (
+                [i, f"ITEM{i:09d}", f"CAT{i % 20}", f"CLASS{i % 50}", f"{(i % 1000) / 10 + 1:.2f}"]
+                for i in range(1, item_rows + 1)
+            ),
+        )
+        self._write_csv(
+            date_dim,
+            ["date_sk", "date_id", "month_seq", "week_seq", "year", "moy", "dom"],
+            (
+                [i, f"D{i:09d}", (i // 30) + 1, (i // 7) + 1, 2000 + ((i // 365) % 25), ((i - 1) % 12) + 1, ((i - 1) % 28) + 1]
+                for i in range(1, date_rows + 1)
+            ),
+        )
+        self._write_csv(
+            store_sales,
+            ["sold_date_sk", "item_sk", "customer_sk", "quantity", "sales_price"],
+            (
+                [
+                    (i % date_rows) + 1,
+                    (i % item_rows) + 1,
+                    (i % customer_rows) + 1,
+                    (i % 10) + 1,
+                    f"{((i % 10) + 1) * (((i % 1000) / 10) + 1):.2f}",
+                ]
+                for i in range(1, store_sales_rows + 1)
+            ),
+        )
+        return [customer, item, date_dim, store_sales]
+
+    def _scale_value(self) -> float:
+        value = float(self.scale_factor)
+        if value <= 0:
+            raise ValueError("scale_factor must be > 0")
+        return value
+
+    def _write_csv(self, path: Path, header: list[str], rows: Iterable[list[object]]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for row in rows:
+                writer.writerow(row)
+
 
 @dataclass
 class TPCDSQueries(BenchmarkArtifact):
     """Generate TPC-DS query workload artifacts."""
+
+    query_ids: Iterable[int | str] | str | None = None
 
     benchmark: str = "tpcds"
     artifact_type: str = "queries"
@@ -72,10 +162,14 @@ class TPCDSQueries(BenchmarkArtifact):
         out_dir = root / "tpcds" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        ids = list(range(1, 100))
+        ids = self._resolve_query_ids()
         ids_file = self._write_text(
             out_dir / "query_ids.txt",
             "\n".join(f"query{idx:02d}" for idx in ids) + "\n",
+        )
+        sql_file = self._write_text(
+            out_dir / "tpcds_queries.sql",
+            self._render_sql_bundle(ids),
         )
         benchbase_cfg = self._write_text(
             out_dir / "sample_tpcds_config.xml",
@@ -88,11 +182,37 @@ class TPCDSQueries(BenchmarkArtifact):
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
                 "query_count": len(ids),
-                "files": self._paths_relative_to(root, [ids_file, benchbase_cfg]),
-                "note": "Use this as a starter workload profile; attach SQL text from your local TPC-DS kit query templates.",
+                "query_ids": ids,
+                "files": self._paths_relative_to(root, [ids_file, sql_file, benchbase_cfg]),
+                "note": (
+                    "Generated query-id bundle supports full set or selected ids. "
+                    "SQL bodies are deterministic templates for onboarding."
+                ),
             },
         )
-        return self._result(root, [ids_file, benchbase_cfg], metadata)
+        return self._result(root, [ids_file, sql_file, benchbase_cfg], metadata)
+
+    def _resolve_query_ids(self) -> list[int]:
+        if self.query_ids is None or self.query_ids == "all":
+            return list(range(1, 100))
+
+        ids: list[int] = []
+        for raw in self.query_ids:
+            value = int(raw)
+            if value < 1 or value > 99:
+                raise ValueError("TPC-DS query id must be between 1 and 99.")
+            ids.append(value)
+        if not ids:
+            raise ValueError("query_ids must not be empty.")
+        # Keep order but deduplicate.
+        seen: set[int] = set()
+        ordered: list[int] = []
+        for value in ids:
+            if value in seen:
+                continue
+            seen.add(value)
+            ordered.append(value)
+        return ordered
 
     def _benchbase_template(self, ids: list[int]) -> str:
         weights = ",".join("1" for _ in ids)
@@ -127,10 +247,22 @@ class TPCDSQueries(BenchmarkArtifact):
             "</parameters>\n"
         )
 
+    def _render_sql_bundle(self, ids: list[int]) -> str:
+        chunks: list[str] = []
+        for qid in ids:
+            chunks.append(
+                (
+                    f"-- TPCDS Q{qid:02d}\n"
+                    f"SELECT {qid} AS query_id, COUNT(*) AS row_count\n"
+                    "FROM store_sales;\n"
+                )
+            )
+        return "\n".join(chunks).strip() + "\n"
 
-def data(scale_factor: int | float = 10) -> TPCDSData:
-    return TPCDSData(scale_factor=scale_factor)
+
+def data(scale_factor: int | float = 10, mode: Literal["synth", "plan"] = "synth") -> TPCDSData:
+    return TPCDSData(scale_factor=scale_factor, mode=mode)
 
 
-def queries() -> TPCDSQueries:
-    return TPCDSQueries()
+def queries(query_ids: Iterable[int | str] | str | None = None) -> TPCDSQueries:
+    return TPCDSQueries(query_ids=query_ids)

@@ -4,38 +4,27 @@
 
 # DriftBench
 
-DriftBench is a toolkit for generating and replaying **data drift** and **workload drift** with DriftSpec.
+DriftBench helps researchers and database engineers generate and replay **data drift** and **workload drift** from DriftSpec using **CLI** and **MCP** workflows.
 
-This README is intentionally focused on **how to use the latest DriftBench**.
-
-Version-by-version updates and service coverage:
-- [CHANGELOG.md](./CHANGELOG.md)
-
-Who typically uses DriftBench:
-- `Researcher`: design reproducible drift experiments and ablations.
-- `Database Vendor / Performance Team`: run drift regression checks across targets before release.
+Who this is for:
+- `Researcher`: run reproducible drift experiments and ablations.
+- `Database Vendor / Performance Team`: run drift regression checks across benchmark targets.
 - `New User`: start from validated examples and get first outputs quickly.
 
----
+## Start Here (5-minute path)
 
-## Web Frontend
+```bash
+python3 -m pip install -U driftbench-db
+python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
+python -m driftbench.cli list-outputs --root output --glob "**/*" --limit 20 --json
+```
 
+More:
+- Version-by-version updates and service coverage: [CHANGELOG.md](./CHANGELOG.md)
 - Production site: [driftbench.com](https://driftbench.com)
-- Frontend source repo: [driftbench-web](https://github.com/Liuguanli/driftbench-web)
-- Release branch note: pushes to `release/**` with user-facing DriftBench changes auto-dispatch a docs update event to `driftbench-web`.
-- Dispatch verification note (2026-05-10): this README line is used to validate cross-repo release notifications.
-- Dispatch verification note (retry): confirms the receiver workflow on driftbench-web is active after workflow fix.
-
----
-
-## Release Reproducibility
-
-- Workflow: `.github/workflows/reproducible-drift-runs.yml`
-- Trigger manually from GitHub Actions (`workflow_dispatch`) or call from other workflows (`workflow_call`).
-- Default run executes and validates:
-  - `driftspec/examples/demo_data_single.yaml`
-  - `driftspec/examples/workload_census.yaml`
-- Artifacts are uploaded as `driftbench-reproducible-run-artifacts`.
+- Frontend source: [driftbench-web](https://github.com/Liuguanli/driftbench-web)
 
 ---
 
@@ -259,6 +248,7 @@ out = Path("./artifacts")
 
 tpch_data(scale_factor=1).generate(output_dir=out)
 tpch_queries(query_ids=[1, 3, 5], queries_per_template=2, mode="qgen").generate(output_dir=out)
+tpch_queries().generate(output_dir=out)  # all query ids
 
 # For very large scale factors, generate a server-side execution plan only.
 tpch_data(scale_factor=1000, mode="plan").generate(output_dir=out)
@@ -266,12 +256,20 @@ tpch_data(scale_factor=1000, mode="plan").generate(output_dir=out)
 ycsb_data(scale_factor=1).generate(output_dir=out)
 ycsb_queries(workload="B").generate(output_dir=out)
 
-tpcds_data(scale_factor=10).generate(output_dir=out)
-tpcds_queries().generate(output_dir=out)
+tpcds_data(scale_factor=10).generate(output_dir=out)            # any scale (synthetic local generation)
+tpcds_queries().generate(output_dir=out)                        # all query ids (1..99)
+tpcds_queries(query_ids=[1, 5, 42]).generate(output_dir=out)    # selected query ids
 
 dsb_data(scale_factor=10).generate(output_dir=out)
 dsb_queries().generate(output_dir=out)
 ```
+
+`tpch_data(scale_factor=...)` default mode is `auto`:
+- try local `.tbl` source (if available);
+- if missing and `scale_factor == 1`, try built-in Python download path;
+- otherwise fall back to integrated synthetic generation.
+
+This means users can call the Python API directly without manually running external download commands.
 
 ### 3) Find generated files
 

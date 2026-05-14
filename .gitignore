@@ -73,3 +73,11 @@ existing_benchmarks
 # Local development helper directories (agent/skill prompts)
 agents/
 skills/
+
+# Downloaded / generated benchmark data (must stay untracked)
+artifacts/
+artifacts*/
+downloads/
+downloads*/
+tmp_downloads/
+tmp_downloads*/
