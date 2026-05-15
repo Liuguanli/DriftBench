@@ -1,3 +1,5 @@
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +16,16 @@ from driftbench.data.job import JOBData, JOBQueries
 
 
 class BenchmarkAdapterTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # Redirect the default data dir to a temp dir so tests never write to
+        # ~/.driftbench/data/ and each test starts with a clean slate.
+        self._default_data_tmpdir = tempfile.mkdtemp(prefix="driftbench_test_")
+        os.environ["DRIFTBENCH_DATA_DIR"] = self._default_data_tmpdir
+
+    def tearDown(self) -> None:
+        del os.environ["DRIFTBENCH_DATA_DIR"]
+        shutil.rmtree(self._default_data_tmpdir, ignore_errors=True)
+
     def _assert_result_is_filesystem_contract(
         self,
         result: GenerationResult,
@@ -38,16 +50,12 @@ class BenchmarkAdapterTests(unittest.TestCase):
             self.assertTrue(str(path).startswith(str(output_root.resolve())))
 
     def test_output_dir_defaults_when_none(self) -> None:
-        import os, tempfile
-        # Point DRIFTBENCH_DATA_DIR at a temp dir so the test does not write to ~/.driftbench
-        with tempfile.TemporaryDirectory() as tmp:
-            os.environ["DRIFTBENCH_DATA_DIR"] = tmp
-            try:
-                result = YCSBData(scale_factor=1).generate(output_dir=None)
-                self.assertIsInstance(result, GenerationResult)
-                self.assertTrue(result.output_dir.exists())
-            finally:
-                del os.environ["DRIFTBENCH_DATA_DIR"]
+        # setUp redirects DRIFTBENCH_DATA_DIR to a temp dir, so generate(output_dir=None)
+        # writes there instead of ~/.driftbench/data/.
+        result = YCSBData(scale_factor=1).generate(output_dir=None)
+        self.assertIsInstance(result, GenerationResult)
+        self.assertTrue(result.output_dir.exists())
+        self.assertTrue(result.output_dir.resolve().is_relative_to(Path(self._default_data_tmpdir).resolve()))
 
     def test_generate_reuses_existing_data_without_force(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
