@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import random
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,20 +54,71 @@ class DSBData(BenchmarkArtifact):
                 return existing
         print(f"[driftbench] Generating DSB data (sf={self.scale_factor}) → {out_dir}")
 
-        blueprint = self._write_text(out_dir / "schema_blueprint.sql", self._schema_sql())
-        seed = self._write_text(out_dir / "seed_plan.yaml", self._seed_plan())
-
+        ddl = self._write_text(out_dir / "dsb_schema.sql", self._schema_sql())
+        files = self._generate_synth(out_dir)
+        files.insert(0, ddl)
+        sf = max(1, int(round(float(self.scale_factor))))
         metadata = self._write_json(
             out_dir / "dsb_data_manifest.json",
             {
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
                 "scale_factor": self.scale_factor,
-                "files": self._paths_relative_to(root, [blueprint, seed]),
-                "note": "DSB artifacts are generated as reusable blueprints to integrate with your preferred data synthesizer.",
+                "tables": {
+                    "date_dim": 3650,
+                    "customer": 1000 * sf,
+                    "lineorder": 5000 * sf,
+                },
+                "files": self._paths_relative_to(root, files),
+                "note": "Synthetic DSB star-schema data for onboarding and API testing.",
             },
         )
-        return self._result(root, [blueprint, seed], metadata)
+        return self._result(root, files, metadata)
+
+    def _generate_synth(self, out_dir: Path) -> list[Path]:
+        sf = max(1, int(round(float(self.scale_factor))))
+        rng = random.Random(42)
+        regions = ["ASIA", "EUROPE", "AMERICA", "AFRICA", "MIDDLE EAST"]
+        nations = ["CHINA", "JAPAN", "GERMANY", "FRANCE", "USA", "BRAZIL", "EGYPT", "IRAN"]
+        files: list[Path] = []
+
+        # date_dim: 10 years of daily rows (fixed)
+        date_path = out_dir / "date_dim.csv"
+        with date_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["date_key", "year", "month", "day"])
+            key = 1
+            for year in range(2015, 2025):
+                for month in range(1, 13):
+                    for day in range(1, 29):  # 28 days/month keeps it simple
+                        writer.writerow([key, year, month, day])
+                        key += 1
+        files.append(date_path)
+
+        # customer
+        cust_path = out_dir / "customer.csv"
+        cust_count = 1000 * sf
+        with cust_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["customer_key", "region", "nation"])
+            for i in range(1, cust_count + 1):
+                writer.writerow([i, rng.choice(regions), rng.choice(nations)])
+        files.append(cust_path)
+
+        # lineorder
+        lo_path = out_dir / "lineorder.csv"
+        lo_count = 5000 * sf
+        date_keys = list(range(1, key))
+        with lo_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["order_key", "customer_key", "order_date_key", "revenue", "supply_cost"])
+            for i in range(1, lo_count + 1):
+                rev = round(rng.uniform(100, 100000), 2)
+                cost = round(rng.uniform(50, rev), 2)
+                writer.writerow([i, rng.randint(1, cust_count), rng.choice(date_keys), rev, cost])
+        files.append(lo_path)
+
+        return files
 
     def _schema_sql(self) -> str:
         return (
@@ -87,21 +140,6 @@ class DSBData(BenchmarkArtifact):
             "  revenue DOUBLE PRECISION NOT NULL,\n"
             "  supply_cost DOUBLE PRECISION NOT NULL\n"
             ");\n"
-        )
-
-    def _seed_plan(self) -> str:
-        row_multiplier = max(1, self.scale_factor)
-        return (
-            "tables:\n"
-            "  date_dim:\n"
-            "    target_rows: 3650\n"
-            "  customer:\n"
-            f"    target_rows: {100000 * row_multiplier}\n"
-            "  lineorder:\n"
-            f"    target_rows: {6000000 * row_multiplier}\n"
-            "generator:\n"
-            "  strategy: external\n"
-            "  note: plug this plan into your data synthesis pipeline\n"
         )
 
 

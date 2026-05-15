@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import random
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,19 +41,7 @@ class YCSBData(BenchmarkArtifact):
         print(f"[driftbench] Generating YCSB data (sf={self.scale_factor}) → {out_dir}")
 
         records = self.record_count if self.record_count is not None else self.scale_factor * 1000
-        props = self._write_text(
-            out_dir / "load.properties",
-            (
-                "recordcount=" + str(records) + "\n"
-                "fieldcount=10\n"
-                "fieldlength=100\n"
-                "readallfields=true\n"
-                "insertorder=hashed\n"
-            ),
-        )
-        script = self._write_text(out_dir / "generate_ycsb_data.sh", self._script_body())
-        script.chmod(0o755)
-
+        files = self._generate_synth(out_dir, records)
         metadata = self._write_json(
             out_dir / "ycsb_data_manifest.json",
             {
@@ -59,21 +49,25 @@ class YCSBData(BenchmarkArtifact):
                 "artifact_type": self.artifact_type,
                 "scale_factor": self.scale_factor,
                 "record_count": records,
-                "files": self._paths_relative_to(root, [props, script]),
+                "tables": {"usertable": records},
+                "files": self._paths_relative_to(root, files),
             },
         )
-        return self._result(root, [props, script], metadata)
+        return self._result(root, files, metadata)
 
-    def _script_body(self) -> str:
-        return (
-            "#!/usr/bin/env bash\n"
-            "set -euo pipefail\n\n"
-            "BASE_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
-            "PROPS=\"${BASE_DIR}/load.properties\"\n\n"
-            "# Example with YCSB CLI:\n"
-            "# ./bin/ycsb load jdbc -P ${PROPS} -p db.driver=org.postgresql.Driver ...\n"
-            "echo \"Use ${PROPS} as your YCSB load profile.\"\n"
-        )
+    def _generate_synth(self, out_dir: Path, records: int) -> list[Path]:
+        rng = random.Random(42)
+        alphabet = "abcdefghijklmnopqrstuvwxyz"
+        fields = ["YCSB_KEY"] + [f"FIELD{i}" for i in range(10)]
+        path = out_dir / "usertable.csv"
+        with path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(fields)
+            for i in range(records):
+                key = f"user{i:015d}"
+                row = [key] + ["".join(rng.choices(alphabet, k=100)) for _ in range(10)]
+                writer.writerow(row)
+        return [path]
 
 
 @dataclass

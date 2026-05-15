@@ -25,7 +25,7 @@ import random
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Iterable
 
 from .base import BenchmarkArtifact, GenerationResult
 
@@ -317,12 +317,9 @@ class TPCCData(BenchmarkArtifact):
 
     Args:
         scale_factor: Number of warehouses. Default 1.
-        mode: "synth" generates CSV files locally. "plan" writes a shell
-              script for server-side generation via BenchBase or similar.
     """
 
     scale_factor: int | float = 1
-    mode: Literal["synth", "plan"] = "synth"
 
     benchmark: str = "tpcc"
     artifact_type: str = "data"
@@ -341,25 +338,6 @@ class TPCCData(BenchmarkArtifact):
 
         ddl = self._write_text(out_dir / "tpcc_schema.sql", _TPCC_DDL)
 
-        if self.mode == "plan":
-            script = self._write_text(out_dir / "generate_tpcc_data.sh", self._plan_script())
-            script.chmod(0o755)
-            metadata = self._write_json(
-                out_dir / "tpcc_data_manifest.json",
-                {
-                    "benchmark": self.benchmark,
-                    "artifact_type": self.artifact_type,
-                    "scale_factor": self._w(),
-                    "mode": self.mode,
-                    "files": self._paths_relative_to(root, [ddl, script]),
-                    "note": (
-                        "Plan mode: run generate_tpcc_data.sh on a host with BenchBase "
-                        "or a compatible TPC-C loader."
-                    ),
-                },
-            )
-            return self._result(root, [ddl, script], metadata)
-
         files = self._generate_synth(out_dir)
         files.insert(0, ddl)
         metadata = self._write_json(
@@ -368,7 +346,6 @@ class TPCCData(BenchmarkArtifact):
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
                 "scale_factor": self._w(),
-                "mode": self.mode,
                 "tables": {
                     "warehouse": self._w(),
                     "district": 10 * self._w(),
@@ -500,18 +477,6 @@ class TPCCData(BenchmarkArtifact):
             writer.writerows(rows)
         return path
 
-    def _plan_script(self) -> str:
-        return (
-            "#!/usr/bin/env bash\n"
-            "set -euo pipefail\n\n"
-            f"WAREHOUSES={self._w()}\n"
-            "# BenchBase TPC-C loader example:\n"
-            "# java -jar benchbase.jar -b tpcc -c config/tpcc_config.xml \\\n"
-            "#   --create=true --load=true --execute=false\n"
-            "# Set scalefactor=${WAREHOUSES} in config/tpcc_config.xml\n\n"
-            f'echo "Load TPC-C with ${{WAREHOUSES}} warehouse(s)"\n'
-        )
-
 
 @dataclass
 class TPCCQueries(BenchmarkArtifact):
@@ -564,15 +529,13 @@ class TPCCQueries(BenchmarkArtifact):
         return self._result(root, files, metadata)
 
 
-def data(scale_factor: int | float = 1, mode: Literal["synth", "plan"] = "synth") -> TPCCData:
+def data(scale_factor: int | float = 1) -> TPCCData:
     """Return a TPCCData adapter.
 
     Args:
         scale_factor: Number of warehouses (W). Scales all tables except item.
-        mode: "synth" generates CSV files locally (default).
-              "plan" writes a shell script for BenchBase-based generation.
     """
-    return TPCCData(scale_factor=scale_factor, mode=mode)
+    return TPCCData(scale_factor=scale_factor)
 
 
 def queries() -> TPCCQueries:

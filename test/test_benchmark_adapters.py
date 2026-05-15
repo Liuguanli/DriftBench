@@ -109,21 +109,6 @@ class BenchmarkAdapterTests(unittest.TestCase):
             self.assertTrue((out / "tpch" / "queries" / "tpch_queries.sql").exists())
             self.assertTrue((out / "tpch" / "queries" / "tpch_queries.csv").exists())
 
-    def test_tpch_data_plan_mode_for_remote_server(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            out = tmp_path / "out"
-            result = TPCHData(scale_factor=1000, mode="plan").generate(output_dir=out)
-            self._assert_result_is_filesystem_contract(result, out)
-            script = out / "tpch" / "data" / "sf_1000" / "generate_tpch_data.sh"
-            self.assertTrue(script.exists())
-            self.assertEqual(len(result.files), 1)
-            script_text = script.read_text(encoding="utf-8")
-            self.assertIn("SCALE_FACTOR=1000", script_text)
-            self.assertIn("dbgen", script_text)
-            # Plan mode should not materialize table data on local machine.
-            self.assertFalse((out / "tpch" / "data" / "sf_1000" / "tables").exists())
-
     def test_other_benchmarks_generate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -153,7 +138,7 @@ class BenchmarkAdapterTests(unittest.TestCase):
     def test_tpcc_data_synth_filesystem_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "out"
-            result = TPCCData(scale_factor=1, mode="synth").generate(output_dir=out)
+            result = TPCCData(scale_factor=1).generate(output_dir=out)
             self._assert_result_is_filesystem_contract(result, out)
             self.assertEqual(result.benchmark, "tpcc")
             self.assertEqual(result.artifact_type, "data")
@@ -161,7 +146,7 @@ class BenchmarkAdapterTests(unittest.TestCase):
     def test_tpcc_data_synth_produces_nine_csv_tables(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "out"
-            result = TPCCData(scale_factor=1, mode="synth").generate(output_dir=out)
+            result = TPCCData(scale_factor=1).generate(output_dir=out)
             expected_tables = {
                 "warehouse", "district", "customer", "item", "stock",
                 "orders", "new_order", "order_line", "history",
@@ -174,8 +159,8 @@ class BenchmarkAdapterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp1, tempfile.TemporaryDirectory() as tmp2:
             out1 = Path(tmp1) / "out"
             out2 = Path(tmp2) / "out"
-            r1 = TPCCData(scale_factor=1, mode="synth").generate(output_dir=out1)
-            r2 = TPCCData(scale_factor=2, mode="synth").generate(output_dir=out2)
+            r1 = TPCCData(scale_factor=1).generate(output_dir=out1)
+            r2 = TPCCData(scale_factor=2).generate(output_dir=out2)
 
             def row_count(result, name):
                 f = next(p for p in result.files if p.stem == name)
@@ -191,15 +176,6 @@ class BenchmarkAdapterTests(unittest.TestCase):
             # customer: 3000 per warehouse
             self.assertEqual(row_count(r1, "customer"), 3000)
             self.assertEqual(row_count(r2, "customer"), 6000)
-
-    def test_tpcc_data_plan_mode(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "out"
-            result = TPCCData(scale_factor=5, mode="plan").generate(output_dir=out)
-            self._assert_result_is_filesystem_contract(result, out)
-            script = out / "tpcc" / "data" / "generate_tpcc_data.sh"
-            self.assertTrue(script.exists())
-            self.assertIn("WAREHOUSES=5", script.read_text(encoding="utf-8"))
 
     def test_tpcc_queries_generate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -267,7 +243,7 @@ class BenchmarkAdapterTests(unittest.TestCase):
     def test_job_data_synth_filesystem_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "out"
-            result = JOBData(scale_factor=1, mode="synth").generate(output_dir=out)
+            result = JOBData(scale_factor=1).generate(output_dir=out)
             self._assert_result_is_filesystem_contract(result, out)
             self.assertEqual(result.benchmark, "job")
             self.assertEqual(result.artifact_type, "data")
@@ -300,15 +276,6 @@ class BenchmarkAdapterTests(unittest.TestCase):
             self.assertEqual(row_count(r1, "cast_info"), 5000)
             self.assertEqual(row_count(r2, "cast_info"), 10000)
 
-    def test_job_data_plan_mode(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "out"
-            result = JOBData(scale_factor=1, mode="plan").generate(output_dir=out)
-            self._assert_result_is_filesystem_contract(result, out)
-            script = out / "job" / "data" / "download_imdb.sh"
-            self.assertTrue(script.exists())
-            self.assertIn("imdb.tgz", script.read_text(encoding="utf-8"))
-
     def test_job_queries_generate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "out"
@@ -336,7 +303,7 @@ class BenchmarkAdapterTests(unittest.TestCase):
     def test_pgbench_data_synth_filesystem_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "out"
-            result = PgBenchData(scale_factor=1, mode="synth").generate(output_dir=out)
+            result = PgBenchData(scale_factor=1).generate(output_dir=out)
             self._assert_result_is_filesystem_contract(result, out)
             self.assertEqual(result.benchmark, "pgbench")
 
@@ -363,15 +330,6 @@ class BenchmarkAdapterTests(unittest.TestCase):
             self.assertEqual(row_count("pgbench_tellers"), 10)
             self.assertEqual(row_count("pgbench_accounts"), 100_000)
             self.assertEqual(row_count("pgbench_history"), 0)
-
-    def test_pgbench_data_plan_mode(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "out"
-            result = PgBenchData(scale_factor=2, mode="plan").generate(output_dir=out)
-            self._assert_result_is_filesystem_contract(result, out)
-            script = out / "pgbench" / "data" / "init_pgbench.sh"
-            self.assertTrue(script.exists())
-            self.assertIn("SCALE_FACTOR=2", script.read_text(encoding="utf-8"))
 
     def test_pgbench_queries_all_workloads(self) -> None:
         for workload in ("tpcb", "simple_update", "select_only"):

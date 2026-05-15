@@ -51,13 +51,14 @@ Complete reference for all 7 benchmark adapters, including data features, query 
 ### Modes
 - `mode="qgen"` — generates parameterized SQL via qgen (packaged template dir)
 - `mode="custom"` — custom parameter specs via `param_specs` dict
-- `mode="plan"` for data — writes `generate_tpch_data.sh` for server-side dbgen
+- `mode="copy"` for data — copies `.tbl` files from `source_dir`
+- `mode="generate"` for data — runs dbgen to produce `.tbl` files locally
 
 ### Python API
 ```python
 from driftbench.data.tpch import data as tpch_data, queries as tpch_queries
 
-tpch_data(scale_factor=10, mode="plan").generate(output_dir="./artifacts")
+tpch_data(scale_factor=10, mode="generate").generate(output_dir="./artifacts")
 tpch_queries(query_ids=[1, 6, 14], queries_per_template=5, mode="qgen").generate(output_dir="./artifacts")
 ```
 
@@ -82,7 +83,6 @@ tpch_queries(query_ids=[1, 6, 14], queries_per_template=5, mode="qgen").generate
 
 ### Modes
 - `mode="synth"` — generates 4-table CSV subset locally
-- `mode="plan"` — writes server-side dsdgen script
 
 ### Python API
 ```python
@@ -123,8 +123,7 @@ W = `scale_factor` (integer number of warehouses).
 | Stock Level | 4 % | Count low-stock items in last 20 orders |
 
 ### Modes
-- `mode="synth"` — generates 9 CSV files locally (default)
-- `mode="plan"` — writes BenchBase-compatible shell script
+- `mode="synth"` — generates 9 CSV files locally
 
 ### Python API
 ```python
@@ -188,7 +187,7 @@ Reference: Leis et al., "How Good Are Query Optimizers, Really?", VLDB 2015.
 | movie_companies | 1 000 | Movie-company links |
 | company_name | 100 | Production companies |
 
-Full IMDB snapshot (mode="plan"): 21 tables, ~36M rows in cast_info alone.
+Full IMDB snapshot: 21 tables, ~36M rows in cast_info alone. The synth adapter generates an 8-table subset.
 
 ### Query features (20 representative templates)
 All queries use standard SQL (no proprietary extensions). Join depths:
@@ -213,8 +212,7 @@ All queries use standard SQL (no proprietary extensions). Join depths:
 | Multi-way join | 10a, 11a, 14a, 17a, 20a |
 
 ### Modes
-- `mode="synth"` — generates 8-table CSV subset locally (default)
-- `mode="plan"` — writes `download_imdb.sh` for the full 21-table snapshot
+- `mode="synth"` — generates 8-table CSV subset locally
 
 ### Python API
 ```python

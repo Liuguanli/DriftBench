@@ -14,7 +14,7 @@ Scale note:
     Synth mode generates an 8-table subset proportional to scale_factor:
       title: 500*sf rows, name: 1000*sf, cast_info: 5000*sf, movie_info: 3000*sf,
       keyword: 200*sf, movie_keyword: 2000*sf, company_name: 100*sf, movie_companies: 1000*sf.
-    For the full 21-table IMDB dataset, use mode="plan".
+    The synth adapter generates an 8-table subset; full IMDB data must be loaded manually.
 
 Queries:
     20 representative templates (simplified from the original 113) covering all
@@ -26,7 +26,6 @@ import csv
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
 from .base import BenchmarkArtifact, GenerationResult
 
@@ -385,18 +384,14 @@ ORDER BY t.production_year DESC;
 class JOBData(BenchmarkArtifact):
     """Generate synthetic JOB (IMDB) data artifacts.
 
-    Synth mode produces an 8-table subset of the IMDB schema.
+    Generates an 8-table subset of the IMDB schema.
     Scale controls row counts proportionally.
 
     Args:
         scale_factor: Scales row counts for all generated tables (default 1).
-        mode: "synth" generates CSV files locally (default).
-              "plan" writes a shell script with download instructions for the
-              full 21-table IMDB snapshot.
     """
 
     scale_factor: int | float = 1
-    mode: Literal["synth", "plan"] = "synth"
 
     benchmark: str = "job"
     artifact_type: str = "data"
@@ -411,29 +406,9 @@ class JOBData(BenchmarkArtifact):
             if existing is not None:
                 print(f"[driftbench] JOB data already exists at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating JOB data (sf={self._sf()}, mode={self.mode}) → {out_dir}")
+        print(f"[driftbench] Generating JOB data (sf={self._sf()}) → {out_dir}")
 
         ddl = self._write_text(out_dir / "job_schema.sql", _JOB_DDL)
-
-        if self.mode == "plan":
-            script = self._write_text(out_dir / "download_imdb.sh", self._plan_script())
-            script.chmod(0o755)
-            metadata = self._write_json(
-                out_dir / "job_data_manifest.json",
-                {
-                    "benchmark": self.benchmark,
-                    "artifact_type": self.artifact_type,
-                    "scale_factor": self._sf(),
-                    "mode": self.mode,
-                    "files": self._paths_relative_to(root, [ddl, script]),
-                    "note": (
-                        "Plan mode: download_imdb.sh fetches the IMDB snapshot "
-                        "used in the original JOB paper (Leis et al., VLDB 2015). "
-                        "Full dataset: 21 tables, ~36M rows in cast_info alone."
-                    ),
-                },
-            )
-            return self._result(root, [ddl, script], metadata)
 
         files = self._generate_synth(out_dir)
         files.insert(0, ddl)
@@ -457,14 +432,9 @@ class JOBData(BenchmarkArtifact):
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
                 "scale_factor": sf,
-                "mode": self.mode,
                 "tables": row_counts,
                 "files": self._paths_relative_to(root, files),
-                "note": (
-                    "Synthetic 8-table JOB subset for onboarding and API testing. "
-                    "Not a standards-compliant JOB dataset. Use mode='plan' for "
-                    "the full IMDB snapshot."
-                ),
+                "note": "Synthetic 8-table JOB subset for onboarding and API testing.",
             },
         )
         return self._result(root, files, metadata)
@@ -617,21 +587,6 @@ class JOBData(BenchmarkArtifact):
             writer.writerows(rows)
         return path
 
-    def _plan_script(self) -> str:
-        return (
-            "#!/usr/bin/env bash\n"
-            "set -euo pipefail\n\n"
-            "# Download the IMDB snapshot used by the JOB benchmark.\n"
-            "# Source: http://homepages.cwi.nl/~boncz/job/imdb.tgz\n"
-            "# Reference: Leis et al., 'How Good Are Query Optimizers, Really?', VLDB 2015.\n\n"
-            "OUT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)/imdb\"\n"
-            "mkdir -p \"${OUT_DIR}\"\n\n"
-            "echo \"Downloading IMDB snapshot (~1GB compressed)...\"\n"
-            "curl -L -o \"${OUT_DIR}/imdb.tgz\" \"http://homepages.cwi.nl/~boncz/job/imdb.tgz\"\n"
-            "tar -xzf \"${OUT_DIR}/imdb.tgz\" -C \"${OUT_DIR}/\"\n"
-            "echo \"Done. Load CSV files into PostgreSQL using job_schema.sql.\"\n"
-        )
-
 
 @dataclass
 class JOBQueries(BenchmarkArtifact):
@@ -693,18 +648,13 @@ class JOBQueries(BenchmarkArtifact):
         return self._result(root, files, metadata)
 
 
-def data(
-    scale_factor: int | float = 1,
-    mode: Literal["synth", "plan"] = "synth",
-) -> JOBData:
+def data(scale_factor: int | float = 1) -> JOBData:
     """Return a JOBData adapter.
 
     Args:
         scale_factor: Controls synth row counts proportionally (default 1).
-        mode: "synth" generates CSV files locally (default).
-              "plan" writes a download script for the full IMDB snapshot.
     """
-    return JOBData(scale_factor=scale_factor, mode=mode)
+    return JOBData(scale_factor=scale_factor)
 
 
 def queries() -> JOBQueries:

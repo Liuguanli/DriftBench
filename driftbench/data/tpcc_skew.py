@@ -24,7 +24,6 @@ import csv
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
 from .base import BenchmarkArtifact, GenerationResult
 from .tpcc import TPCCData, _TPCC_DDL, _TPCC_TRANSACTIONS
@@ -43,7 +42,6 @@ class TPCCSkewData(TPCCData):
         scale_factor: Number of warehouses (W).
         hot_warehouse_fraction: Fraction of warehouses labeled "hot" (default 0.2).
         skew_factor: Zipf alpha for warehouse selection (default 0.99).
-        mode: "synth" or "plan" (same semantics as TPCCData).
     """
 
     hot_warehouse_fraction: float = 0.2
@@ -70,26 +68,6 @@ class TPCCSkewData(TPCCData):
 
         ddl = self._write_text(out_dir / "tpcc_schema.sql", _TPCC_DDL)
 
-        if self.mode == "plan":
-            script = self._write_text(out_dir / "generate_tpcc_skew_data.sh", self._plan_script())
-            script.chmod(0o755)
-            wts_file = self._write_warehouse_weights(out_dir, weights, hot_count)
-            metadata = self._write_json(
-                out_dir / "tpcc_skew_data_manifest.json",
-                {
-                    "benchmark": self.benchmark,
-                    "artifact_type": self.artifact_type,
-                    "scale_factor": w,
-                    "hot_warehouse_fraction": self.hot_warehouse_fraction,
-                    "hot_warehouse_count": hot_count,
-                    "skew_factor": self.skew_factor,
-                    "mode": self.mode,
-                    "files": self._paths_relative_to(root, [ddl, script, wts_file]),
-                    "note": "Plan mode: run generate_tpcc_skew_data.sh on a host with BenchBase.",
-                },
-            )
-            return self._result(root, [ddl, script, wts_file], metadata)
-
         synth_files = self._generate_synth(out_dir)
         synth_files.insert(0, ddl)
         wts_file = self._write_warehouse_weights(out_dir, weights, hot_count)
@@ -104,7 +82,6 @@ class TPCCSkewData(TPCCData):
                 "hot_warehouse_fraction": self.hot_warehouse_fraction,
                 "hot_warehouse_count": hot_count,
                 "skew_factor": self.skew_factor,
-                "mode": self.mode,
                 "files": self._paths_relative_to(root, synth_files),
                 "note": (
                     f"Zipf skew (alpha={self.skew_factor}): {hot_count} of {w} warehouses "
@@ -214,7 +191,6 @@ def data(
     scale_factor: int | float = 1,
     hot_warehouse_fraction: float = 0.2,
     skew_factor: float = 0.99,
-    mode: Literal["synth", "plan"] = "synth",
 ) -> TPCCSkewData:
     """Return a TPCCSkewData adapter with Zipf warehouse access distribution.
 
@@ -222,13 +198,11 @@ def data(
         scale_factor: Number of warehouses (W).
         hot_warehouse_fraction: Fraction of warehouses receiving hot traffic (default 0.2).
         skew_factor: Zipf alpha (default 0.99). Higher = more concentrated traffic.
-        mode: "synth" (default) or "plan".
     """
     return TPCCSkewData(
         scale_factor=scale_factor,
         hot_warehouse_fraction=hot_warehouse_fraction,
         skew_factor=skew_factor,
-        mode=mode,
     )
 
 

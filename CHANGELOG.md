@@ -9,21 +9,28 @@ Format notes:
 ## [Unreleased]
 
 ### Services
-- `Data`: Five new benchmark adapters — TPC-C, TPC-C Skew, JOB, pgbench, and BenchBase.
+- `Data`: Nine benchmark adapters — TPC-H, TPC-DS, YCSB, DSB, TPC-C, TPC-C Skew, JOB, pgbench, BenchBase. All generate real data files without requiring external tools (except TPC-H generate mode).
 
 ### Added
-- **TPC-C adapter** (`driftbench.data.tpcc`): Full 9-table OLTP schema with synthetic CSV generation and plan mode. All 5 transaction types as SQL templates (new_order, payment, order_status, delivery, stock_level). Scale factor = number of warehouses.
+- **TPC-C adapter** (`driftbench.data.tpcc`): Full 9-table OLTP schema with synthetic CSV generation. All 5 transaction types as SQL templates (new_order, payment, order_status, delivery, stock_level). Scale factor = number of warehouses.
 - **TPC-C Skew adapter** (`driftbench.data.tpcc_skew`): Extends TPC-C with configurable Zipf warehouse access distribution. Generates `warehouse_access_weights.csv` for driver-side hot-warehouse simulation. Parameters: `hot_warehouse_fraction` (default 0.2) and `skew_factor` (Zipf α, default 0.99).
-- **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 8-table synth subset of the IMDB schema with 20 representative SQL query templates covering 2–8-table join depths. Plan mode provides a download script for the full 21-table IMDB snapshot.
-- **`docs/benchmark_reference.md`**: Complete reference for all 7 adapters including row counts, query categories, join complexity index, scale guidance, and selection guide.
-- **`.claude/agents/benchmark-advisor.md`**: AI sub-agent for benchmark selection questions and code generation.
-- **pgbench adapter** (`driftbench.data.pgbench`): TPC-B-like schema (branches, tellers, accounts, history). Synth CSV generation with correct row counts (branches=sf, tellers=10×sf, accounts=100K×sf). Three workload templates: `tpcb`, `simple_update`, `select_only`. Plan mode generates a `pgbench -i` shell script.
+- **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 8-table synth subset of the IMDB schema with 20 representative SQL query templates covering 2–8-table join depths.
+- **pgbench adapter** (`driftbench.data.pgbench`): TPC-B-like schema (branches, tellers, accounts, history). Synth CSV generation with correct row counts (branches=sf, tellers=10×sf, accounts=100K×sf). Three workload templates: `tpcb`, `simple_update`, `select_only`.
 - **BenchBase adapter** (`driftbench.data.benchbase`): XML config generator for 10 BenchBase benchmarks (TPC-C, TPC-H, YCSB, SEATS, AuctionMark, Smallbank, Epinions, Wikipedia, Twitter, Voter). Generates separate load config + `load.sh` and execute config + `execute.sh`. Transaction weights and types are pre-configured per benchmark.
-- 10 new tests (78 total, all pass).
+- **`GenerationResult.as_csv()`**: converts pipe-delimited `.tbl` (TPC-H) and `.dat` (TPC-DS) files to standard CSV. Both the original and the new `.csv` files are kept on disk. Method chains off the existing result — no re-generation.
+- **TPC-H auto-build dbgen**: `mode="generate"` now auto-clones and builds `tpch-dbgen` on first use (cached at `~/.driftbench/cache/tpch-dbgen/`). No manual dbgen installation required.
+- **`docs/benchmark_testing_guide.html`**: interactive HTML testing guide with syntax-highlighted code, sticky sidebar navigation, and verify snippets for all 9 adapters.
+- **`docs/benchmark_reference.md`**: complete reference for all 9 adapters including row counts, query categories, join complexity index, scale guidance, and selection guide.
+- **`AGENTS.md`**: 4-agent team definition for multi-agent DriftBench development workflows.
+- 74 tests total, all pass.
 
 ### Changed
-- **Lazy generate / skip-if-exists**: all 7 adapters now check for an existing manifest before generating. If all listed files are still present, `generate()` returns immediately with the existing result and prints a `[driftbench] … Reusing.` message. Pass `force=True` to regenerate unconditionally.
-- **`output_dir` is now optional**: when omitted, defaults to `~/.driftbench/data/` (overridable via `DRIFTBENCH_DATA_DIR` env var). The library prints the resolved path so users always know where files land.
+- **TPC-DS adapter** now generates synthetic pipe-delimited `.dat` files (5 tables: date_dim, store, item, customer, store_sales) with no external tool dependency. Previously required `dsdgen` (which needed bison/Xcode on macOS).
+- **YCSB adapter** now generates `usertable.csv` with 10 field columns (1,000 rows per SF). Previously generated only a properties file and shell script.
+- **DSB adapter** now generates 3 CSV tables (date_dim, customer, lineorder) plus DDL SQL. Previously generated only a schema blueprint and seed plan YAML.
+- **Plan mode removed** from all adapters (TPC-H, TPC-C, TPC-C Skew, JOB, pgbench). Every adapter now generates actual data files directly instead of producing setup scripts.
+- **Lazy generate / skip-if-exists**: all adapters check for an existing manifest before generating. Pass `force=True` to regenerate unconditionally.
+- **`output_dir` is now optional**: when omitted, defaults to `~/.driftbench/data/` (overridable via `DRIFTBENCH_DATA_DIR` env var).
 - `OutputDirRequiredError` is kept for backwards compatibility but is no longer raised.
 
 ## [v0.1.0b5] - 2026-05-11

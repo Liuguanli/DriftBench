@@ -274,9 +274,6 @@ out = Path("./artifacts")
 # TPC-H (OLAP)
 tpch_data(scale_factor=1).generate(output_dir=out)
 tpch_queries(query_ids=[1, 3, 5], queries_per_template=2, mode="qgen").generate(output_dir=out)
-# For very large scale factors, generate a server-side plan only:
-tpch_data(scale_factor=1000, mode="plan").generate(output_dir=out)
-
 # TPC-C (OLTP, scale_factor == number of warehouses)
 tpcc_data(scale_factor=4).generate(output_dir=out)
 tpcc_queries().generate(output_dir=out)

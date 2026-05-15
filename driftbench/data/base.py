@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import os
 from dataclasses import dataclass
@@ -29,6 +30,32 @@ class GenerationResult:
     output_dir: Path
     files: list[Path]
     metadata: Path
+
+    def as_csv(self) -> "GenerationResult":
+        """Convert any pipe-delimited .tbl files to .csv and return a new result.
+
+        Non-.tbl files are carried over unchanged. The original .tbl files are
+        kept alongside the new .csv files.
+        """
+        converted: list[Path] = []
+        for f in self.files:
+            if f.suffix not in (".tbl", ".dat"):
+                converted.append(f)
+                continue
+            csv_path = f.with_suffix(".csv")
+            with f.open(encoding="utf-8") as src, csv_path.open("w", encoding="utf-8", newline="") as dst:
+                writer = csv.writer(dst)
+                for line in src:
+                    row = line.rstrip("\n").rstrip("|").split("|")
+                    writer.writerow(row)
+            converted.append(csv_path)
+        return GenerationResult(
+            benchmark=self.benchmark,
+            artifact_type=self.artifact_type,
+            output_dir=self.output_dir,
+            files=converted,
+            metadata=self.metadata,
+        )
 
 
 class BenchmarkArtifact:
