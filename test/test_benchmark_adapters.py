@@ -37,11 +37,42 @@ class BenchmarkAdapterTests(unittest.TestCase):
             self.assertGreater(path.stat().st_size, 0)
             self.assertTrue(str(path).startswith(str(output_root.resolve())))
 
-    def test_output_dir_is_required(self) -> None:
-        with self.assertRaises(OutputDirRequiredError):
-            YCSBData().generate(output_dir=None)
-        with self.assertRaises(OutputDirRequiredError):
-            YCSBQueries().generate(output_dir=None)
+    def test_output_dir_defaults_when_none(self) -> None:
+        import os, tempfile
+        # Point DRIFTBENCH_DATA_DIR at a temp dir so the test does not write to ~/.driftbench
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["DRIFTBENCH_DATA_DIR"] = tmp
+            try:
+                result = YCSBData(scale_factor=1).generate(output_dir=None)
+                self.assertIsInstance(result, GenerationResult)
+                self.assertTrue(result.output_dir.exists())
+            finally:
+                del os.environ["DRIFTBENCH_DATA_DIR"]
+
+    def test_generate_reuses_existing_data_without_force(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            adapter = YCSBData(scale_factor=1)
+            r1 = adapter.generate(output_dir=out)
+            # Mutate a generated file so we can detect if it gets regenerated
+            sentinel = r1.files[0]
+            sentinel.write_text("SENTINEL", encoding="utf-8")
+            # Second call without force= should reuse and NOT overwrite
+            r2 = adapter.generate(output_dir=out)
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "SENTINEL")
+            self.assertEqual(r1.files, r2.files)
+
+    def test_generate_force_regenerates_existing_data(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            adapter = YCSBData(scale_factor=1)
+            r1 = adapter.generate(output_dir=out)
+            sentinel = r1.files[0]
+            original_content = sentinel.read_text(encoding="utf-8")
+            sentinel.write_text("SENTINEL", encoding="utf-8")
+            # force=True should overwrite
+            adapter.generate(output_dir=out, force=True)
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), original_content)
 
     def test_tpch_data_generate_with_explicit_source_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

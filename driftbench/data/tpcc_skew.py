@@ -52,10 +52,17 @@ class TPCCSkewData(TPCCData):
     benchmark: str = "tpcc_skew"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpcc_skew" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpcc_skew_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-C Skew data already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-C Skew data (W={self._w()}, skew={self.skew_factor}) → {out_dir}")
 
         w = self._w()
         weights = self._zipf_weights(w)
@@ -151,10 +158,17 @@ class TPCCSkewQueries(BenchmarkArtifact):
     benchmark: str = "tpcc_skew"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpcc_skew" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpcc_skew_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-C Skew queries already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-C Skew queries → {out_dir}")
 
         w = max(1, int(round(float(self.scale_factor))))
         hot_count = max(1, int(math.ceil(w * self.hot_warehouse_fraction)))

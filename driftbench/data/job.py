@@ -401,10 +401,17 @@ class JOBData(BenchmarkArtifact):
     benchmark: str = "job"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "job" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "job_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] JOB data already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating JOB data (sf={self._sf()}, mode={self.mode}) → {out_dir}")
 
         ddl = self._write_text(out_dir / "job_schema.sql", _JOB_DDL)
 
@@ -637,10 +644,17 @@ class JOBQueries(BenchmarkArtifact):
     benchmark: str = "job"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "job" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "job_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] JOB queries already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating JOB queries → {out_dir}")
 
         files: list[Path] = []
         for name, sql in _JOB_QUERIES.items():

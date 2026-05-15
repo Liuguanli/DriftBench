@@ -17,7 +17,12 @@ Format notes:
 - **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 8-table synth subset of the IMDB schema with 20 representative SQL query templates covering 2–8-table join depths. Plan mode provides a download script for the full 21-table IMDB snapshot.
 - **`docs/benchmark_reference.md`**: Complete reference for all 7 adapters including row counts, query categories, join complexity index, scale guidance, and selection guide.
 - **`.claude/agents/benchmark-advisor.md`**: AI sub-agent for benchmark selection questions and code generation.
-- 9 new tests covering all new adapters: filesystem contract, row count scaling, plan mode output, weight manifest correctness.
+- 9 new adapter tests + 2 lazy-generate tests (68 total, all pass).
+
+### Changed
+- **Lazy generate / skip-if-exists**: all 7 adapters now check for an existing manifest before generating. If all listed files are still present, `generate()` returns immediately with the existing result and prints a `[driftbench] … Reusing.` message. Pass `force=True` to regenerate unconditionally.
+- **`output_dir` is now optional**: when omitted, defaults to `~/.driftbench/data/` (overridable via `DRIFTBENCH_DATA_DIR` env var). The library prints the resolved path so users always know where files land.
+- `OutputDirRequiredError` is kept for backwards compatibility but is no longer raised.
 
 ## [v0.1.0b5] - 2026-05-11
 

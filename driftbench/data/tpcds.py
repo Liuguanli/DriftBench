@@ -15,10 +15,17 @@ class TPCDSData(BenchmarkArtifact):
     benchmark: str = "tpcds"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpcds" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpcds_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-DS data already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-DS data (sf={self.scale_factor}) → {out_dir}")
 
         script = self._write_text(out_dir / "generate_tpcds_data.sh", self._script_body())
         script.chmod(0o755)
@@ -67,10 +74,17 @@ class TPCDSQueries(BenchmarkArtifact):
     benchmark: str = "tpcds"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpcds" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpcds_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-DS queries already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-DS queries → {out_dir}")
 
         ids = list(range(1, 100))
         ids_file = self._write_text(

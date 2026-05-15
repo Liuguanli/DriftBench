@@ -26,10 +26,17 @@ class YCSBData(BenchmarkArtifact):
     benchmark: str = "ycsb"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "ycsb" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "ycsb_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] YCSB data already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating YCSB data (sf={self.scale_factor}) → {out_dir}")
 
         records = self.record_count if self.record_count is not None else self.scale_factor * 1000
         props = self._write_text(
@@ -80,10 +87,17 @@ class YCSBQueries(BenchmarkArtifact):
     benchmark: str = "ycsb"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "ycsb" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "ycsb_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] YCSB queries (workload={self.workload}) already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating YCSB queries (workload={self.workload}) → {out_dir}")
 
         profile = self.workload.upper()
         if profile not in _YCSB_WORKLOAD_WEIGHTS:

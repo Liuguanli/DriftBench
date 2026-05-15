@@ -37,10 +37,17 @@ class TPCHData(BenchmarkArtifact):
     benchmark: str = "tpch"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpch" / "data" / f"sf_{self._scale_key()}"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpch_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-H data (sf={self._scale_key()}) already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-H data (sf={self._scale_key()}) → {out_dir}")
 
         if self.mode == "plan":
             script = self._write_text(
@@ -151,10 +158,17 @@ class TPCHQueries(BenchmarkArtifact):
     benchmark: str = "tpch"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpch" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpch_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-H queries already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-H queries → {out_dir}")
 
         template_dir = self._resolve_template_dir()
         query_ids = self._resolve_query_ids(template_dir)

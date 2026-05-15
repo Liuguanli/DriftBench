@@ -40,10 +40,17 @@ class DSBData(BenchmarkArtifact):
     benchmark: str = "dsb"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "dsb" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "dsb_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] DSB data already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating DSB data (sf={self.scale_factor}) → {out_dir}")
 
         blueprint = self._write_text(out_dir / "schema_blueprint.sql", self._schema_sql())
         seed = self._write_text(out_dir / "seed_plan.yaml", self._seed_plan())
@@ -105,10 +112,17 @@ class DSBQueries(BenchmarkArtifact):
     benchmark: str = "dsb"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "dsb" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "dsb_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] DSB queries already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating DSB queries → {out_dir}")
 
         files: list[Path] = []
         for name, sql in _DSB_SQL_TEMPLATES.items():
