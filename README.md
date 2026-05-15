@@ -1,263 +1,60 @@
 <p align="center">
-  <img src="./res/icon.png" alt="DriftBench logo" width="360"/>
+  <img src="https://raw.githubusercontent.com/Liuguanli/DriftBench/main/res/icon.png" alt="DriftBench logo" width="360"/>
 </p>
 
 # DriftBench
 
 DriftBench is a toolkit for generating and replaying **data drift** and **workload drift** with DriftSpec.
 
-This README is intentionally focused on **how to use the latest DriftBench**.
+Who uses DriftBench:
+- **Researcher** — design reproducible drift experiments and ablations.
+- **Database Vendor / Performance Team** — run drift regression checks across targets before release.
+- **New User** — start from validated examples and get first outputs quickly.
 
-Version-by-version updates and service coverage:
-- [CHANGELOG.md](./CHANGELOG.md)
-
-Who typically uses DriftBench:
-- `Researcher`: design reproducible drift experiments and ablations.
-- `Database Vendor / Performance Team`: run drift regression checks across targets before release.
-- `New User`: start from validated examples and get first outputs quickly.
+Version history: [CHANGELOG](https://github.com/Liuguanli/DriftBench/blob/main/CHANGELOG.md) · Production site: [driftbench.com](https://driftbench.com)
 
 ---
 
-## Web Frontend
-
-- Production site: [driftbench.com](https://driftbench.com)
-- Frontend source repo: [driftbench-web](https://github.com/Liuguanli/driftbench-web)
-- Release branch note: pushes to `release/**` with user-facing DriftBench changes auto-dispatch a docs update event to `driftbench-web`.
-- Dispatch verification note (2026-05-10): this README line is used to validate cross-repo release notifications.
-- Dispatch verification note (retry): confirms the receiver workflow on driftbench-web is active after workflow fix.
-
----
-
-## Release Reproducibility
-
-- Workflow: `.github/workflows/reproducible-drift-runs.yml`
-- Trigger manually from GitHub Actions (`workflow_dispatch`) or call from other workflows (`workflow_call`).
-- Default run executes and validates:
-  - `driftspec/examples/demo_data_single.yaml`
-  - `driftspec/examples/workload_census.yaml`
-- Artifacts are uploaded as `driftbench-reproducible-run-artifacts`.
-
----
-
-## Install (Latest)
-
-### From PyPI (recommended)
+## Install
 
 ```bash
-python3 -m pip install -U driftbench-db
+pip install -U driftbench-db
 ```
 
-### From source (latest `main`)
+Or from source:
 
 ```bash
 git clone https://github.com/Liuguanli/DriftBench.git
 cd DriftBench
-python3 -m pip install -e .
+pip install -e .
 ```
 
-### Verify installation
+Verify:
 
 ```bash
 driftbench --help
-driftbench-service --help
-driftbench-mcp --help
 ```
 
 ---
 
-## CLI Quickstart
+## Benchmark Adapters (`driftbench.data`)
 
-Use this flow for most users:
+Nine adapters generate real data files and SQL query workloads with no external dependencies
+(TPC-H `mode="generate"` auto-downloads and builds `dbgen` on first use).
 
-```bash
-# 1) Validate a DriftSpec
-python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+| Adapter | Workload type | Data format | Tables | Queries |
+|---------|--------------|-------------|--------|---------|
+| `tpch` | OLAP | `.tbl` (pipe-delimited) | 8 | 22 SQL via qgen |
+| `tpcds` | OLAP / Decision support | `.dat` (pipe-delimited) | 5 synthetic | 99 query IDs |
+| `tpcc` | OLTP | `.csv` | 9 | 5 transaction types |
+| `tpcc_skew` | OLTP + hotspot | `.csv` + weight manifest | 9 | 5 transaction types |
+| `job` | OLAP / join-order | `.csv` | 11 (IMDB-like) | 20 SQL templates |
+| `ycsb` | Key-value | `.csv` | 1 | 6 workload mixes (A–F) |
+| `dsb` | Decision support | `.csv` | 3 star-schema | 3 SQL templates |
+| `pgbench` | TPC-B (OLTP) | `.csv` | 4 | 3 workloads |
+| `benchbase` | Multi-benchmark | XML + shell script | via live DB | 10 benchmarks |
 
-# 2) Preview execution plan
-python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
-
-# 3) Execute
-python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
-
-# 4) Inspect outputs
-python -m driftbench.cli list-outputs --root output --glob "**/*" --limit 30 --json
-```
-
-### Trace to DriftSpec
-
-```bash
-python -m driftbench.cli trace-to-spec \
-  driftspec/trace_inputs/trace_data_mock.csv \
-  driftspec/generated/from_trace.yaml \
-  --trace-type data
-```
-
-### Orchestrate Across Benchmark Targets (MVP)
-
-Use one DriftSpec across multiple benchmark targets defined in `benchmark_target.yaml`.
-
-```bash
-python -m driftbench.cli orchestrate \
-  --spec driftspec/examples/demo_data_single.yaml \
-  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
-  --manifest-out output/orchestrate_manifest.json \
-  --json
-```
-
-Execute setup/run commands for each target:
-
-```bash
-python -m driftbench.cli orchestrate \
-  --spec driftspec/examples/demo_data_single.yaml \
-  --targets driftspec/examples/adapters/benchmark_targets_mvp.yaml \
-  --manifest-out output/orchestrate_manifest.json \
-  --execute \
-  --json
-```
-
-### Bootstrap Dataset (download/copy + checksum + schema extract)
-
-Bootstrap from preset, local path, or URL:
-
-```bash
-python -m driftbench.cli bootstrap dataset \
-  --source census_original \
-  --output-dir output/bootstrap/datasets \
-  --json
-```
-
-With checksum verification:
-
-```bash
-python -m driftbench.cli bootstrap dataset \
-  --source /path/to/my_dataset.csv \
-  --output-dir output/bootstrap/datasets \
-  --checksum sha256:<hex> \
-  --json
-```
-
----
-
-## MCP Quickstart
-
-Start MCP server (stdio):
-
-```bash
-python3 -m driftbench_mcp.server
-```
-
-Client config template:
-
-- `docs/mcp_config_example.json`
-
-Minimal MCP guide:
-
-- `docs/p0_mcp_server_minimal.md`
-
-Core MCP workflow:
-
-1. `trace_to_spec`
-2. `validate_spec`
-3. `run_spec`
-4. `list_outputs`
-
-Spec sharing tools:
-
-- `save_spec`
-- `list_public_specs`
-- `import_spec_and_run`
-
----
-
-## MCP Chat Demo (Codex / Claude Code)
-
-After MCP is configured, the best pattern is to give your assistant a **case type**
-plus **what change you want to simulate**.
-
-### Case A: Data Drift (data changes)
-
-Use when you care about data size/distribution changes (scaling, skew, outliers, updates).
-
-```bash
-[Prompt: Data Drift]
-Read docs/p0_integration_quickstart.md.
-I want a DATA drift case on <my dataset path>.
-Goal: <e.g., scale 2x + stronger skew on column amount>.
-Please use MCP tools to:
-1) build a DriftSpec (or trace_to_spec if needed),
-2) validate it,
-3) run it,
-4) list outputs.
-Then summarize what data files were generated and what changed.
-```
-
-### Case B: Workload Drift (query changes)
-
-Use when you care about query behavior changes (predicate distribution, selectivity, structure, payload).
-
-```bash
-[Prompt: Workload Drift]
-I want a WORKLOAD drift case.
-Query goal: <e.g., predicates shift from uniform to city-focused, selectivity from 10% to 60%>.
-Please create/run a spec via MCP and report:
-- generated workload files,
-- how query distribution/selectivity changed,
-- suggested next workload variant.
-```
-
-### Temporal Overlay (applied on top of Case A or B)
-
-Temporal drift is usually an overlay, not a standalone base case.
-Use it to add time evolution (uniform / periodic / trend / long-tail) on top of data drift or workload drift.
-
-```bash
-[Prompt: Temporal Overlay]
-Take my <DATA or WORKLOAD> drift case and add TEMPORAL pattern <uniform|periodic|trend|long_tail>.
-Please run the MCP workflow and summarize:
-1) generated spec path,
-2) output artifacts,
-3) expected temporal behavior in plain language,
-4) how temporal behavior changes the base (data/workload) case.
-```
-
-### What users should expect
-
-1. The assistant executes MCP tools in order (`trace_to_spec/build_spec` -> `validate_spec` -> `run_spec` -> `list_outputs`).
-2. You get concrete artifact paths (generated YAML + output files).
-3. You get a short interpretation of what changed for your selected case (data/query), plus temporal overlay effects when requested.
-4. You usually get one or two suggested next iterations for deeper benchmarking.
-
-## Python API (Stable Entry Points)
-
-Use top-level APIs instead of internal modules:
-
-```python
-from driftbench import run_spec, trace_to_spec, get_schema_extractor
-
-run_spec("driftspec/examples/demo_data_single.yaml")
-trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated/from_trace.yaml")
-```
-
-## Benchmark Objects (`driftbench.data.xxx`)
-
-Use benchmark-specific objects to generate artifacts into a user-chosen directory.
-Seven benchmark adapters are available — see [docs/benchmark_reference.md](docs/benchmark_reference.md) for full data/query details.
-
-| Adapter | Type | Tables | Queries |
-|---------|------|--------|---------|
-| `tpch` | OLAP | 8 | 22 templates |
-| `tpcds` | OLAP / Decision support | 4 (synth) / 26 (full) | Templates |
-| `tpcc` | OLTP | 9 | 5 transaction types |
-| `tpcc_skew` | OLTP + access skew | 9 + weight manifest | 5 transaction types |
-| `job` | OLAP / join-order | 8 (synth) / 21 (full IMDB) | 20 representative |
-| `ycsb` | Key-value | 1 | 6 workload mixes |
-| `dsb` | Decision support | Configurable | Templates |
-
-### 1) Choose an output directory
-
-`output_dir` is required. DriftBench will write files only under this directory.
-
-### 2) Generate data and queries
+### Generate data and queries
 
 ```python
 from pathlib import Path
@@ -268,91 +65,118 @@ from driftbench.data.tpcc_skew import data as tpcc_skew_data, queries as tpcc_sk
 from driftbench.data.job import data as job_data, queries as job_queries
 from driftbench.data.ycsb import data as ycsb_data, queries as ycsb_queries
 from driftbench.data.dsb import data as dsb_data, queries as dsb_queries
+from driftbench.data.pgbench import data as pgbench_data, queries as pgbench_queries
+from driftbench.data.benchbase import data as bb_data, queries as bb_queries
 
 out = Path("./artifacts")
 
-# TPC-H (OLAP)
-tpch_data(scale_factor=1).generate(output_dir=out)
-tpch_queries(query_ids=[1, 3, 5], queries_per_template=2, mode="qgen").generate(output_dir=out)
-# TPC-C (OLTP, scale_factor == number of warehouses)
+# TPC-H — auto-builds dbgen on first use; converts .tbl to .csv with .as_csv()
+tpch_data(scale_factor=1, mode="generate").generate(output_dir=out)
+tpch_queries(query_ids=[1, 3, 5], queries_per_template=2).generate(output_dir=out)
+
+# TPC-DS — synthetic .dat files; converts to .csv with .as_csv()
+tpcds_data(scale_factor=10).generate(output_dir=out)
+tpcds_queries().generate(output_dir=out)
+
+# TPC-C — scale_factor = number of warehouses
 tpcc_data(scale_factor=4).generate(output_dir=out)
 tpcc_queries().generate(output_dir=out)
 
-# TPC-C Skew (OLTP with Zipf hot-warehouse drift)
+# TPC-C Skew — Zipf hot-warehouse access distribution
 tpcc_skew_data(scale_factor=10, hot_warehouse_fraction=0.2, skew_factor=0.99).generate(output_dir=out)
 tpcc_skew_queries(scale_factor=10, hot_warehouse_fraction=0.2).generate(output_dir=out)
 
-# JOB — Join Order Benchmark (IMDB, join-order sensitivity)
+# JOB, YCSB, DSB, pgbench
 job_data(scale_factor=1).generate(output_dir=out)
-job_queries().generate(output_dir=out)
-
-# YCSB (key-value workloads A–F)
 ycsb_data(scale_factor=1).generate(output_dir=out)
 ycsb_queries(workload="B").generate(output_dir=out)
-
-# TPC-DS and DSB
-tpcds_data(scale_factor=10).generate(output_dir=out)
-tpcds_queries().generate(output_dir=out)
 dsb_data(scale_factor=10).generate(output_dir=out)
-dsb_queries().generate(output_dir=out)
+pgbench_data(scale_factor=1).generate(output_dir=out)
+pgbench_queries(workload="tpcb").generate(output_dir=out)
+
+# BenchBase — generates XML configs + shell scripts for a live database
+bb_data(benchmark="tpcc", scale_factor=10).generate(output_dir=out)
+bb_queries(benchmark="tpcc", terminals=8, duration=120).generate(output_dir=out)
 ```
 
-### 3) Find generated files
+### Output layout
 
-Artifacts are written to:
-
-```text
-<output_dir>/
-  tpch/data/    tpch/queries/
-  tpcds/data/   tpcds/queries/
-  tpcc/data/    tpcc/queries/
-  tpcc_skew/data/  tpcc_skew/queries/
-  job/data/     job/queries/
-  ycsb/data/    ycsb/queries/
-  dsb/data/     dsb/queries/
+```
+artifacts/
+  tpch/data/sf_1/tables/   tpch/queries/
+  tpcds/data/              tpcds/queries/
+  tpcc/data/               tpcc/queries/
+  tpcc_skew/data/          tpcc_skew/queries/
+  job/data/                job/queries/
+  ycsb/data/               ycsb/queries/
+  dsb/data/                dsb/queries/
+  pgbench/data/            pgbench/queries/
+  benchbase/tpcc/data/     benchbase/tpcc/queries/
 ```
 
-Each generation creates a manifest (`*_manifest.json`) in its folder.  
-Use the manifest `files` field to see exactly which files were generated.
+Each folder contains a `*_manifest.json` listing the generated files.
 
-### 4) Programmatic path retrieval
+### GenerationResult
 
-`generate()` returns a `GenerationResult` with:
-- `result.files`: generated file paths
-- `result.metadata`: manifest path
+`generate()` returns a `GenerationResult`:
 
-This is the recommended way to chain into downstream benchmarking scripts.
+```python
+result = tpch_data(scale_factor=1, mode="generate").generate(output_dir=out)
+result.files      # list of generated file paths
+result.metadata   # path to the manifest JSON
+
+# Convert pipe-delimited .tbl / .dat to standard CSV (both kept on disk)
+csv_result = result.as_csv()
+```
+
+Second call reuses existing files automatically. Pass `force=True` to regenerate.
 
 ---
 
-## Where to find examples
+## CLI Quickstart
 
-- Example specs: `driftspec/examples/`
-- Trace inputs: `driftspec/trace_inputs/`
-- Integration tests with runnable fixtures: `test/fixtures/specs/`
+```bash
+# Validate a DriftSpec
+python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+
+# Dry-run (preview execution plan)
+python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
+
+# Execute
+python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
+```
 
 ---
 
-## Core docs
+## Python API
 
-- API boundary: `docs/p0_api_boundary_freeze.md`
-- CLI/MCP command matrix: `docs/p0_mcp_command_matrix.md`
-- Integration quickstart: `docs/p0_integration_quickstart.md`
-- MCP examples script: `docs/p0_mcp_examples.sh`
-- Release branch/tag policy: `docs/release_branch_policy.md`
+```python
+from driftbench import run_spec, trace_to_spec
+
+run_spec("driftspec/examples/demo_data_single.yaml")
+trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated/from_trace.yaml")
+```
+
+---
+
+## MCP Server
+
+```bash
+python3 -m driftbench_mcp.server
+```
+
+Core workflow via MCP: `trace_to_spec` → `validate_spec` → `run_spec` → `list_outputs`
 
 ---
 
 ## Testing
 
-Run all tests:
-
 ```bash
-python3 -m unittest discover -s test -p 'test_*.py' -v
+python -m unittest discover -s test -p 'test_*.py' -v
 ```
 
 ---
 
 ## License
 
-MIT (see `LICENSE`).
+MIT — see [LICENSE](https://github.com/Liuguanli/DriftBench/blob/main/LICENSE).
