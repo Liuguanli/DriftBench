@@ -29,27 +29,32 @@ The 5 skipped are legacy placeholder tests — that is normal.
 
 ## 1. TPC-H
 
-### 1a. Data — plan mode (large scale, no local files generated)
+> **Scale factor note:** TPC-H sf=1 ≈ 1 GB of raw data. `mode="plan"` never
+> generates data locally — it only writes a shell script you run on a server
+> with dbgen. The scale factor you choose here only affects what value appears
+> inside the script. Use `mode="plan"` for any sf you cannot generate locally.
+
+### 1a. Data — plan mode (generates a script, no local data)
 
 ```python
 from driftbench.data.tpch import data as tpch_data
-result = tpch_data(scale_factor=1000, mode="plan").generate(output_dir=OUT)
+result = tpch_data(scale_factor=10, mode="plan").generate(output_dir=OUT)
 print("files:", [f.name for f in result.files])
 ```
 
 **Expected console output:**
 ```
-[driftbench] Generating TPC-H data (sf=1000) → .../test_artifacts/tpch/data/sf_1000
+[driftbench] Generating TPC-H data (sf=10) → .../test_artifacts/tpch/data/sf_10
 ```
 
 **Expected files (2):**
-- `test_artifacts/tpch/data/sf_1000/generate_tpch_data.sh`
-- `test_artifacts/tpch/data/sf_1000/tpch_data_manifest.json`
+- `test_artifacts/tpch/data/sf_10/generate_tpch_data.sh`
+- `test_artifacts/tpch/data/sf_10/tpch_data_manifest.json`
 
 **Verify script content:**
 ```python
-script = OUT / "tpch/data/sf_1000/generate_tpch_data.sh"
-assert "SCALE_FACTOR=1000" in script.read_text()
+script = OUT / "tpch/data/sf_10/generate_tpch_data.sh"
+assert "SCALE_FACTOR=10" in script.read_text()
 assert "dbgen" in script.read_text()
 print("✓ TPC-H plan script OK")
 ```
@@ -471,7 +476,7 @@ print("wrote to:", result.output_dir)
 
 | # | Benchmark | Test snippet above | Key assertion |
 |---|-----------|-------------------|---------------|
-| 1 | TPC-H | §1a + §1b + §1c | manifest count==6, script has SCALE_FACTOR=1000, reuse message |
+| 1 | TPC-H | §1a + §1b + §1c | manifest count==6, script has SCALE_FACTOR=10, reuse message |
 | 2 | TPC-DS | §2 | query_count==99, SCALE_FACTOR=5 in script |
 | 3 | YCSB | §3 | recordcount==2000, ReadRecord weight==95 |
 | 4 | DSB | §4 | seed plan has 300000 customers, query_count==3 |
