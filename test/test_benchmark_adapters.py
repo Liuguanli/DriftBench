@@ -13,6 +13,8 @@ from driftbench.data.ycsb import YCSBData, YCSBQueries
 from driftbench.data.tpcc import TPCCData, TPCCQueries
 from driftbench.data.tpcc_skew import TPCCSkewData, TPCCSkewQueries
 from driftbench.data.job import JOBData, JOBQueries
+from driftbench.data.pgbench import PgBenchData, PgBenchQueries
+from driftbench.data.benchbase import BenchBaseData, BenchBaseQueries
 
 
 class BenchmarkAdapterTests(unittest.TestCase):
@@ -326,6 +328,114 @@ class BenchmarkAdapterTests(unittest.TestCase):
             payload = json.loads(manifest.read_text(encoding="utf-8"))
             self.assertIn("join_complexity", payload)
             self.assertIn("8_table", payload["join_complexity"])
+
+    # ------------------------------------------------------------------
+    # pgbench tests
+    # ------------------------------------------------------------------
+
+    def test_pgbench_data_synth_filesystem_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = PgBenchData(scale_factor=1, mode="synth").generate(output_dir=out)
+            self._assert_result_is_filesystem_contract(result, out)
+            self.assertEqual(result.benchmark, "pgbench")
+
+    def test_pgbench_data_synth_four_tables(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = PgBenchData(scale_factor=1).generate(output_dir=out)
+            csv_names = {p.stem for p in result.files if p.suffix == ".csv"}
+            self.assertIn("pgbench_branches", csv_names)
+            self.assertIn("pgbench_tellers", csv_names)
+            self.assertIn("pgbench_accounts", csv_names)
+            self.assertIn("pgbench_history", csv_names)
+
+    def test_pgbench_data_synth_row_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = PgBenchData(scale_factor=1).generate(output_dir=out)
+
+            def row_count(name):
+                f = next(p for p in result.files if p.stem == name)
+                return len(f.read_text(encoding="utf-8").splitlines()) - 1
+
+            self.assertEqual(row_count("pgbench_branches"), 1)
+            self.assertEqual(row_count("pgbench_tellers"), 10)
+            self.assertEqual(row_count("pgbench_accounts"), 100_000)
+            self.assertEqual(row_count("pgbench_history"), 0)
+
+    def test_pgbench_data_plan_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = PgBenchData(scale_factor=2, mode="plan").generate(output_dir=out)
+            self._assert_result_is_filesystem_contract(result, out)
+            script = out / "pgbench" / "data" / "init_pgbench.sh"
+            self.assertTrue(script.exists())
+            self.assertIn("SCALE_FACTOR=2", script.read_text(encoding="utf-8"))
+
+    def test_pgbench_queries_all_workloads(self) -> None:
+        for workload in ("tpcb", "simple_update", "select_only"):
+            with tempfile.TemporaryDirectory() as tmp:
+                out = Path(tmp) / "out"
+                result = PgBenchQueries(workload=workload).generate(output_dir=out)
+                self._assert_result_is_filesystem_contract(result, out)
+                sql_file = out / "pgbench" / "queries" / f"pgbench_{workload}.sql"
+                self.assertTrue(sql_file.exists(), f"Missing SQL for workload={workload}")
+
+    # ------------------------------------------------------------------
+    # BenchBase tests
+    # ------------------------------------------------------------------
+
+    def test_benchbase_data_tpcc_filesystem_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = BenchBaseData(benchmark_name="tpcc", scale_factor=1).generate(output_dir=out)
+            self._assert_result_is_filesystem_contract(result, out)
+            self.assertEqual(result.benchmark, "benchbase")
+
+    def test_benchbase_data_generates_xml_and_script(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = BenchBaseData(benchmark_name="tpcc").generate(output_dir=out)
+            xml = out / "benchbase" / "tpcc" / "data" / "tpcc_load_config.xml"
+            script = out / "benchbase" / "tpcc" / "data" / "load.sh"
+            self.assertTrue(xml.exists())
+            self.assertTrue(script.exists())
+            content = xml.read_text(encoding="utf-8")
+            self.assertIn("<scalefactor>", content)
+            self.assertIn("NewOrder", content)
+            self.assertIn("load=true", content)
+            self.assertIn("execute=false", content)
+
+    def test_benchbase_queries_generates_execute_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            result = BenchBaseQueries(
+                benchmark_name="smallbank", terminals=8, duration=120
+            ).generate(output_dir=out)
+            self._assert_result_is_filesystem_contract(result, out)
+            xml = out / "benchbase" / "smallbank" / "queries" / "smallbank_execute_config.xml"
+            self.assertTrue(xml.exists())
+            content = xml.read_text(encoding="utf-8")
+            self.assertIn("<terminals>8</terminals>", content)
+            self.assertIn("<time>120</time>", content)
+            self.assertIn("execute=true", content)
+            self.assertIn("load=false", content)
+
+    def test_benchbase_supported_benchmarks_all_generate(self) -> None:
+        benchmarks = ["tpcc", "ycsb", "seats", "auctionmark", "smallbank",
+                      "epinions", "wikipedia", "twitter", "voter"]
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            for bm in benchmarks:
+                result = BenchBaseData(benchmark_name=bm).generate(output_dir=out)
+                self.assertIsInstance(result, GenerationResult, f"Failed for benchmark={bm}")
+
+    def test_benchbase_invalid_benchmark_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            with self.assertRaises(ValueError):
+                BenchBaseData(benchmark_name="nonexistent").generate(output_dir=out)
 
 
 if __name__ == "__main__":

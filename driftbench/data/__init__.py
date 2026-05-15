@@ -15,6 +15,8 @@ from .dsb import DSBData, DSBQueries
 from .tpcc import TPCCData, TPCCQueries
 from .tpcc_skew import TPCCSkewData, TPCCSkewQueries
 from .job import JOBData, JOBQueries
+from .pgbench import PgBenchData, PgBenchQueries
+from .benchbase import BenchBaseData, BenchBaseQueries
 
 __all__ = [
     "GenerationResult",
@@ -33,4 +35,8 @@ __all__ = [
     "TPCCSkewQueries",
     "JOBData",
     "JOBQueries",
+    "PgBenchData",
+    "PgBenchQueries",
+    "BenchBaseData",
+    "BenchBaseQueries",
 ]

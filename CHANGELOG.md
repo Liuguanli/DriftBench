@@ -9,7 +9,7 @@ Format notes:
 ## [Unreleased]
 
 ### Services
-- `Data`: Three new benchmark adapters — TPC-C, TPC-C Skew, and JOB (Join Order Benchmark).
+- `Data`: Five new benchmark adapters — TPC-C, TPC-C Skew, JOB, pgbench, and BenchBase.
 
 ### Added
 - **TPC-C adapter** (`driftbench.data.tpcc`): Full 9-table OLTP schema with synthetic CSV generation and plan mode. All 5 transaction types as SQL templates (new_order, payment, order_status, delivery, stock_level). Scale factor = number of warehouses.
@@ -17,7 +17,9 @@ Format notes:
 - **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 8-table synth subset of the IMDB schema with 20 representative SQL query templates covering 2–8-table join depths. Plan mode provides a download script for the full 21-table IMDB snapshot.
 - **`docs/benchmark_reference.md`**: Complete reference for all 7 adapters including row counts, query categories, join complexity index, scale guidance, and selection guide.
 - **`.claude/agents/benchmark-advisor.md`**: AI sub-agent for benchmark selection questions and code generation.
-- 9 new adapter tests + 2 lazy-generate tests (68 total, all pass).
+- **pgbench adapter** (`driftbench.data.pgbench`): TPC-B-like schema (branches, tellers, accounts, history). Synth CSV generation with correct row counts (branches=sf, tellers=10×sf, accounts=100K×sf). Three workload templates: `tpcb`, `simple_update`, `select_only`. Plan mode generates a `pgbench -i` shell script.
+- **BenchBase adapter** (`driftbench.data.benchbase`): XML config generator for 10 BenchBase benchmarks (TPC-C, TPC-H, YCSB, SEATS, AuctionMark, Smallbank, Epinions, Wikipedia, Twitter, Voter). Generates separate load config + `load.sh` and execute config + `execute.sh`. Transaction weights and types are pre-configured per benchmark.
+- 10 new tests (78 total, all pass).
 
 ### Changed
 - **Lazy generate / skip-if-exists**: all 7 adapters now check for an existing manifest before generating. If all listed files are still present, `generate()` returns immediately with the existing result and prints a `[driftbench] … Reusing.` message. Pass `force=True` to regenerate unconditionally.
