@@ -29,16 +29,73 @@ The 5 skipped are legacy placeholder tests — that is normal.
 
 ## 1. TPC-H
 
-> **Scale factor and `mode="plan"`:**
-> TPC-H sf=1 ≈ 1 GB, sf=1000 ≈ 1 TB of raw data — but **`mode="plan"` never
-> generates data locally.** It only writes a ~300-byte shell script containing
-> the scale factor you chose. The Python call is instant regardless of sf.
-> You run the script later on a server that has dbgen installed.
+> **TPC-H scale factor:** sf=1 ≈ 1 GB, sf=10 ≈ 10 GB, sf=1000 ≈ 1 TB.
+>
+> Three modes:
+> - `mode="generate"` — runs `dbgen` locally, produces all 8 `.tbl` files. **Requires dbgen installed.**
+> - `mode="plan"` — writes only a shell script; no data generated. Use when you can't run dbgen locally.
+> - `mode="copy"` — copies `.tbl` files you already have from `source_dir`.
 
-### 1a. Data — plan mode (instant: writes a script, no local data at all)
+### 1a. Data — generate mode (runs dbgen, produces real .tbl files)
 
 ```python
 from driftbench.data.tpch import data as tpch_data
+result = tpch_data(scale_factor=1, mode="generate").generate(output_dir=OUT)
+print("files:", [f.name for f in result.files])
+```
+
+**Expected console output:**
+```
+[driftbench] Generating TPC-H data (sf=1) → .../test_artifacts/tpch/data/sf_1
+[driftbench] Running dbgen -s 1 in .../test_artifacts/tpch/data/sf_1/tables
+[driftbench] This generates all 8 TPC-H tables. sf=1 ≈ 1 GB — may take a while for large scale factors.
+... (dbgen progress output) ...
+[driftbench] dbgen complete — 8 tables in .../tables
+```
+
+**Expected files (8 .tbl files):**
+```
+test_artifacts/tpch/data/sf_1/tables/
+  customer.tbl    lineitem.tbl    nation.tbl    orders.tbl
+  part.tbl        partsupp.tbl    region.tbl    supplier.tbl
+```
+
+**Verify:**
+```python
+tables_dir = OUT / "tpch/data/sf_1/tables"
+tbls = {f.name for f in tables_dir.glob("*.tbl")}
+assert tbls == {"customer.tbl", "lineitem.tbl", "nation.tbl", "orders.tbl",
+                "part.tbl", "partsupp.tbl", "region.tbl", "supplier.tbl"}
+# lineitem is the largest table (~6M rows at sf=1)
+assert (tables_dir / "lineitem.tbl").stat().st_size > 700_000_000  # >700 MB
+print("✓ TPC-H generate mode OK")
+```
+
+**If dbgen is not installed**, you will see:
+```
+RuntimeError: dbgen binary not found.
+Install TPC-H dbgen and make it available in PATH:
+  git clone https://github.com/electrum/tpch-dbgen
+  cd tpch-dbgen && make
+  export PATH=$PATH:$(pwd)
+Or pass dbgen_path='/path/to/dbgen' explicitly.
+Or use mode='plan' to generate a shell script instead.
+```
+
+You can also point to a custom dbgen location:
+```python
+result = tpch_data(scale_factor=1, mode="generate",
+                   dbgen_path="/path/to/tpch-dbgen/dbgen").generate(output_dir=OUT)
+```
+
+---
+
+### 1a-alt. Data — plan mode (instant: writes a script only, no local data)
+
+Use this when you want to record the intended scale and run dbgen on a server later.
+sf=1000 produces a 1 TB dataset — the Python call is instant regardless.
+
+```python
 result = tpch_data(scale_factor=1000, mode="plan").generate(output_dir=OUT)
 print("files:", [f.name for f in result.files])
 ```
@@ -49,17 +106,16 @@ print("files:", [f.name for f in result.files])
 ```
 
 **Expected files (2, both tiny text files):**
-- `test_artifacts/tpch/data/sf_1000/generate_tpch_data.sh`  ← ~300 bytes
+- `test_artifacts/tpch/data/sf_1000/generate_tpch_data.sh`   ← ~300 bytes, contains `SCALE_FACTOR=1000`
 - `test_artifacts/tpch/data/sf_1000/tpch_data_manifest.json` ← ~350 bytes
 
-**Verify script content:**
+**Verify:**
 ```python
 script = OUT / "tpch/data/sf_1000/generate_tpch_data.sh"
 assert "SCALE_FACTOR=1000" in script.read_text()
 assert "dbgen" in script.read_text()
-# No .tbl data files exist — plan mode does not generate them locally
-assert not list((OUT / "tpch/data/sf_1000").glob("*.tbl"))
-print("✓ TPC-H plan script OK — 1 TB target recorded, zero bytes of data generated locally")
+assert not list((OUT / "tpch/data/sf_1000").glob("*.tbl"))  # no data files
+print("✓ TPC-H plan mode OK — script written, zero data generated locally")
 ```
 
 ---

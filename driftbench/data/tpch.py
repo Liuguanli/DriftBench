@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 import csv
@@ -32,7 +33,8 @@ class TPCHData(BenchmarkArtifact):
 
     scale_factor: str | int | float = 1
     source_dir: str | Path | None = None
-    mode: Literal["copy", "plan"] = "copy"
+    mode: Literal["copy", "plan", "generate"] = "copy"
+    dbgen_path: str | Path | None = None  # explicit path to dbgen binary; searches PATH if None
 
     benchmark: str = "tpch"
     artifact_type: str = "data"
@@ -70,6 +72,21 @@ class TPCHData(BenchmarkArtifact):
                 },
             )
             return self._result(root, [script], metadata)
+
+        if self.mode == "generate":
+            tbls = self._run_dbgen(out_dir)
+            metadata = self._write_json(
+                out_dir / "tpch_data_manifest.json",
+                {
+                    "benchmark": self.benchmark,
+                    "artifact_type": self.artifact_type,
+                    "mode": self.mode,
+                    "scale_factor": self._scale_key(),
+                    "source": "dbgen",
+                    "files": self._paths_relative_to(root, tbls),
+                },
+            )
+            return self._result(root, tbls, metadata)
 
         src = self._resolve_source_dir()
         copied: list[Path] = []
@@ -118,6 +135,55 @@ class TPCHData(BenchmarkArtifact):
         if value.endswith(".0"):
             value = value[:-2]
         return value
+
+    def _run_dbgen(self, out_dir: Path) -> list[Path]:
+        """Run dbgen to generate .tbl files directly into out_dir/tables/."""
+        # Resolve dbgen binary: explicit path → PATH → repo-local build
+        if self.dbgen_path is not None:
+            dbgen = Path(self.dbgen_path).expanduser().resolve()
+            if not dbgen.exists():
+                raise FileNotFoundError(f"dbgen not found at dbgen_path={dbgen}")
+        else:
+            found = shutil.which("dbgen")
+            if found is None:
+                # Also check the repo's own dbgen build
+                repo_bin = _REPO_TPCH_DIR / "dbgen" / "dbgen"
+                found = str(repo_bin) if repo_bin.exists() else None
+            if found is None:
+                raise RuntimeError(
+                    "dbgen binary not found.\n"
+                    "Install TPC-H dbgen and make it available in PATH:\n"
+                    "  git clone https://github.com/electrum/tpch-dbgen\n"
+                    "  cd tpch-dbgen && make\n"
+                    "  export PATH=$PATH:$(pwd)\n"
+                    "Or pass dbgen_path='/path/to/dbgen' explicitly.\n"
+                    "Or use mode='plan' to generate a shell script instead."
+                )
+            dbgen = Path(found)
+
+        tables_dir = out_dir / "tables"
+        tables_dir.mkdir(parents=True, exist_ok=True)
+
+        sf = self._scale_key()
+        print(
+            f"[driftbench] Running dbgen -s {sf} in {tables_dir}\n"
+            f"[driftbench] This generates all 8 TPC-H tables. "
+            f"sf={sf} ≈ {sf} GB — may take a while for large scale factors."
+        )
+        subprocess.run(
+            [str(dbgen), "-vf", "-s", sf],
+            cwd=str(tables_dir),
+            check=True,
+        )
+
+        tbls = sorted(tables_dir.glob("*.tbl"))
+        if not tbls:
+            raise RuntimeError(
+                f"dbgen ran successfully but no .tbl files were found in {tables_dir}. "
+                "Check dbgen output above for errors."
+            )
+        print(f"[driftbench] dbgen complete — {len(tbls)} tables in {tables_dir}")
+        return tbls
 
     def _resolve_source_dir(self) -> Path:
         if self.source_dir is not None:
@@ -269,9 +335,23 @@ class TPCHQueries(BenchmarkArtifact):
 def data(
     scale_factor: str | int | float = 1,
     source_dir: str | Path | None = None,
-    mode: Literal["copy", "plan"] = "copy",
+    mode: Literal["copy", "plan", "generate"] = "copy",
+    dbgen_path: str | Path | None = None,
 ) -> TPCHData:
-    return TPCHData(scale_factor=scale_factor, source_dir=source_dir, mode=mode)
+    """Return a TPCHData adapter.
+
+    Modes:
+        "copy"     — copy .tbl files from source_dir (or default ref_data).
+        "plan"     — write generate_tpch_data.sh only; no data generated locally.
+        "generate" — run dbgen to produce all 8 .tbl files in output_dir/tpch/data/sf_N/tables/.
+                     Requires dbgen in PATH or pass dbgen_path explicitly.
+    """
+    return TPCHData(
+        scale_factor=scale_factor,
+        source_dir=source_dir,
+        mode=mode,
+        dbgen_path=dbgen_path,
+    )
 
 
 def queries(
