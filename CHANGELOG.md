@@ -6,7 +6,7 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
-## [Unreleased]
+## [v0.1.0b7] - 2026-05-15
 
 ### Services
 - `Data`: Nine benchmark adapters — TPC-H, TPC-DS, YCSB, DSB, TPC-C, TPC-C Skew, JOB, pgbench, BenchBase. All generate real data files without requiring external tools (except TPC-H generate mode).
