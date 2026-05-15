@@ -6,6 +6,14 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [v0.1.0b7.post1] - 2026-05-15
+
+### Services
+- `Docs`: PyPI project description corrected.
+
+### Changed
+- README rewritten for PyPI: absolute URLs, all 9 adapters documented, stale content removed.
+
 ## [v0.1.0b7] - 2026-05-15
 
 ### Services
