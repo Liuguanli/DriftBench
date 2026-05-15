@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 import csv
@@ -25,6 +27,10 @@ _REPO_TEMPLATE_DIR = _REPO_TPCH_DIR / "dbgen" / "queries"
 _REPO_DISTS_FILE = _REPO_TPCH_DIR / "dbgen" / "dists.dss"
 _REPO_REF_DATA_DIR = _REPO_TPCH_DIR / "ref_data"
 
+# Default cache location for the auto-built dbgen binary.
+_DBGEN_CACHE_DIR = Path.home() / ".driftbench" / "cache" / "tpch-dbgen"
+_DBGEN_CACHE_BINARY = _DBGEN_CACHE_DIR / "dbgen"
+
 
 @dataclass
 class TPCHData(BenchmarkArtifact):
@@ -32,22 +38,26 @@ class TPCHData(BenchmarkArtifact):
 
     scale_factor: str | int | float = 1
     source_dir: str | Path | None = None
-    mode: Literal["copy", "plan"] = "copy"
+    mode: Literal["copy", "generate"] = "copy"
+    dbgen_path: str | Path | None = None  # explicit path to dbgen binary; searches PATH if None
 
     benchmark: str = "tpch"
     artifact_type: str = "data"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpch" / "data" / f"sf_{self._scale_key()}"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.mode == "plan":
-            script = self._write_text(
-                out_dir / "generate_tpch_data.sh",
-                self._plan_script_body(),
-            )
-            script.chmod(0o755)
+        if not force:
+            existing = self._load_existing(out_dir / "tpch_data_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-H data (sf={self._scale_key()}) already exists at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-H data (sf={self._scale_key()}) → {out_dir}")
+
+        if self.mode == "generate":
+            tbls = self._run_dbgen(out_dir)
             metadata = self._write_json(
                 out_dir / "tpch_data_manifest.json",
                 {
@@ -55,14 +65,11 @@ class TPCHData(BenchmarkArtifact):
                     "artifact_type": self.artifact_type,
                     "mode": self.mode,
                     "scale_factor": self._scale_key(),
-                    "files": self._paths_relative_to(root, [script]),
-                    "note": (
-                        "Plan-only mode: this machine does not generate data. "
-                        "Run generate_tpch_data.sh on a server with dbgen."
-                    ),
+                    "source": "dbgen",
+                    "files": self._paths_relative_to(root, tbls),
                 },
             )
-            return self._result(root, [script], metadata)
+            return self._result(root, tbls, metadata)
 
         src = self._resolve_source_dir()
         copied: list[Path] = []
@@ -90,27 +97,96 @@ class TPCHData(BenchmarkArtifact):
         )
         return self._result(root, copied, metadata)
 
-    def _plan_script_body(self) -> str:
-        return (
-            "#!/usr/bin/env bash\n"
-            "set -euo pipefail\n\n"
-            f"SCALE_FACTOR={self._scale_key()}\n"
-            "OUT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)/tables\"\n"
-            "mkdir -p \"${OUT_DIR}\"\n\n"
-            "# Server-side example (TPC-H dbgen):\n"
-            "# 1) cd /path/to/tpch-kit/dbgen\n"
-            "# 2) make\n"
-            "# 3) ./dbgen -s ${SCALE_FACTOR}\n"
-            "# 4) mv ./*.tbl \"${OUT_DIR}/\"\n\n"
-            "echo \"Generate TPC-H data on server with scale=${SCALE_FACTOR}\"\n"
-            "echo \"Output directory: ${OUT_DIR}\"\n"
-        )
-
     def _scale_key(self) -> str:
         value = str(self.scale_factor).strip()
         if value.endswith(".0"):
             value = value[:-2]
         return value
+
+    def _auto_build_dbgen(self) -> Path:
+        """Clone and build tpch-dbgen into _DBGEN_CACHE_DIR if not already cached."""
+        if _DBGEN_CACHE_BINARY.exists():
+            return _DBGEN_CACHE_BINARY
+        print(
+            f"[driftbench] dbgen not found — cloning and building tpch-dbgen "
+            f"(one-time setup, cached at {_DBGEN_CACHE_DIR})..."
+        )
+        _DBGEN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "clone", "https://github.com/electrum/tpch-dbgen", str(_DBGEN_CACHE_DIR)],
+            check=True,
+        )
+        subprocess.run(["make"], cwd=str(_DBGEN_CACHE_DIR), check=True)
+        if not _DBGEN_CACHE_BINARY.exists():
+            raise RuntimeError(
+                f"dbgen build failed — binary not found at {_DBGEN_CACHE_BINARY}. "
+                "Ensure gcc and make are installed."
+            )
+        print(f"[driftbench] dbgen ready at {_DBGEN_CACHE_BINARY}")
+        return _DBGEN_CACHE_BINARY
+
+    def _run_dbgen(self, out_dir: Path) -> list[Path]:
+        """Run dbgen to generate .tbl files directly into out_dir/tables/."""
+        is_windows = sys.platform == "win32"
+        dbgen_names = ["dbgen.exe", "dbgen"] if is_windows else ["dbgen"]
+
+        if self.dbgen_path is not None:
+            dbgen = Path(self.dbgen_path).expanduser().resolve()
+            if not dbgen.exists():
+                raise FileNotFoundError(f"dbgen not found at dbgen_path={dbgen}")
+        else:
+            found = None
+            for name in dbgen_names:
+                found = shutil.which(name)
+                if found:
+                    break
+            if found is None:
+                # Check the repo's own dbgen build
+                for name in dbgen_names:
+                    repo_bin = _REPO_TPCH_DIR / "dbgen" / name
+                    if repo_bin.exists():
+                        found = str(repo_bin)
+                        break
+            if found is None:
+                # Check the default cache location from a previous auto-build
+                if _DBGEN_CACHE_BINARY.exists():
+                    found = str(_DBGEN_CACHE_BINARY)
+            if found is None:
+                found = str(self._auto_build_dbgen())
+            dbgen = Path(found)
+
+        tables_dir = out_dir / "tables"
+        tables_dir.mkdir(parents=True, exist_ok=True)
+
+        # dbgen requires dists.dss to be in the working directory
+        dists_src = None
+        if _PACKAGED_DISTS_FILE.exists():
+            dists_src = _PACKAGED_DISTS_FILE
+        elif _REPO_DISTS_FILE.exists():
+            dists_src = _REPO_DISTS_FILE
+        if dists_src is not None:
+            shutil.copy2(dists_src, tables_dir / "dists.dss")
+
+        sf = self._scale_key()
+        print(
+            f"[driftbench] Running dbgen -s {sf} in {tables_dir}\n"
+            f"[driftbench] This generates all 8 TPC-H tables. "
+            f"sf={sf} ≈ {sf} GB — may take a while for large scale factors."
+        )
+        subprocess.run(
+            [str(dbgen), "-vf", "-s", sf],
+            cwd=str(tables_dir),
+            check=True,
+        )
+
+        tbls = sorted(tables_dir.glob("*.tbl"))
+        if not tbls:
+            raise RuntimeError(
+                f"dbgen ran successfully but no .tbl files were found in {tables_dir}. "
+                "Check dbgen output above for errors."
+            )
+        print(f"[driftbench] dbgen complete — {len(tbls)} tables in {tables_dir}")
+        return tbls
 
     def _resolve_source_dir(self) -> Path:
         if self.source_dir is not None:
@@ -151,10 +227,17 @@ class TPCHQueries(BenchmarkArtifact):
     benchmark: str = "tpch"
     artifact_type: str = "queries"
 
-    def generate(self, output_dir: str | Path | None) -> GenerationResult:
+    def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpch" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
+
+        if not force:
+            existing = self._load_existing(out_dir / "tpch_queries_manifest.json", root)
+            if existing is not None:
+                print(f"[driftbench] TPC-H queries already exist at {out_dir}. Reusing.")
+                return existing
+        print(f"[driftbench] Generating TPC-H queries → {out_dir}")
 
         template_dir = self._resolve_template_dir()
         query_ids = self._resolve_query_ids(template_dir)
@@ -255,9 +338,22 @@ class TPCHQueries(BenchmarkArtifact):
 def data(
     scale_factor: str | int | float = 1,
     source_dir: str | Path | None = None,
-    mode: Literal["copy", "plan"] = "copy",
+    mode: Literal["copy", "generate"] = "copy",
+    dbgen_path: str | Path | None = None,
 ) -> TPCHData:
-    return TPCHData(scale_factor=scale_factor, source_dir=source_dir, mode=mode)
+    """Return a TPCHData adapter.
+
+    Modes:
+        "copy"     — copy .tbl files from source_dir (or default ref_data).
+        "generate" — run dbgen to produce all 8 .tbl files in output_dir/tpch/data/sf_N/tables/.
+                     Requires dbgen in PATH or pass dbgen_path explicitly.
+    """
+    return TPCHData(
+        scale_factor=scale_factor,
+        source_dir=source_dir,
+        mode=mode,
+        dbgen_path=dbgen_path,
+    )
 
 
 def queries(

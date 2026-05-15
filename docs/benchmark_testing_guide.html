@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DriftBench — Benchmark Adapter Testing Guide</title>
+  <style>
+    :root {
+      --bg: #f8f9fb;
+      --surface: #ffffff;
+      --border: #e2e6ea;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --code-bg: #1e1e2e;
+      --code-fg: #cdd6f4;
+      --inline-code-bg: #eef2ff;
+      --inline-code-fg: #3730a3;
+      --text: #1a202c;
+      --muted: #6b7280;
+      --heading: #111827;
+      --tag-blue: #dbeafe;
+      --tag-blue-text: #1e40af;
+      --tag-green: #dcfce7;
+      --tag-green-text: #15803d;
+      --tag-gray: #f3f4f6;
+      --tag-gray-text: #374151;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 0;
+    }
+    main {
+      flex: 1;
+      max-width: 860px;
+      padding: 48px 56px;
+    }
+
+    /* Nav */
+    .nav-logo {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .nav-logo strong { font-size: 15px; color: var(--heading); }
+    .nav-logo span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+    nav ul { list-style: none; }
+    nav li a {
+      display: block;
+      padding: 5px 20px;
+      font-size: 13.5px;
+      color: var(--muted);
+      border-left: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    nav li a:hover { color: var(--accent); text-decoration: none; }
+    nav li a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-light); }
+    nav .nav-section {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 14px 20px 4px;
+    }
+    nav li a.sub { padding-left: 32px; font-size: 13px; }
+
+    /* Typography */
+    h1 { font-size: 28px; font-weight: 700; color: var(--heading); margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 15px; margin-bottom: 32px; }
+    h2 {
+      font-size: 20px; font-weight: 700; color: var(--heading);
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { font-size: 15px; font-weight: 600; color: var(--heading); margin: 24px 0 10px; }
+    p { margin-bottom: 12px; }
+    ul, ol { padding-left: 20px; margin-bottom: 12px; }
+    li { margin-bottom: 4px; }
+
+    /* Code */
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 8px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 12px 0 20px;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+      box-shadow: var(--shadow);
+    }
+    code {
+      background: var(--inline-code-bg);
+      color: var(--inline-code-fg);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 13px;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+    }
+    pre code { background: none; color: inherit; padding: 0; font-size: inherit; border-radius: 0; }
+
+    /* Syntax highlight tokens */
+    .kw  { color: #cba6f7; }   /* keyword: from, import, def, assert */
+    .bi  { color: #89b4fa; }   /* built-in / function */
+    .st  { color: #a6e3a1; }   /* string */
+    .cm  { color: #6c7086; font-style: italic; } /* comment */
+    .nu  { color: #fab387; }   /* number */
+    .op  { color: #89dceb; }   /* operator / punctuation */
+    .co  { color: #f38ba8; }   /* console output label */
+    .sh  { color: #a6e3a1; }   /* shell command */
+    .pa  { color: #f9e2af; }   /* path / variable */
+
+    /* Callout boxes */
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-light);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .callout.green { border-color: var(--green); background: var(--green-light); }
+    .callout strong { display: block; margin-bottom: 2px; }
+
+    /* Tags */
+    .tag {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .tag-blue { background: var(--tag-blue); color: var(--tag-blue-text); }
+    .tag-green { background: var(--tag-green); color: var(--tag-green-text); }
+    .tag-gray { background: var(--tag-gray); color: var(--tag-gray-text); }
+
+    /* Table */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13.5px;
+      margin: 16px 0 24px;
+      background: var(--surface);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    th {
+      background: #f1f5f9;
+      color: var(--heading);
+      font-weight: 600;
+      text-align: left;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbff; }
+
+    /* Section card */
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow);
+    }
+    .section-card h2 { margin-top: 0; border: none; padding: 0; font-size: 18px; margin-bottom: 4px; }
+    .section-meta { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+    /* File tree */
+    .file-tree {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      margin: 10px 0 16px;
+      color: var(--text);
+    }
+    .file-tree .dir { color: var(--accent); font-weight: 600; }
+    .file-tree .file { color: #374151; }
+    .file-tree .comment { color: var(--muted); font-style: italic; }
+
+    /* Divider */
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    @media (max-width: 900px) {
+      nav { display: none; }
+      main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav>
+    <div class="nav-logo">
+      <strong>DriftBench</strong>
+      <span>Benchmark Testing Guide</span>
+    </div>
+    <ul>
+      <li><a href="#top">Overview</a></li>
+      <li><a href="#tests">Automated Tests</a></li>
+      <div class="nav-section">Benchmarks</div>
+      <li><a href="#tpch">1. TPC-H</a></li>
+      <li><a href="#tpch-generate" class="sub">Data — generate</a></li>
+      <li><a href="#tpch-copy" class="sub">Data — copy</a></li>
+      <li><a href="#tpch-csv" class="sub">as_csv()</a></li>
+      <li><a href="#tpch-queries" class="sub">Queries</a></li>
+      <li><a href="#tpcds">2. TPC-DS</a></li>
+      <li><a href="#ycsb">3. YCSB</a></li>
+      <li><a href="#dsb">4. DSB</a></li>
+      <li><a href="#tpcc">5. TPC-C</a></li>
+      <li><a href="#tpcc-skew">6. TPC-C Skew</a></li>
+      <li><a href="#job">7. JOB</a></li>
+      <li><a href="#pgbench">8. pgbench</a></li>
+      <li><a href="#benchbase">9. BenchBase</a></li>
+      <div class="nav-section">Shared</div>
+      <li><a href="#reuse">Lazy Reuse</a></li>
+      <li><a href="#default-dir">Default Directory</a></li>
+      <li><a href="#as-csv">as_csv()</a></li>
+      <li><a href="#summary">Summary Table</a></li>
+    </ul>
+  </nav>
+
+  <!-- Main content -->
+  <main id="top">
+
+    <h1>Benchmark Adapter Testing Guide</h1>
+    <p class="subtitle">
+      How to use DriftBench to generate data and queries for each supported benchmark.
+      Run snippets from the repo root. Artifacts land in <code>./test_artifacts/</code>.
+    </p>
+
+    <pre><span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">import</span> json
+OUT = Path(<span class="st">"./test_artifacts"</span>)</pre>
+
+    <!-- ── Automated Tests ── -->
+    <h2 id="tests">Automated Test Suite</h2>
+    <pre><span class="sh">python -m unittest discover -s test -v</span></pre>
+    <div class="callout green">
+      <strong>Expected result</strong>
+      Ran 74 tests in ~35s &nbsp;·&nbsp; OK
+    </div>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ TPC-H ══════ -->
+    <h2 id="tpch">1. TPC-H</h2>
+
+    <p>
+      <strong>Scale factor:</strong> sf=1 ≈ 1 GB, sf=10 ≈ 10 GB, sf=1000 ≈ 1 TB.
+    </p>
+    <table>
+      <tr><th>Mode</th><th>Description</th></tr>
+      <tr><td><code>mode="generate"</code></td><td>Runs <code>dbgen</code> locally. <strong>Auto-downloaded &amp; built</strong> on first use, cached at <code>~/.driftbench/cache/tpch-dbgen/</code>.</td></tr>
+      <tr><td><code>mode="copy"</code></td><td>Copies <code>.tbl</code> files you already have from <code>source_dir</code>.</td></tr>
+    </table>
+
+    <h3 id="tpch-generate">Data — generate mode</h3>
+    <pre><span class="kw">from</span> driftbench.data.tpch <span class="kw">import</span> data <span class="kw">as</span> tpch_data
+
+result = tpch_data(scale_factor=<span class="nu">1</span>, mode=<span class="st">"generate"</span>).generate(output_dir=OUT)
+<span class="bi">print</span>(<span class="st">"files:"</span>, [f.name <span class="kw">for</span> f <span class="kw">in</span> result.files])</pre>
+
+    <p><strong>Console output (first run — auto-builds dbgen):</strong></p>
+    <pre><span class="cm">[driftbench] dbgen not found — cloning and building tpch-dbgen (one-time setup)...
+[driftbench] dbgen ready at ~/.driftbench/cache/tpch-dbgen/dbgen
+[driftbench] Generating TPC-H data (sf=1) → .../tpch/data/sf_1
+[driftbench] Running dbgen -s 1 in .../tpch/data/sf_1/tables
+[driftbench] dbgen complete — 8 tables in .../tables</span></pre>
+
+    <p><strong>Output layout:</strong></p>
+    <div class="file-tree">
+      <span class="dir">test_artifacts/tpch/data/sf_1/tables/</span><br>
+      &nbsp;&nbsp;<span class="file">customer.tbl &nbsp; lineitem.tbl &nbsp; nation.tbl &nbsp; orders.tbl</span><br>
+      &nbsp;&nbsp;<span class="file">part.tbl &nbsp;&nbsp;&nbsp;&nbsp; partsupp.tbl &nbsp; region.tbl &nbsp; supplier.tbl</span>
+    </div>
+
+    <pre><span class="cm"># Verify</span>
+tables_dir = OUT / <span class="st">"tpch/data/sf_1/tables"</span>
+tbls = {f.name <span class="kw">for</span> f <span class="kw">in</span> tables_dir.glob(<span class="st">"*.tbl"</span>)}
+<span class="kw">assert</span> tbls == {<span class="st">"customer.tbl"</span>, <span class="st">"lineitem.tbl"</span>, <span class="st">"nation.tbl"</span>, <span class="st">"orders.tbl"</span>,
+                <span class="st">"part.tbl"</span>, <span class="st">"partsupp.tbl"</span>, <span class="st">"region.tbl"</span>, <span class="st">"supplier.tbl"</span>}
+<span class="bi">print</span>(<span class="st">"TPC-H generate mode OK"</span>)</pre>
+
+    <p>Custom dbgen path:</p>
+    <pre>result = tpch_data(scale_factor=<span class="nu">1</span>, mode=<span class="st">"generate"</span>,
+                   dbgen_path=<span class="st">"/path/to/dbgen"</span>).generate(output_dir=OUT)</pre>
+
+    <h3 id="tpch-copy">Data — copy mode</h3>
+    <pre><span class="kw">from</span> pathlib <span class="kw">import</span> Path
+
+source = Path(<span class="st">"/path/to/existing/tpch/sf1"</span>)   <span class="cm"># directory with *.tbl files</span>
+result = tpch_data(scale_factor=<span class="nu">1</span>, source_dir=source).generate(output_dir=OUT)</pre>
+
+    <h3 id="tpch-csv">Convert .tbl → .csv</h3>
+    <p>
+      The <code>.tbl</code> format is pipe-delimited with a trailing <code>|</code> and no header row.
+      Call <code>.as_csv()</code> to get standard CSV (both formats are kept on disk):
+    </p>
+    <pre>result     = tpch_data(scale_factor=<span class="nu">1</span>, mode=<span class="st">"generate"</span>).generate(output_dir=OUT)
+csv_result = result.as_csv()
+<span class="cm"># result.files     → [customer.tbl, lineitem.tbl, ...]</span>
+<span class="cm"># csv_result.files → [customer.csv, lineitem.csv, ...]</span></pre>
+
+    <h3 id="tpch-queries">Queries — qgen mode</h3>
+    <pre><span class="kw">from</span> driftbench.data.tpch <span class="kw">import</span> queries <span class="kw">as</span> tpch_queries
+
+result = tpch_queries(query_ids=[<span class="nu">1</span>, <span class="nu">6</span>, <span class="nu">14</span>], queries_per_template=<span class="nu">2</span>, mode=<span class="st">"qgen"</span>).generate(output_dir=OUT)</pre>
+
+    <p><strong>Output files (2):</strong></p>
+    <ul>
+      <li><code>tpch/queries/tpch_queries.sql</code> — parameterized SQL, one block per instance</li>
+      <li><code>tpch/queries/tpch_queries.csv</code> — one row per instance: <code>query_id, index, sql</code></li>
+    </ul>
+
+    <pre><span class="cm"># Verify manifest</span>
+manifest = json.loads((OUT / <span class="st">"tpch/queries/tpch_queries_manifest.json"</span>).read_text())
+<span class="kw">assert</span> manifest[<span class="st">"count"</span>] == <span class="nu">6</span>           <span class="cm"># 3 query IDs × 2 instances</span>
+<span class="kw">assert</span> manifest[<span class="st">"queries_per_template"</span>] == <span class="nu">2</span>
+<span class="kw">assert</span> manifest[<span class="st">"query_ids"</span>] == [<span class="st">"1"</span>, <span class="st">"6"</span>, <span class="st">"14"</span>]
+<span class="bi">print</span>(<span class="st">"TPC-H queries OK"</span>)</pre>
+
+    <div class="callout">
+      <strong>Lazy reuse</strong>
+      Running the same adapter twice reuses existing files: <em>[driftbench] TPC-H queries already exist at … Reusing.</em>
+    </div>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ TPC-DS ══════ -->
+    <h2 id="tpcds">2. TPC-DS</h2>
+
+    <p>
+      Synthetic pipe-delimited <code>.dat</code> files (same format as real <code>dsdgen</code> output).
+      <strong>No external tools required.</strong>
+    </p>
+
+    <pre><span class="kw">from</span> driftbench.data.tpcds <span class="kw">import</span> data <span class="kw">as</span> tpcds_data, queries <span class="kw">as</span> tpcds_queries
+
+r_data    = tpcds_data(scale_factor=<span class="nu">3</span>).generate(output_dir=OUT)
+r_queries = tpcds_queries().generate(output_dir=OUT)
+<span class="bi">print</span>(<span class="st">"data files:"</span>, [f.name <span class="kw">for</span> f <span class="kw">in</span> r_data.files])
+<span class="bi">print</span>(<span class="st">"query files:"</span>, [f.name <span class="kw">for</span> f <span class="kw">in</span> r_queries.files])</pre>
+
+    <p><strong>Data files (5 tables, pipe-delimited .dat):</strong></p>
+    <table>
+      <tr><th>File</th><th>Rows</th><th>Notes</th></tr>
+      <tr><td><code>date_dim.dat</code></td><td>3,360</td><td>Fixed — 10 yr × 12 mo × 28 d</td></tr>
+      <tr><td><code>store.dat</code></td><td>1 × SF</td><td></td></tr>
+      <tr><td><code>item.dat</code></td><td>1,000 × SF</td><td></td></tr>
+      <tr><td><code>customer.dat</code></td><td>1,000 × SF</td><td></td></tr>
+      <tr><td><code>store_sales.dat</code></td><td>10,000 × SF</td><td>Fact table</td></tr>
+    </table>
+
+    <p><strong>Query files (2):</strong></p>
+    <ul>
+      <li><code>tpcds/queries/query_ids.txt</code> — 99 query IDs (query01 … query99)</li>
+      <li><code>tpcds/queries/sample_tpcds_config.xml</code> — BenchBase XML with all 99 transaction types</li>
+    </ul>
+
+    <pre><span class="cm"># Verify</span>
+ss_lines = (OUT / <span class="st">"tpcds/data/store_sales.dat"</span>).read_text().splitlines()
+<span class="kw">assert</span> <span class="bi">len</span>(ss_lines) == <span class="nu">30000</span>   <span class="cm"># 10000 * sf=3</span>
+
+manifest = json.loads((OUT / <span class="st">"tpcds/queries/tpcds_queries_manifest.json"</span>).read_text())
+<span class="kw">assert</span> manifest[<span class="st">"query_count"</span>] == <span class="nu">99</span>
+<span class="bi">print</span>(<span class="st">"TPC-DS OK"</span>)
+
+<span class="cm"># Convert .dat → .csv</span>
+csv_result = r_data.as_csv()
+<span class="cm"># csv_result.files → [date_dim.csv, store.csv, item.csv, customer.csv, store_sales.csv]</span></pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ YCSB ══════ -->
+    <h2 id="ycsb">3. YCSB</h2>
+
+    <p>
+      Synthetic CSV for the <code>usertable</code>. Scale factor controls record count (1 SF = 1,000 records).
+    </p>
+
+    <pre><span class="kw">from</span> driftbench.data.ycsb <span class="kw">import</span> data <span class="kw">as</span> ycsb_data, queries <span class="kw">as</span> ycsb_queries
+
+r_data    = ycsb_data(scale_factor=<span class="nu">2</span>).generate(output_dir=OUT)
+r_queries = ycsb_queries(workload=<span class="st">"B"</span>, run_seconds=<span class="nu">30</span>, target_rate=<span class="nu">5000</span>).generate(output_dir=OUT)</pre>
+
+    <p><strong>Data file (1):</strong></p>
+    <ul>
+      <li><code>ycsb/data/usertable.csv</code> — header: <code>YCSB_KEY, FIELD0 … FIELD9</code>; 2,000 rows at SF=2</li>
+    </ul>
+
+    <p><strong>Query files (2):</strong></p>
+    <ul>
+      <li><code>ycsb/queries/workload_b.properties</code> — YCSB properties file</li>
+      <li><code>ycsb/queries/sample_ycsb_config.xml</code> — BenchBase XML with 6 transaction types</li>
+    </ul>
+
+    <p><strong>Available workloads:</strong></p>
+    <table>
+      <tr><th>Workload</th><th>Read</th><th>Insert</th><th>Scan</th><th>Update</th><th>RMW</th></tr>
+      <tr><td>A</td><td>50%</td><td>—</td><td>—</td><td>50%</td><td>—</td></tr>
+      <tr><td>B</td><td>95%</td><td>—</td><td>—</td><td>5%</td><td>—</td></tr>
+      <tr><td>C</td><td>100%</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>D</td><td>95%</td><td>5%</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>E</td><td>—</td><td>5%</td><td>95%</td><td>—</td><td>—</td></tr>
+      <tr><td>F</td><td>50%</td><td>—</td><td>—</td><td>—</td><td>50%</td></tr>
+    </table>
+
+    <pre><span class="kw">import</span> csv <span class="kw">as</span> csv_mod
+
+<span class="kw">with</span> (OUT / <span class="st">"ycsb/data/usertable.csv"</span>).open() <span class="kw">as</span> f:
+    rows = <span class="bi">list</span>(csv_mod.reader(f))
+<span class="kw">assert</span> rows[<span class="nu">0</span>][<span class="nu">0</span>] == <span class="st">"YCSB_KEY"</span>
+<span class="kw">assert</span> <span class="bi">len</span>(rows) - <span class="nu">1</span> == <span class="nu">2000</span>            <span class="cm"># 2 * 1000 records</span>
+
+manifest = json.loads((OUT / <span class="st">"ycsb/queries/ycsb_queries_manifest.json"</span>).read_text())
+<span class="kw">assert</span> manifest[<span class="st">"weights"</span>][<span class="st">"ReadRecord"</span>] == <span class="nu">95</span>
+<span class="kw">assert</span> manifest[<span class="st">"weights"</span>][<span class="st">"UpdateRecord"</span>] == <span class="nu">5</span>
+<span class="bi">print</span>(<span class="st">"YCSB OK"</span>)</pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ DSB ══════ -->
+    <h2 id="dsb">4. DSB</h2>
+
+    <p>Synthetic CSV star-schema. Inspired by the Decision Support Benchmark layout.</p>
+
+    <pre><span class="kw">from</span> driftbench.data.dsb <span class="kw">import</span> data <span class="kw">as</span> dsb_data, queries <span class="kw">as</span> dsb_queries
+
+r_data    = dsb_data(scale_factor=<span class="nu">2</span>).generate(output_dir=OUT)
+r_queries = dsb_queries().generate(output_dir=OUT)</pre>
+
+    <p><strong>Data files (4):</strong></p>
+    <ul>
+      <li><code>dsb/data/dsb_schema.sql</code> — CREATE TABLE DDL for all 3 tables</li>
+      <li><code>dsb/data/date_dim.csv</code> — 3,360 rows (fixed)</li>
+      <li><code>dsb/data/customer.csv</code> — 1,000 × SF rows (<code>customer_key, region, nation</code>)</li>
+      <li><code>dsb/data/lineorder.csv</code> — 5,000 × SF rows (<code>order_key, customer_key, order_date_key, revenue, supply_cost</code>)</li>
+    </ul>
+
+    <p><strong>Query files (3):</strong></p>
+    <ul>
+      <li><code>q1_revenue_by_year.sql</code></li>
+      <li><code>q2_revenue_by_region.sql</code></li>
+      <li><code>q3_margin_trend.sql</code></li>
+    </ul>
+
+    <pre><span class="kw">with</span> (OUT / <span class="st">"dsb/data/customer.csv"</span>).open() <span class="kw">as</span> f:
+    cust_rows = <span class="bi">sum</span>(<span class="nu">1</span> <span class="kw">for</span> _ <span class="kw">in</span> f) - <span class="nu">1</span>
+<span class="kw">assert</span> cust_rows == <span class="nu">2000</span>   <span class="cm"># 1000 * sf=2</span>
+
+<span class="kw">with</span> (OUT / <span class="st">"dsb/data/lineorder.csv"</span>).open() <span class="kw">as</span> f:
+    lo_rows = <span class="bi">sum</span>(<span class="nu">1</span> <span class="kw">for</span> _ <span class="kw">in</span> f) - <span class="nu">1</span>
+<span class="kw">assert</span> lo_rows == <span class="nu">10000</span>    <span class="cm"># 5000 * sf=2</span>
+<span class="bi">print</span>(<span class="st">"DSB OK"</span>)</pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ TPC-C ══════ -->
+    <h2 id="tpcc">5. TPC-C</h2>
+
+    <p>Synthetic CSV, 9 tables. <code>scale_factor</code> = number of warehouses (W).</p>
+
+    <pre><span class="kw">from</span> driftbench.data.tpcc <span class="kw">import</span> data <span class="kw">as</span> tpcc_data, queries <span class="kw">as</span> tpcc_queries
+
+r_data    = tpcc_data(scale_factor=<span class="nu">2</span>).generate(output_dir=OUT)
+r_queries = tpcc_queries().generate(output_dir=OUT)</pre>
+
+    <p><strong>Data files:</strong> <code>tpcc_schema.sql</code> + 9 CSV tables</p>
+
+    <table>
+      <tr><th>Table</th><th>Rows at W=1</th><th>Scales?</th></tr>
+      <tr><td><code>warehouse</code></td><td>1</td><td>× W</td></tr>
+      <tr><td><code>district</code></td><td>10</td><td>× W</td></tr>
+      <tr><td><code>customer</code></td><td>3,000</td><td>× W</td></tr>
+      <tr><td><code>item</code></td><td>10,000</td><td>capped at 100k</td></tr>
+      <tr><td><code>stock</code></td><td>10,000</td><td>× W (capped)</td></tr>
+      <tr><td><code>orders</code></td><td>3,000</td><td>× W</td></tr>
+      <tr><td><code>new_order</code></td><td>~900</td><td>× W</td></tr>
+      <tr><td><code>order_line</code></td><td>~30,000</td><td>× W</td></tr>
+      <tr><td><code>history</code></td><td>3,000</td><td>× W</td></tr>
+    </table>
+
+    <p><strong>Query files (6):</strong> <code>new_order.sql</code>, <code>payment.sql</code>, <code>order_status.sql</code>, <code>delivery.sql</code>, <code>stock_level.sql</code>, <code>tpcc_all_transactions.sql</code></p>
+    <p>Queries use named placeholders (<code>:param</code>) for runtime binding.</p>
+
+    <pre><span class="kw">def</span> <span class="bi">row_count</span>(name):
+    <span class="kw">return</span> <span class="bi">sum</span>(<span class="nu">1</span> <span class="kw">for</span> _ <span class="kw">in</span> (OUT / <span class="st">"tpcc/data"</span> / name).open()) - <span class="nu">1</span>
+
+<span class="kw">assert</span> row_count(<span class="st">"warehouse.csv"</span>) == <span class="nu">2</span>
+<span class="kw">assert</span> row_count(<span class="st">"district.csv"</span>)  == <span class="nu">20</span>    <span class="cm"># 10 * W</span>
+<span class="kw">assert</span> row_count(<span class="st">"customer.csv"</span>)  == <span class="nu">6000</span>  <span class="cm"># 3000 * W</span>
+<span class="kw">assert</span> row_count(<span class="st">"orders.csv"</span>)    == <span class="nu">6000</span>  <span class="cm"># 300 * 10 districts * W</span>
+<span class="bi">print</span>(<span class="st">"TPC-C row counts OK"</span>)</pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ TPC-C Skew ══════ -->
+    <h2 id="tpcc-skew">6. TPC-C Skew</h2>
+
+    <p>Same as TPC-C plus Zipf-distributed warehouse access weights. Models hotspot workloads.</p>
+
+    <pre><span class="kw">from</span> driftbench.data.tpcc_skew <span class="kw">import</span> data <span class="kw">as</span> tpcc_skew_data, queries <span class="kw">as</span> tpcc_skew_queries
+
+r_data    = tpcc_skew_data(scale_factor=<span class="nu">5</span>, hot_warehouse_fraction=<span class="nu">0.2</span>, skew_factor=<span class="nu">0.99</span>).generate(output_dir=OUT)
+r_queries = tpcc_skew_queries(scale_factor=<span class="nu">5</span>, hot_warehouse_fraction=<span class="nu">0.2</span>).generate(output_dir=OUT)</pre>
+
+    <p><strong>Extra file (beyond TPC-C):</strong></p>
+    <ul>
+      <li><code>tpcc_skew/data/warehouse_access_weights.csv</code> — columns: <code>warehouse_id, access_probability, is_hot</code></li>
+    </ul>
+
+    <pre>weights_file = OUT / <span class="st">"tpcc_skew/data/warehouse_access_weights.csv"</span>
+lines = weights_file.read_text().splitlines()
+<span class="kw">assert</span> lines[<span class="nu">0</span>] == <span class="st">"warehouse_id,access_probability,is_hot"</span>
+<span class="kw">assert</span> <span class="bi">len</span>(lines) == <span class="nu">6</span>            <span class="cm"># header + 5 warehouses</span>
+hot = [l <span class="kw">for</span> l <span class="kw">in</span> lines[<span class="nu">1</span>:] <span class="kw">if</span> l.endswith(<span class="st">",1"</span>)]
+<span class="kw">assert</span> <span class="bi">len</span>(hot) == <span class="nu">1</span>              <span class="cm"># ceil(5 * 0.2) = 1 hot warehouse</span>
+total = <span class="bi">sum</span>(<span class="bi">float</span>(l.split(<span class="st">","</span>)[<span class="nu">1</span>]) <span class="kw">for</span> l <span class="kw">in</span> lines[<span class="nu">1</span>:])
+<span class="kw">assert</span> <span class="bi">abs</span>(total - <span class="nu">1.0</span>) &lt; <span class="nu">1e-5</span>
+<span class="bi">print</span>(<span class="st">"TPC-C Skew OK"</span>)</pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ JOB ══════ -->
+    <h2 id="job">7. JOB (Join Order Benchmark)</h2>
+
+    <p>Synthetic CSV based on the IMDB schema. Designed for join-order and cardinality estimation research.</p>
+
+    <pre><span class="kw">from</span> driftbench.data.job <span class="kw">import</span> data <span class="kw">as</span> job_data, queries <span class="kw">as</span> job_queries
+
+r_data    = job_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+r_queries = job_queries().generate(output_dir=OUT)
+<span class="bi">print</span>(<span class="st">"tables:"</span>, <span class="bi">sorted</span>(f.name <span class="kw">for</span> f <span class="kw">in</span> r_data.files <span class="kw">if</span> f.suffix == <span class="st">".csv"</span>))
+<span class="bi">print</span>(<span class="st">"SQL files:"</span>, <span class="bi">len</span>([f <span class="kw">for</span> f <span class="kw">in</span> r_queries.files <span class="kw">if</span> f.suffix == <span class="st">".sql"</span>]))</pre>
+
+    <p><strong>Data tables (CSV):</strong> cast_info, company_name, company_type, info_type, keyword, kind_type, movie_companies, movie_info, movie_keyword, name, title</p>
+
+    <table>
+      <tr><th>Table</th><th>Rows at sf=1</th></tr>
+      <tr><td><code>title</code></td><td>500</td></tr>
+      <tr><td><code>name</code></td><td>1,000</td></tr>
+      <tr><td><code>cast_info</code></td><td>5,000</td></tr>
+      <tr><td><code>movie_info</code></td><td>3,000</td></tr>
+      <tr><td><code>keyword</code></td><td>200</td></tr>
+      <tr><td><code>movie_keyword</code></td><td>2,000</td></tr>
+      <tr><td><code>company_name</code></td><td>100</td></tr>
+      <tr><td><code>movie_companies</code></td><td>1,500</td></tr>
+    </table>
+
+    <p><strong>Query files:</strong> 20 individual <code>.sql</code> files (J1a … J20a) + 1 bundle = <strong>21 total</strong></p>
+
+    <pre>title_rows = <span class="bi">sum</span>(<span class="nu">1</span> <span class="kw">for</span> _ <span class="kw">in</span> <span class="bi">open</span>(OUT / <span class="st">"job/data/title.csv"</span>)) - <span class="nu">1</span>
+<span class="kw">assert</span> title_rows == <span class="nu">500</span>
+
+manifest = json.loads((OUT / <span class="st">"job/queries/job_queries_manifest.json"</span>).read_text())
+<span class="kw">assert</span> <span class="st">"8_table"</span> <span class="kw">in</span> manifest[<span class="st">"join_complexity"</span>]
+sql_files = [f <span class="kw">for</span> f <span class="kw">in</span> r_queries.files <span class="kw">if</span> f.suffix == <span class="st">".sql"</span>]
+<span class="kw">assert</span> <span class="bi">len</span>(sql_files) == <span class="nu">21</span>
+<span class="bi">print</span>(<span class="st">"JOB OK"</span>)</pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ pgbench ══════ -->
+    <h2 id="pgbench">8. pgbench</h2>
+
+    <p>Synthetic CSV matching the pgbench schema. <code>scale_factor</code> = pgbench's <code>-s</code> parameter.</p>
+
+    <pre><span class="kw">from</span> driftbench.data.pgbench <span class="kw">import</span> data <span class="kw">as</span> pgbench_data, queries <span class="kw">as</span> pgbench_queries
+
+r_data = pgbench_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+r_tpcb = pgbench_queries(workload=<span class="st">"tpcb"</span>, clients=<span class="nu">4</span>, duration=<span class="nu">30</span>).generate(output_dir=OUT)
+r_ro   = pgbench_queries(workload=<span class="st">"select_only"</span>).generate(output_dir=OUT / <span class="st">"pgbench_ro"</span>)</pre>
+
+    <p><strong>Data files:</strong></p>
+    <table>
+      <tr><th>File</th><th>Rows at sf=1</th></tr>
+      <tr><td><code>pgbench_branches.csv</code></td><td>1</td></tr>
+      <tr><td><code>pgbench_tellers.csv</code></td><td>10</td></tr>
+      <tr><td><code>pgbench_accounts.csv</code></td><td>100,000</td></tr>
+      <tr><td><code>pgbench_history.csv</code></td><td>0 (starts empty)</td></tr>
+    </table>
+
+    <p><strong>Workloads:</strong> <code>tpcb</code> (read-write), <code>simple_update</code> (update only), <code>select_only</code> (read only)</p>
+
+    <p><strong>Query files per workload (2):</strong> <code>pgbench_{workload}.sql</code> + <code>run_pgbench.sh</code></p>
+
+    <pre><span class="kw">def</span> <span class="bi">row_count</span>(name):
+    <span class="kw">return</span> <span class="bi">sum</span>(<span class="nu">1</span> <span class="kw">for</span> _ <span class="kw">in</span> <span class="bi">open</span>(OUT / <span class="st">"pgbench/data"</span> / name)) - <span class="nu">1</span>
+
+<span class="kw">assert</span> row_count(<span class="st">"pgbench_branches.csv"</span>) == <span class="nu">1</span>
+<span class="kw">assert</span> row_count(<span class="st">"pgbench_tellers.csv"</span>)  == <span class="nu">10</span>
+<span class="kw">assert</span> row_count(<span class="st">"pgbench_accounts.csv"</span>) == <span class="nu">100_000</span>
+<span class="kw">assert</span> row_count(<span class="st">"pgbench_history.csv"</span>)  == <span class="nu">0</span>
+
+run_script = (OUT / <span class="st">"pgbench/queries/run_pgbench.sh"</span>).read_text()
+<span class="kw">assert</span> <span class="st">"-c 4"</span> <span class="kw">in</span> run_script
+<span class="kw">assert</span> <span class="st">"-T 30"</span> <span class="kw">in</span> run_script
+<span class="bi">print</span>(<span class="st">"pgbench OK"</span>)</pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ BenchBase ══════ -->
+    <h2 id="benchbase">9. BenchBase</h2>
+
+    <p>
+      Generates XML configuration files and shell scripts that drive the
+      <a href="https://github.com/cmu-db/benchbase">BenchBase</a> Java framework.
+      <strong>No data is generated locally</strong> — BenchBase connects directly to a live database.
+    </p>
+
+    <pre><span class="kw">from</span> driftbench.data.benchbase <span class="kw">import</span> data <span class="kw">as</span> bb_data, queries <span class="kw">as</span> bb_queries
+
+r_load = bb_data(benchmark=<span class="st">"tpcc"</span>, scale_factor=<span class="nu">10</span>).generate(output_dir=OUT)
+r_exec = bb_queries(benchmark=<span class="st">"tpcc"</span>, terminals=<span class="nu">8</span>, duration=<span class="nu">120</span>, rate=<span class="nu">5000</span>).generate(output_dir=OUT)</pre>
+
+    <p><strong>Load files (2):</strong></p>
+    <ul>
+      <li><code>benchbase/tpcc/data/tpcc_load_config.xml</code></li>
+      <li><code>benchbase/tpcc/data/load.sh</code> — runs with <code>--create=true --load=true --execute=false</code></li>
+    </ul>
+
+    <p><strong>Execute files (2):</strong></p>
+    <ul>
+      <li><code>benchbase/tpcc/queries/tpcc_execute_config.xml</code></li>
+      <li><code>benchbase/tpcc/queries/execute.sh</code> — runs with <code>--create=false --load=false --execute=true</code></li>
+    </ul>
+
+    <p><strong>Supported benchmarks (10):</strong>
+      <code>tpcc</code>, <code>tpch</code>, <code>ycsb</code>, <code>seats</code>, <code>auctionmark</code>,
+      <code>smallbank</code>, <code>epinions</code>, <code>wikipedia</code>, <code>twitter</code>, <code>voter</code>
+    </p>
+
+    <pre>load_xml = (OUT / <span class="st">"benchbase/tpcc/data/tpcc_load_config.xml"</span>).read_text()
+<span class="kw">assert</span> <span class="st">"&lt;scalefactor&gt;10&lt;/scalefactor&gt;"</span> <span class="kw">in</span> load_xml
+<span class="kw">assert</span> <span class="st">"load=true"</span> <span class="kw">in</span> load_xml
+<span class="kw">assert</span> <span class="st">"NewOrder"</span> <span class="kw">in</span> load_xml
+
+exec_xml = (OUT / <span class="st">"benchbase/tpcc/queries/tpcc_execute_config.xml"</span>).read_text()
+<span class="kw">assert</span> <span class="st">"&lt;terminals&gt;8&lt;/terminals&gt;"</span> <span class="kw">in</span> exec_xml
+<span class="kw">assert</span> <span class="st">"&lt;time&gt;120&lt;/time&gt;"</span> <span class="kw">in</span> exec_xml
+<span class="kw">assert</span> <span class="st">"execute=true"</span> <span class="kw">in</span> exec_xml
+
+<span class="kw">for</span> bm <span class="kw">in</span> [<span class="st">"tpcc"</span>, <span class="st">"tpch"</span>, <span class="st">"ycsb"</span>, <span class="st">"seats"</span>, <span class="st">"auctionmark"</span>,
+           <span class="st">"smallbank"</span>, <span class="st">"epinions"</span>, <span class="st">"wikipedia"</span>, <span class="st">"twitter"</span>, <span class="st">"voter"</span>]:
+    bb_data(benchmark=bm).generate(output_dir=OUT)
+<span class="bi">print</span>(<span class="st">"All BenchBase benchmarks OK"</span>)</pre>
+
+    <div class="callout">
+      <strong>To actually run a benchmark</strong> (requires BenchBase jar + live database):
+      <br><br>
+      <code>export BENCHBASE_JAR=/path/to/benchbase.jar</code><br>
+      <code>./test_artifacts/benchbase/tpcc/data/load.sh</code><br>
+      <code>./test_artifacts/benchbase/tpcc/queries/execute.sh</code>
+    </div>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ Shared ══════ -->
+    <h2>Shared Behaviors</h2>
+
+    <h3 id="reuse">Lazy reuse (all adapters)</h3>
+    <p>Every adapter checks for an existing manifest before generating. If all files are present it reuses them:</p>
+    <pre>r1 = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+r1.files[<span class="nu">0</span>].write_text(<span class="st">"MODIFIED"</span>)
+
+r2 = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+<span class="cm"># [driftbench] TPC-C data (W=1) already exists at ... Reusing.</span>
+<span class="kw">assert</span> r1.files[<span class="nu">0</span>].read_text() == <span class="st">"MODIFIED"</span>   <span class="cm"># not regenerated</span>
+
+r3 = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT, force=<span class="op">True</span>)
+<span class="cm"># [driftbench] Generating TPC-C data (W=1) → ...</span>
+<span class="kw">assert</span> r1.files[<span class="nu">0</span>].read_text() != <span class="st">"MODIFIED"</span>   <span class="cm"># regenerated</span>
+<span class="bi">print</span>(<span class="st">"Lazy reuse + force=True OK"</span>)</pre>
+
+    <h3 id="default-dir">Default output directory</h3>
+    <p>When <code>output_dir</code> is omitted, artifacts go to <code>~/.driftbench/data/</code> (or <code>$DRIFTBENCH_DATA_DIR</code>):</p>
+    <pre><span class="kw">import</span> os
+os.environ[<span class="st">"DRIFTBENCH_DATA_DIR"</span>] = <span class="st">"/tmp/my_driftbench"</span>
+
+<span class="kw">from</span> driftbench.data.ycsb <span class="kw">import</span> data <span class="kw">as</span> ycsb_data
+result = ycsb_data().generate()   <span class="cm"># no output_dir</span>
+<span class="bi">print</span>(<span class="st">"wrote to:"</span>, result.output_dir)
+<span class="cm"># [driftbench] No output_dir specified. Writing ycsb/data to: /tmp/my_driftbench</span></pre>
+
+    <h3 id="as-csv">.as_csv() for pipe-delimited formats</h3>
+    <p>
+      TPC-H (<code>.tbl</code>) and TPC-DS (<code>.dat</code>) files are pipe-delimited with no header and a trailing <code>|</code>.
+      Call <code>.as_csv()</code> to get standard CSV. Both the original and the new CSV are kept on disk.
+    </p>
+    <pre><span class="cm"># TPC-H</span>
+result     = tpch_data(scale_factor=<span class="nu">1</span>, mode=<span class="st">"generate"</span>).generate(output_dir=OUT)
+csv_result = result.as_csv()
+<span class="cm"># result.files     → [customer.tbl, lineitem.tbl, ...]</span>
+<span class="cm"># csv_result.files → [customer.csv, lineitem.csv, ...]</span>
+
+<span class="cm"># TPC-DS</span>
+result     = tpcds_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+csv_result = result.as_csv()
+<span class="cm"># result.files     → [date_dim.dat, store.dat, item.dat, customer.dat, store_sales.dat]</span>
+<span class="cm"># csv_result.files → [date_dim.csv, store.csv, item.csv, customer.csv, store_sales.csv]</span></pre>
+
+    <hr>
+
+    <!-- ══════════════════════════════════════════ Summary ══════ -->
+    <h2 id="summary">Summary Table</h2>
+
+    <table>
+      <tr>
+        <th>#</th><th>Benchmark</th><th>Data format</th><th>Data source</th><th>Queries</th><th>as_csv()</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td><strong>TPC-H</strong></td>
+        <td><span class="tag tag-gray">.tbl</span> pipe-delimited</td>
+        <td><code>generate</code> (auto-builds dbgen) or <code>copy</code> from source dir</td>
+        <td>22 SQL templates via qgen</td>
+        <td><span class="tag tag-green">✓</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>TPC-DS</strong></td>
+        <td><span class="tag tag-gray">.dat</span> pipe-delimited</td>
+        <td>Synthetic (5 tables)</td>
+        <td>99 query IDs + BenchBase XML</td>
+        <td><span class="tag tag-green">✓</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>YCSB</strong></td>
+        <td><span class="tag tag-blue">.csv</span></td>
+        <td>Synthetic (usertable)</td>
+        <td>Workload properties + BenchBase XML (A–F)</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>DSB</strong></td>
+        <td><span class="tag tag-blue">.csv</span></td>
+        <td>Synthetic (star-schema, 3 tables)</td>
+        <td>3 SQL templates</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>TPC-C</strong></td>
+        <td><span class="tag tag-blue">.csv</span></td>
+        <td>Synthetic (9 tables, scales by warehouse)</td>
+        <td>5 transaction SQL files + bundle</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>TPC-C Skew</strong></td>
+        <td><span class="tag tag-blue">.csv</span></td>
+        <td>Synthetic (TPC-C + access weights)</td>
+        <td>TPC-C queries + Zipf weight doc</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td><strong>JOB</strong></td>
+        <td><span class="tag tag-blue">.csv</span></td>
+        <td>Synthetic (IMDB-like, 11 tables)</td>
+        <td>20 SQL files + bundle</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td><strong>pgbench</strong></td>
+        <td><span class="tag tag-blue">.csv</span></td>
+        <td>Synthetic (4 tables)</td>
+        <td>3 workload SQL + run script</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td><strong>BenchBase</strong></td>
+        <td>XML + shell script</td>
+        <td>Requires live database</td>
+        <td>XML execute config + run script</td>
+        <td>—</td>
+      </tr>
+    </table>
+
+  </main>
+</div>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('[id]');
+  const navLinks = document.querySelectorAll('nav a');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }, { passive: true });
+</script>
+
+</body>
+</html>

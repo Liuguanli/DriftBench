@@ -73,3 +73,5 @@ existing_benchmarks
 # Local development helper directories (agent/skill prompts)
 agents/
 skills/
+
+test_artifacts/

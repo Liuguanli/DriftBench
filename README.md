@@ -241,6 +241,17 @@ trace_to_spec("driftspec/trace_inputs/trace_data_mock.csv", "driftspec/generated
 ## Benchmark Objects (`driftbench.data.xxx`)
 
 Use benchmark-specific objects to generate artifacts into a user-chosen directory.
+Seven benchmark adapters are available — see [docs/benchmark_reference.md](docs/benchmark_reference.md) for full data/query details.
+
+| Adapter | Type | Tables | Queries |
+|---------|------|--------|---------|
+| `tpch` | OLAP | 8 | 22 templates |
+| `tpcds` | OLAP / Decision support | 4 (synth) / 26 (full) | Templates |
+| `tpcc` | OLTP | 9 | 5 transaction types |
+| `tpcc_skew` | OLTP + access skew | 9 + weight manifest | 5 transaction types |
+| `job` | OLAP / join-order | 8 (synth) / 21 (full IMDB) | 20 representative |
+| `ycsb` | Key-value | 1 | 6 workload mixes |
+| `dsb` | Decision support | Configurable | Templates |
 
 ### 1) Choose an output directory
 
@@ -251,24 +262,37 @@ Use benchmark-specific objects to generate artifacts into a user-chosen director
 ```python
 from pathlib import Path
 from driftbench.data.tpch import data as tpch_data, queries as tpch_queries
-from driftbench.data.ycsb import data as ycsb_data, queries as ycsb_queries
 from driftbench.data.tpcds import data as tpcds_data, queries as tpcds_queries
+from driftbench.data.tpcc import data as tpcc_data, queries as tpcc_queries
+from driftbench.data.tpcc_skew import data as tpcc_skew_data, queries as tpcc_skew_queries
+from driftbench.data.job import data as job_data, queries as job_queries
+from driftbench.data.ycsb import data as ycsb_data, queries as ycsb_queries
 from driftbench.data.dsb import data as dsb_data, queries as dsb_queries
 
 out = Path("./artifacts")
 
+# TPC-H (OLAP)
 tpch_data(scale_factor=1).generate(output_dir=out)
 tpch_queries(query_ids=[1, 3, 5], queries_per_template=2, mode="qgen").generate(output_dir=out)
+# TPC-C (OLTP, scale_factor == number of warehouses)
+tpcc_data(scale_factor=4).generate(output_dir=out)
+tpcc_queries().generate(output_dir=out)
 
-# For very large scale factors, generate a server-side execution plan only.
-tpch_data(scale_factor=1000, mode="plan").generate(output_dir=out)
+# TPC-C Skew (OLTP with Zipf hot-warehouse drift)
+tpcc_skew_data(scale_factor=10, hot_warehouse_fraction=0.2, skew_factor=0.99).generate(output_dir=out)
+tpcc_skew_queries(scale_factor=10, hot_warehouse_fraction=0.2).generate(output_dir=out)
 
+# JOB — Join Order Benchmark (IMDB, join-order sensitivity)
+job_data(scale_factor=1).generate(output_dir=out)
+job_queries().generate(output_dir=out)
+
+# YCSB (key-value workloads A–F)
 ycsb_data(scale_factor=1).generate(output_dir=out)
 ycsb_queries(workload="B").generate(output_dir=out)
 
+# TPC-DS and DSB
 tpcds_data(scale_factor=10).generate(output_dir=out)
 tpcds_queries().generate(output_dir=out)
-
 dsb_data(scale_factor=10).generate(output_dir=out)
 dsb_queries().generate(output_dir=out)
 ```
@@ -279,18 +303,13 @@ Artifacts are written to:
 
 ```text
 <output_dir>/
-  tpch/
-    data/
-    queries/
-  ycsb/
-    data/
-    queries/
-  tpcds/
-    data/
-    queries/
-  dsb/
-    data/
-    queries/
+  tpch/data/    tpch/queries/
+  tpcds/data/   tpcds/queries/
+  tpcc/data/    tpcc/queries/
+  tpcc_skew/data/  tpcc_skew/queries/
+  job/data/     job/queries/
+  ycsb/data/    ycsb/queries/
+  dsb/data/     dsb/queries/
 ```
 
 Each generation creates a manifest (`*_manifest.json`) in its folder.  
