@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 # PyPI distribution name. The Python import name is still `driftbench`
 # (analogous to scikit-learn / sklearn).
 name = "driftbench-db"
-version = "0.1.0b5"
+version = "0.1.0b7"
 description = "Database drift benchmarking for researchers, DB vendors, and new users: generate, validate, and run data/workload drift with CLI or MCP."
 readme = "README.md"
 license = { file = "LICENSE" }
