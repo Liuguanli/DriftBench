@@ -12,6 +12,9 @@ from .tpch import TPCHData, TPCHQueries
 from .tpcds import TPCDSData, TPCDSQueries
 from .ycsb import YCSBData, YCSBQueries
 from .dsb import DSBData, DSBQueries
+from .tpcc import TPCCData, TPCCQueries
+from .tpcc_skew import TPCCSkewData, TPCCSkewQueries
+from .job import JOBData, JOBQueries
 
 __all__ = [
     "GenerationResult",
@@ -24,4 +27,10 @@ __all__ = [
     "YCSBQueries",
     "DSBData",
     "DSBQueries",
+    "TPCCData",
+    "TPCCQueries",
+    "TPCCSkewData",
+    "TPCCSkewQueries",
+    "JOBData",
+    "JOBQueries",
 ]

@@ -9,7 +9,15 @@ Format notes:
 ## [Unreleased]
 
 ### Services
-- (No unreleased service changes recorded yet.)
+- `Data`: Three new benchmark adapters — TPC-C, TPC-C Skew, and JOB (Join Order Benchmark).
+
+### Added
+- **TPC-C adapter** (`driftbench.data.tpcc`): Full 9-table OLTP schema with synthetic CSV generation and plan mode. All 5 transaction types as SQL templates (new_order, payment, order_status, delivery, stock_level). Scale factor = number of warehouses.
+- **TPC-C Skew adapter** (`driftbench.data.tpcc_skew`): Extends TPC-C with configurable Zipf warehouse access distribution. Generates `warehouse_access_weights.csv` for driver-side hot-warehouse simulation. Parameters: `hot_warehouse_fraction` (default 0.2) and `skew_factor` (Zipf α, default 0.99).
+- **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 8-table synth subset of the IMDB schema with 20 representative SQL query templates covering 2–8-table join depths. Plan mode provides a download script for the full 21-table IMDB snapshot.
+- **`docs/benchmark_reference.md`**: Complete reference for all 7 adapters including row counts, query categories, join complexity index, scale guidance, and selection guide.
+- **`.claude/agents/benchmark-advisor.md`**: AI sub-agent for benchmark selection questions and code generation.
+- 9 new tests covering all new adapters: filesystem contract, row count scaling, plan mode output, weight manifest correctness.
 
 ## [v0.1.0b5] - 2026-05-11
 
