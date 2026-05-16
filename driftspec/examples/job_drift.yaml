@@ -1,0 +1,35 @@
+pattern_id: dp-job-drift
+seed: 42
+
+# Generate JOB (IMDB) data first:
+#   from driftbench.data.job import JOBData
+#   result = JOBData().generate()
+# Default output: ~/.driftbench/data/job/data/
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ~/.driftbench/data/job/data/movie_info.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ~/.driftbench/data/job/drift/movie_info_schema.json
+
+variables:
+  base_table: movie_info
+  drifts:
+    - name: outlier_injection_info_type
+      drift_type: outlier_injection
+      output_path: ~/.driftbench/data/job/drift/movie_info_outlier_type.csv
+      column: info_type_id
+      n: 300
+      extreme_scale: 3.0
+
+    - name: selective_deletion_rare_notes
+      drift_type: selective_deletion
+      output_path: ~/.driftbench/data/job/drift/movie_info_deleted.csv
+      n: 1000

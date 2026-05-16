@@ -70,6 +70,9 @@ existing_benchmarks
 
 .codex/
 
+# Local Claude Code settings (never shared — may contain bypassPermissions)
+.claude/
+
 # Local development helper directories (agent/skill prompts)
 agents/
 skills/

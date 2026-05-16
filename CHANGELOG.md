@@ -6,6 +6,18 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [v0.1.0b8] - 2026-05-16
+
+### Services
+- `Data`: Benchmark adapters now expose a one-call drift API — apply data drift directly to any benchmark-generated table without manual wiring.
+
+### Added
+- **`GenerationResult.drift(table, drift_type, **params)`**: single-table drift on any benchmark CSV. Auto-extracts schema via `CSVSchemaExtractor` and delegates to `SingleTableDriftGenerator`. Supports all 7 existing drift types and writes a fresh drift manifest for the new result.
+- **`GenerationResult.drift_multi(steps, relationships=None)`**: multi-table drift across all loaded benchmark tables. FK relationships for `tpch` and `job` are wired automatically; pass `relationships=[]` or a custom list to override. `tpcc`/`tpcc_skew` currently require explicit relationships because their joins use composite keys.
+- **`_known_relationships(benchmark)`** helper: hard-coded FK maps for TPC-H (7 rels) and JOB (7 rels). Returns `[]` for other benchmarks.
+- **5 example DriftSpec YAMLs** (`driftspec/examples/`): `tpch_lineitem_drift.yaml`, `tpcc_drift.yaml`, `job_drift.yaml`, `ycsb_drift.yaml`, `pgbench_drift.yaml`. Each uses `kind: csv` pointing at default adapter output paths with 2–3 drift variants per file.
+- 10 new tests in `DriftAPITests` covering `.drift()` (TPC-H outlier injection, YCSB cardinality, fresh manifests), `.drift_multi()` (built-in relationship propagation for TPC-H and JOB, fresh manifests, skew + row-count preservation), output isolation, and error handling.
+
 ## [v0.1.0b7.post1] - 2026-05-15
 
 ### Services

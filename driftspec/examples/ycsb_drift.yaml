@@ -1,0 +1,35 @@
+pattern_id: dp-ycsb-drift
+seed: 42
+
+# Generate YCSB data first:
+#   from driftbench.data.ycsb import YCSBData
+#   result = YCSBData(record_count=100000).generate()
+# Default output: ~/.driftbench/data/ycsb/data/
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ~/.driftbench/data/ycsb/data/usertable.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ~/.driftbench/data/ycsb/drift/usertable_schema.json
+
+variables:
+  base_table: usertable
+  drifts:
+    - name: value_skew_fields
+      drift_type: value_skew
+      output_path: ~/.driftbench/data/ycsb/drift/usertable_skew_fields.csv
+      columns: ["FIELD0", "FIELD1", "FIELD2"]
+      portion: 1.0
+      skewness: 2
+
+    - name: vary_cardinality_0.5x
+      drift_type: vary_cardinality
+      output_path: ~/.driftbench/data/ycsb/drift/usertable_cardinality_half.csv
+      scale: 0.5

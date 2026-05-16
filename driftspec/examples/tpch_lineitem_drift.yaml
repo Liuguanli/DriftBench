@@ -1,0 +1,46 @@
+pattern_id: dp-tpch-lineitem-drift
+seed: 42
+
+# Generate TPC-H data first:
+#   from driftbench.data.tpch import TPCHData
+#   result = TPCHData(scale_factor=1).generate().as_csv()
+# Default output: ~/.driftbench/data/tpch/data/sf_1/
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ~/.driftbench/data/tpch/data/sf_1/lineitem.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ~/.driftbench/data/tpch/drift/lineitem_schema.json
+
+variables:
+  base_table: lineitem
+  drifts:
+    - name: outlier_injection_quantity
+      drift_type: outlier_injection
+      output_path: ~/.driftbench/data/tpch/drift/lineitem_outlier_quantity.csv
+      column: l_quantity
+      n: 500
+      extreme_scale: 2.0
+
+    - name: value_skew_extendedprice
+      drift_type: value_skew
+      output_path: ~/.driftbench/data/tpch/drift/lineitem_skew_price.csv
+      columns: ["l_extendedprice", "l_discount"]
+      portion: 1.0
+      skewness: 2
+
+    - name: selective_deletion_returned
+      drift_type: selective_deletion
+      output_path: ~/.driftbench/data/tpch/drift/lineitem_deleted_returned.csv
+      n: 5000
+      filter:
+        column: l_returnflag
+        op: "=="
+        value: "R"

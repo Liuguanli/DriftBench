@@ -131,6 +131,49 @@ csv_result = result.as_csv()
 
 Second call reuses existing files automatically. Pass `force=True` to regenerate.
 
+### Applying drift to benchmark data
+
+`GenerationResult` exposes `.drift()` and `.drift_multi()` to apply data drift directly — no manual schema extraction or generator setup needed.
+
+**Single-table drift:**
+
+```python
+from driftbench.data.tpch import TPCHData
+
+result = TPCHData(scale_factor=1, source_dir="path/to/tbls").generate().as_csv()
+
+# Inject outliers into lineitem.l_quantity
+drifted = result.drift("lineitem", "outlier_injection", column="l_quantity", n=500)
+
+# Skew the price/discount distribution
+drifted = result.drift("lineitem", "value_skew",
+                       columns=["l_extendedprice", "l_discount"], skewness=2)
+```
+
+`drift()` writes the drifted CSV to `<output_dir>/<table>_<drift_type>.csv` by default. Pass `output_path=` to override. Returns a new `GenerationResult` pointing at the drifted file.
+
+**Multi-table drift:**
+
+```python
+# FK relationships for tpch / job are wired automatically
+drifted = result.drift_multi([
+    {"op": "skew_column", "target": "lineitem", "column": "l_quantity",
+     "fraction": 0.2, "skewness": 2},
+    {"op": "delete_keys", "target": "orders", "key_column": "o_orderkey",
+     "fraction": 0.05,
+     "propagate": [{"relationship": "lineitem_orders", "policy": "drop"}]},
+])
+```
+
+Pass `relationships=[]` or a custom list to override the built-in FK maps. Supported benchmarks with auto-wiring: `tpch`, `job`. `tpcc` and `tpcc_skew` require explicit relationship definitions because their joins use composite keys.
+
+**DriftSpec YAMLs** — ready-to-run example specs for all five adapters are in `driftspec/examples/`:
+- `tpch_lineitem_drift.yaml`
+- `tpcc_drift.yaml`
+- `job_drift.yaml`
+- `ycsb_drift.yaml`
+- `pgbench_drift.yaml`
+
 ---
 
 ## CLI Quickstart
