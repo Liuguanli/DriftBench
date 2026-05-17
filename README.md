@@ -125,7 +125,9 @@ result = tpch_data(scale_factor=1, mode="generate").generate(output_dir=out)
 result.files      # list of generated file paths
 result.metadata   # path to the manifest JSON
 
-# Convert pipe-delimited .tbl / .dat to standard CSV (both kept on disk)
+# Convert pipe-delimited .tbl / .dat to standard CSV (both kept on disk).
+# Known TPC-H (8 tables) and TPC-DS (5 synthetic tables) get a proper
+# header row, so the CSV is self-describing and usable directly by .drift().
 csv_result = result.as_csv()
 ```
 
@@ -151,6 +153,8 @@ drifted = result.drift("lineitem", "value_skew",
 ```
 
 `drift()` writes the drifted CSV to `<output_dir>/<table>_<drift_type>.csv` by default. Pass `output_path=` to override. Returns a new `GenerationResult` pointing at the drifted file.
+
+Every `.drift()` call also emits a reproducible DriftSpec YAML (`<output_stem>.driftspec.yaml`) next to the CSV — kept out of `result.files` but recorded under the manifest's `driftspec` key. Running that YAML through `driftbench.spec.core.run_all` regenerates **byte-identical** output, so a Python-generated drift can be shared or automated as a spec without rework. The function-call path (fast, imperative) and the spec path (declarative, version-controllable, reproducible) are the same engine and produce identical results for the same seed and parameters.
 
 **Multi-table drift:**
 

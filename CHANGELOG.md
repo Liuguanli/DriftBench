@@ -17,6 +17,17 @@ Format notes:
 - **`_known_relationships(benchmark)`** helper: hard-coded FK maps for TPC-H (7 rels) and JOB (7 rels). Returns `[]` for other benchmarks.
 - **5 example DriftSpec YAMLs** (`driftspec/examples/`): `tpch_lineitem_drift.yaml`, `tpcc_drift.yaml`, `job_drift.yaml`, `ycsb_drift.yaml`, `pgbench_drift.yaml`. Each uses `kind: csv` pointing at default adapter output paths with 2–3 drift variants per file.
 - 10 new tests in `DriftAPITests` covering `.drift()` (TPC-H outlier injection, YCSB cardinality, fresh manifests), `.drift_multi()` (built-in relationship propagation for TPC-H and JOB, fresh manifests, skew + row-count preservation), output isolation, and error handling.
+- 4 new tests in `CsvHeaderAndDriftFixTests`: TPC-H/TPC-DS header injection (with row-count preservation), end-to-end `generate().as_csv().drift()`, and the `.tbl`-without-`.as_csv()` guard rail.
+- 4 new tests in `SpecPythonParityTests`: the DriftSpec YAML path runs against an `as_csv()`-produced file; spec and `.drift()` produce **byte-identical** output at the default seed and at a non-default seed (`seed=7`); and `.drift()`'s emitted hidden YAML re-runs to byte-identical output.
+- **`.drift()` now emits a reproducible DriftSpec YAML** as a hidden side artifact (`<output_stem>.driftspec.yaml`, next to the drifted CSV, recorded under the manifest's `driftspec` key, kept out of `result.files`). Running it through `driftbench.spec.core.run_all` regenerates byte-identical output — so Python-generated drift is automatically shareable/automatable as a spec.
+
+### Fixed
+- **`GenerationResult.as_csv()` now writes a column header row** for known schemas: all 8 TPC-H tables (canonical spec order, verified against dbgen output) and all 5 synthetic TPC-DS tables. Previously the converted CSV was headerless, so a follow-up `.drift(..., column="l_quantity")` — via either the Python API or a `kind: csv` DriftSpec — had no named columns to target. Tables without a known schema still convert headerless (unchanged behaviour).
+- **`GenerationResult.drift()` now raises a clear, actionable error** when the target table is still in `.tbl`/`.dat` form: `Table 'X' is in .tbl format; call .as_csv() before .drift().` — instead of a generic "No CSV file" message.
+- **Spec engine: single-table drift now honors the spec's `seed:`.** `handle_data_single_table` previously built `SingleTableDriftGenerator` without a seed, silently using the default `42` regardless of the YAML's `seed:` (only the multi-table handler honored it). The Python `.drift()` path and the spec path now produce identical output for any seed. Backward compatible (default remains `42`).
+
+### Changed
+- `GenerationResult.drift()` rejects the reserved keywords `table`, `drift_type`, `seed`, `output_path` if they appear in `**params`, raising a `TypeError` that explains to pass them as dedicated arguments (defensive guard against signature-shadowing).
 
 ## [v0.1.0b7.post1] - 2026-05-15
 

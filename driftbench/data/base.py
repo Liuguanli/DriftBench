@@ -23,6 +23,61 @@ def get_default_data_dir() -> Path:
     return Path.home() / ".driftbench" / "data"
 
 
+# Column headers for the headerless pipe-delimited tables produced by the
+# benchmark adapters. Keyed by (benchmark, table_stem). TPC-H follows the
+# canonical TPC-H spec column order (verified against dbgen output); TPC-DS
+# follows the synthetic field order emitted by TPCDSData._generate_synth.
+# When a (benchmark, stem) is absent, as_csv() falls back to a headerless
+# conversion (unchanged behaviour).
+_TBL_SCHEMAS: Dict[tuple[str, str], List[str]] = {
+    ("tpch", "region"): ["r_regionkey", "r_name", "r_comment"],
+    ("tpch", "nation"): ["n_nationkey", "n_name", "n_regionkey", "n_comment"],
+    ("tpch", "part"): [
+        "p_partkey", "p_name", "p_mfgr", "p_brand", "p_type",
+        "p_size", "p_container", "p_retailprice", "p_comment",
+    ],
+    ("tpch", "supplier"): [
+        "s_suppkey", "s_name", "s_address", "s_nationkey",
+        "s_phone", "s_acctbal", "s_comment",
+    ],
+    ("tpch", "partsupp"): [
+        "ps_partkey", "ps_suppkey", "ps_availqty", "ps_supplycost", "ps_comment",
+    ],
+    ("tpch", "customer"): [
+        "c_custkey", "c_name", "c_address", "c_nationkey", "c_phone",
+        "c_acctbal", "c_mktsegment", "c_comment",
+    ],
+    ("tpch", "orders"): [
+        "o_orderkey", "o_custkey", "o_orderstatus", "o_totalprice",
+        "o_orderdate", "o_orderpriority", "o_clerk", "o_shippriority",
+        "o_comment",
+    ],
+    ("tpch", "lineitem"): [
+        "l_orderkey", "l_partkey", "l_suppkey", "l_linenumber",
+        "l_quantity", "l_extendedprice", "l_discount", "l_tax",
+        "l_returnflag", "l_linestatus", "l_shipdate", "l_commitdate",
+        "l_receiptdate", "l_shipinstruct", "l_shipmode", "l_comment",
+    ],
+    ("tpcds", "date_dim"): [
+        "d_date_sk", "d_date_id", "d_date", "d_year", "d_moy", "d_dom",
+    ],
+    ("tpcds", "store"): ["s_store_sk", "s_store_id", "s_store_name", "s_status"],
+    ("tpcds", "item"): [
+        "i_item_sk", "i_item_id", "i_item_desc", "i_category", "i_current_price",
+    ],
+    ("tpcds", "customer"): [
+        "c_customer_sk", "c_customer_id", "c_first_name",
+        "c_last_name", "c_email_address",
+    ],
+    ("tpcds", "store_sales"): [
+        "ss_sold_date_sk", "ss_item_sk", "ss_customer_sk", "ss_store_sk",
+        "ss_quantity", "ss_net_paid", "ss_net_profit",
+    ],
+}
+
+_DRIFT_RESERVED_PARAMS = ("table", "drift_type", "seed", "output_path")
+
+
 @dataclass(frozen=True)
 class GenerationResult:
     benchmark: str
@@ -32,10 +87,13 @@ class GenerationResult:
     metadata: Path
 
     def as_csv(self) -> "GenerationResult":
-        """Convert any pipe-delimited .tbl files to .csv and return a new result.
+        """Convert any pipe-delimited .tbl/.dat files to .csv and return a new result.
 
-        Non-.tbl files are carried over unchanged. The original .tbl files are
-        kept alongside the new .csv files.
+        Non-.tbl/.dat files are carried over unchanged. The original files are
+        kept alongside the new .csv files. When a column schema is known for
+        (benchmark, table_stem), a header row is written so the CSV is
+        self-describing and usable directly by .drift(); otherwise the CSV is
+        written headerless (unchanged legacy behaviour).
         """
         converted: list[Path] = []
         for f in self.files:
@@ -43,8 +101,11 @@ class GenerationResult:
                 converted.append(f)
                 continue
             csv_path = f.with_suffix(".csv")
+            header = _TBL_SCHEMAS.get((self.benchmark, f.stem))
             with f.open(encoding="utf-8") as src, csv_path.open("w", encoding="utf-8", newline="") as dst:
                 writer = csv.writer(dst)
+                if header is not None:
+                    writer.writerow(header)
                 for line in src:
                     row = line.rstrip("\n").rstrip("|").split("|")
                     writer.writerow(row)
@@ -77,6 +138,14 @@ class GenerationResult:
         Returns:
             A new GenerationResult pointing at the drifted CSV.
         """
+        reserved = [k for k in _DRIFT_RESERVED_PARAMS if k in params]
+        if reserved:
+            raise TypeError(
+                f"drift() received reserved keyword(s) {reserved} in **params; "
+                f"pass them as dedicated arguments instead "
+                f"({', '.join(_DRIFT_RESERVED_PARAMS)})."
+            )
+
         from driftbench.core.schema.csv_extractor import CSVSchemaExtractor
         from driftbench.core.data.single_table import SingleTableDriftGenerator
 
@@ -86,6 +155,19 @@ class GenerationResult:
                 csv_file = f
                 break
         if csv_file is None:
+            unconverted = next(
+                (
+                    f
+                    for f in self.files
+                    if f.suffix in (".tbl", ".dat") and f.stem == table
+                ),
+                None,
+            )
+            if unconverted is not None:
+                raise ValueError(
+                    f"Table '{table}' is in {unconverted.suffix} format; "
+                    f"call .as_csv() before .drift()."
+                )
             raise ValueError(
                 f"No CSV file for table '{table}' in result. "
                 f"Available files: {[f.name for f in self.files]}"
@@ -102,6 +184,18 @@ class GenerationResult:
 
         out.parent.mkdir(parents=True, exist_ok=True)
         drifted_df.to_csv(out, index=False)
+        # Emit the equivalent DriftSpec YAML as a hidden side artifact so the
+        # exact same drift is reproducible/shareable via the spec engine
+        # (driftbench.spec.core.run_all). Kept out of result.files; discoverable
+        # through the manifest's "driftspec" key.
+        spec_path = self._emit_drift_spec(
+            source_csv=csv_file,
+            table=table,
+            drift_type=drift_type,
+            out=out,
+            seed=seed,
+            params=params,
+        )
         metadata = self._write_drift_manifest(
             output_dir=out.parent,
             manifest_name=f"{out.stem}_manifest.json",
@@ -113,6 +207,7 @@ class GenerationResult:
                 "drift_type": drift_type,
                 "seed": seed,
                 "params": params,
+                "driftspec": spec_path.name,
             },
         )
 
@@ -206,6 +301,72 @@ class GenerationResult:
         metadata = output_dir / manifest_name
         metadata.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         return metadata
+
+    def _emit_drift_spec(
+        self,
+        source_csv: Path,
+        table: str,
+        drift_type: str,
+        out: Path,
+        seed: int,
+        params: Dict[str, Any],
+    ) -> Path:
+        """Serialize the equivalent DriftSpec YAML next to the drifted CSV.
+
+        Running the emitted file through driftbench.spec.core.run_all reproduces
+        a byte-identical drifted CSV: same source, seed, drift_type and params,
+        and ``sample_size: 0`` so the spec engine extracts schema from the full
+        CSV exactly as the Python path does.
+        """
+        import yaml
+
+        spec_path = out.parent / f"{out.stem}.driftspec.yaml"
+        spec: Dict[str, Any] = {
+            "pattern_id": f"{self.benchmark}-{table}-{drift_type}",
+            "seed": int(seed),
+            "type": {"family": "data", "category": "drift", "subtype": "single_table"},
+            "data_source": {
+                "kind": "csv",
+                "path": str(source_csv.resolve()),
+                "schema_extractor": {
+                    "source_type": "csv",
+                    "sample_size": 0,
+                    "schema_output_path": str(
+                        out.parent / f"{out.stem}_schema.json"
+                    ),
+                },
+            },
+            "variables": {
+                "base_table": table,
+                "drifts": [
+                    {
+                        "name": drift_type,
+                        "drift_type": drift_type,
+                        "output_path": str(out.resolve()),
+                        **_yaml_safe(params),
+                    }
+                ],
+            },
+        }
+        with spec_path.open("w", encoding="utf-8") as f:
+            yaml.safe_dump(spec, f, default_flow_style=False, sort_keys=False)
+        return spec_path
+
+
+def _yaml_safe(value: Any) -> Any:
+    """Recursively coerce values to YAML-native types.
+
+    Primitives and (possibly nested) lists/dicts of primitives pass through
+    unchanged; anything else (Path, numpy scalar, custom object) is stringified
+    so the emitted DriftSpec never fails to serialize and stays readable.
+    """
+    if isinstance(value, dict):
+        return {str(k): _yaml_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_yaml_safe(v) for v in value]
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    return str(value)
 
 
 def _known_relationships(benchmark: str) -> List[Dict[str, Any]]:

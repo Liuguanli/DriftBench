@@ -662,5 +662,271 @@ class DriftAPITests(unittest.TestCase):
         self.assertEqual(len(pd.read_csv(orders_drifted)), 5)
 
 
+class CsvHeaderAndDriftFixTests(unittest.TestCase):
+    """as_csv() header injection and the .tbl→.drift() guard rail."""
+
+    # One schema-correct TPC-H lineitem row (16 cols + trailing pipe),
+    # matching real dbgen output. l_quantity is the 5th column.
+    _LINEITEM_TBL = (
+        "{ok}|155190|7706|1|{qty}|21168.23|0.04|0.02|N|O|"
+        "1996-03-13|1996-02-12|1996-03-22|DELIVER IN PERSON|TRUCK|to beans|\n"
+    )
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.mkdtemp(prefix="driftbench_csvhdr_test_")
+        os.environ["DRIFTBENCH_DATA_DIR"] = self._tmpdir
+
+    def tearDown(self) -> None:
+        del os.environ["DRIFTBENCH_DATA_DIR"]
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _tpch_lineitem_source(self, rows: int = 10) -> Path:
+        source = Path(self._tmpdir) / "src"
+        source.mkdir(parents=True, exist_ok=True)
+        body = "".join(
+            self._LINEITEM_TBL.format(ok=i, qty=10 + i) for i in range(1, rows + 1)
+        )
+        (source / "lineitem.tbl").write_text(body, encoding="utf-8")
+        return source
+
+    def test_as_csv_writes_tpch_header(self) -> None:
+        import pandas as pd
+
+        source = self._tpch_lineitem_source(rows=10)
+        out = Path(self._tmpdir) / "out"
+        result = TPCHData(scale_factor=1, source_dir=source).generate(output_dir=out)
+
+        csv_result = result.as_csv()
+        csv_file = next(f for f in csv_result.files if f.name == "lineitem.csv")
+        df = pd.read_csv(csv_file)
+
+        self.assertEqual(
+            list(df.columns),
+            [
+                "l_orderkey", "l_partkey", "l_suppkey", "l_linenumber",
+                "l_quantity", "l_extendedprice", "l_discount", "l_tax",
+                "l_returnflag", "l_linestatus", "l_shipdate", "l_commitdate",
+                "l_receiptdate", "l_shipinstruct", "l_shipmode", "l_comment",
+            ],
+        )
+        # Header must not be counted as a data row.
+        self.assertEqual(len(df), 10)
+        self.assertEqual(df["l_quantity"].iloc[0], 11)
+
+    def test_as_csv_writes_tpcds_header_and_preserves_rows(self) -> None:
+        import pandas as pd
+
+        out = Path(self._tmpdir) / "out"
+        result = TPCDSData(scale_factor=1).generate(output_dir=out)
+        csv_result = result.as_csv()
+
+        store_sales = next(f for f in csv_result.files if f.name == "store_sales.csv")
+        df = pd.read_csv(store_sales)
+        self.assertEqual(
+            list(df.columns),
+            [
+                "ss_sold_date_sk", "ss_item_sk", "ss_customer_sk", "ss_store_sk",
+                "ss_quantity", "ss_net_paid", "ss_net_profit",
+            ],
+        )
+        # store_sales = 10000 rows per SF; header must not inflate/consume rows.
+        self.assertEqual(len(df), 10000)
+
+    def test_end_to_end_generate_as_csv_drift(self) -> None:
+        import pandas as pd
+
+        source = self._tpch_lineitem_source(rows=10)
+        out = Path(self._tmpdir) / "out"
+        result = TPCHData(scale_factor=1, source_dir=source).generate(output_dir=out)
+
+        drifted = result.as_csv().drift(
+            "lineitem", "outlier_injection", column="l_quantity", n=5
+        )
+        self.assertIsInstance(drifted, GenerationResult)
+        self.assertEqual(len(drifted.files), 1)
+        self.assertTrue(drifted.files[0].exists())
+        df = pd.read_csv(drifted.files[0])
+        # outlier_injection appends n rows to the 10 originals.
+        self.assertEqual(len(df), 15)
+
+    def test_drift_on_unconverted_tbl_raises_helpful_error(self) -> None:
+        source = self._tpch_lineitem_source(rows=3)
+        out = Path(self._tmpdir) / "out"
+        result = TPCHData(scale_factor=1, source_dir=source).generate(output_dir=out)
+
+        with self.assertRaises(ValueError) as ctx:
+            result.drift("lineitem", "outlier_injection", column="l_quantity", n=1)
+        msg = str(ctx.exception)
+        self.assertIn("as_csv()", msg)
+        self.assertIn(".tbl", msg)
+
+
+class SpecPythonParityTests(unittest.TestCase):
+    """The DriftSpec YAML path and the .drift() Python path must agree.
+
+    Builds a headered TPC-H lineitem.csv via the adapter + as_csv(), then
+    proves: (a) the spec engine runs against that file, (b) spec and Python
+    produce byte-identical drift for the same seed/params (incl. a non-default
+    seed, which exercises the spec single-table seed-threading fix), and
+    (c) .drift()'s emitted hidden DriftSpec YAML reproduces its own output.
+    """
+
+    _LINEITEM_TBL = (
+        "{ok}|155190|7706|1|{qty}|21168.23|0.04|0.02|N|O|"
+        "1996-03-13|1996-02-12|1996-03-22|DELIVER IN PERSON|TRUCK|to beans|\n"
+    )
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.mkdtemp(prefix="driftbench_parity_test_")
+        os.environ["DRIFTBENCH_DATA_DIR"] = self._tmpdir
+
+    def tearDown(self) -> None:
+        del os.environ["DRIFTBENCH_DATA_DIR"]
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _headered_lineitem_csv(self, rows: int = 10) -> Path:
+        """Return path to a header'd lineitem.csv via TPCHData().as_csv()."""
+        source = Path(self._tmpdir) / "src"
+        source.mkdir(parents=True, exist_ok=True)
+        body = "".join(
+            self._LINEITEM_TBL.format(ok=i, qty=10 + i) for i in range(1, rows + 1)
+        )
+        (source / "lineitem.tbl").write_text(body, encoding="utf-8")
+        out = Path(self._tmpdir) / "out"
+        result = TPCHData(scale_factor=1, source_dir=source).generate(output_dir=out)
+        csv_result = result.as_csv()
+        return next(f for f in csv_result.files if f.name == "lineitem.csv")
+
+    def _run_spec(
+        self, source_csv: Path, out_csv: Path, seed: int, n: int = 5
+    ) -> None:
+        """Write a minimal single-table DriftSpec and execute it via run_all."""
+        import yaml
+        from driftbench.spec.core import run_all
+
+        spec = {
+            "pattern_id": "parity-lineitem",
+            "seed": seed,
+            "type": {
+                "family": "data",
+                "category": "drift",
+                "subtype": "single_table",
+            },
+            "data_source": {
+                "kind": "csv",
+                "path": str(source_csv),
+                "schema_extractor": {
+                    "source_type": "csv",
+                    "sample_size": 0,
+                    "schema_output_path": str(
+                        out_csv.parent / "spec_schema.json"
+                    ),
+                },
+            },
+            "variables": {
+                "base_table": "lineitem",
+                "drifts": [
+                    {
+                        "name": "outlier_injection",
+                        "drift_type": "outlier_injection",
+                        "output_path": str(out_csv),
+                        "column": "l_quantity",
+                        "n": n,
+                    }
+                ],
+            },
+        }
+        spec_path = out_csv.parent / "parity_spec.yaml"
+        with spec_path.open("w", encoding="utf-8") as f:
+            yaml.safe_dump(spec, f, sort_keys=False)
+        run_all(str(spec_path))
+
+    def test_spec_path_runs_against_as_csv_output(self) -> None:
+        import pandas as pd
+
+        source_csv = self._headered_lineitem_csv(rows=10)
+        spec_out = Path(self._tmpdir) / "specrun" / "drifted.csv"
+        spec_out.parent.mkdir(parents=True, exist_ok=True)
+
+        self._run_spec(source_csv, spec_out, seed=42, n=5)
+
+        self.assertTrue(spec_out.exists())
+        df = pd.read_csv(spec_out)
+        self.assertIn("l_quantity", df.columns)
+        self.assertEqual(len(df), 15)  # 10 base + 5 injected
+
+    def test_spec_and_python_drift_byte_identical_default_seed(self) -> None:
+        source_csv = self._headered_lineitem_csv(rows=10)
+        result = GenerationResult(
+            benchmark="tpch",
+            artifact_type="data",
+            output_dir=source_csv.parent,
+            files=[source_csv],
+            metadata=source_csv.parent / "m.json",
+        )
+        py = result.drift(
+            "lineitem", "outlier_injection", column="l_quantity", n=5, seed=42
+        )
+        py_bytes = py.files[0].read_bytes()
+
+        spec_out = Path(self._tmpdir) / "specrun" / "drifted.csv"
+        spec_out.parent.mkdir(parents=True, exist_ok=True)
+        self._run_spec(source_csv, spec_out, seed=42, n=5)
+
+        self.assertEqual(py_bytes, spec_out.read_bytes())
+
+    def test_spec_and_python_drift_byte_identical_custom_seed(self) -> None:
+        # seed=7 exercises the spec single-table seed-threading fix; before it,
+        # the spec path silently used seed=42 and this would diverge.
+        source_csv = self._headered_lineitem_csv(rows=10)
+        result = GenerationResult(
+            benchmark="tpch",
+            artifact_type="data",
+            output_dir=source_csv.parent,
+            files=[source_csv],
+            metadata=source_csv.parent / "m.json",
+        )
+        py = result.drift(
+            "lineitem", "outlier_injection", column="l_quantity", n=5, seed=7
+        )
+        py_bytes = py.files[0].read_bytes()
+
+        spec_out = Path(self._tmpdir) / "specrun7" / "drifted.csv"
+        spec_out.parent.mkdir(parents=True, exist_ok=True)
+        self._run_spec(source_csv, spec_out, seed=7, n=5)
+
+        self.assertEqual(py_bytes, spec_out.read_bytes())
+
+    def test_drift_emits_reproducible_driftspec_yaml(self) -> None:
+        from driftbench.spec.core import run_all
+
+        source_csv = self._headered_lineitem_csv(rows=10)
+        result = GenerationResult(
+            benchmark="tpch",
+            artifact_type="data",
+            output_dir=source_csv.parent,
+            files=[source_csv],
+            metadata=source_csv.parent / "m.json",
+        )
+        py = result.drift(
+            "lineitem", "outlier_injection", column="l_quantity", n=5, seed=13
+        )
+        out_csv = py.files[0]
+        original_bytes = out_csv.read_bytes()
+
+        # The hidden YAML is not in result.files but is recorded in the manifest.
+        manifest = json.loads(py.metadata.read_text(encoding="utf-8"))
+        self.assertIn("driftspec", manifest)
+        spec_path = out_csv.parent / manifest["driftspec"]
+        self.assertTrue(spec_path.exists())
+        self.assertNotIn(spec_path, py.files)
+
+        # Re-running the emitted spec must regenerate byte-identical output.
+        out_csv.unlink()
+        run_all(str(spec_path))
+        self.assertTrue(out_csv.exists())
+        self.assertEqual(out_csv.read_bytes(), original_bytes)
+
+
 if __name__ == "__main__":
     unittest.main()
