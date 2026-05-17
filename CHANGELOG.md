@@ -6,7 +6,7 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
-## [v0.1.0b8] - 2026-05-16
+## [v0.1.0b8] - 2026-05-17
 
 ### Services
 - `Data`: Benchmark adapters now expose a one-call drift API — apply data drift directly to any benchmark-generated table without manual wiring.
