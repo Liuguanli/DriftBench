@@ -1,0 +1,109 @@
+name: Daily release
+
+# Daily DriftBench release pipeline. Triggers:
+#   - cron: 21:00 UTC = 08:00 AEDT (Sydney, DST-on) / 07:00 AEST (DST-off).
+#     EDIT THIS to match your timezone. GHA cron is UTC. Common picks:
+#       0 21 * * *  → 08:00 AEDT / 07:00 AEST
+#       0 22 * * *  → 08:00 AEST
+#       0 13 * * *  → 08:00 US Central
+#       0  6 * * *  → 08:00 CET
+#   - workflow_dispatch: manual trigger any time.
+#
+# Required secrets (set in GitHub → repo → Settings → Secrets and variables → Actions):
+#   PYPI_API_TOKEN       — PyPI token starting with "pypi-"
+#   GMAIL_USER           — liuguanli22@gmail.com
+#   GMAIL_APP_PASSWORD   — 16-char Gmail App Password (NOT account password)
+#   GMAIL_TO             — where to email the daily summary (can equal GMAIL_USER)
+
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Bypass the daily/approved/<yesterday>.md gate (use sparingly)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # needed to push the version bump commit + tag
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install build twine
+
+      - name: Compute dates
+        id: dates
+        run: |
+          echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "yesterday=$(date -u -d yesterday +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Run tests
+        id: tests
+        run: python -m unittest discover -s test -p 'test_*.py' -v
+
+      - name: Check approval gate
+        id: gate
+        run: |
+          set -e
+          APPROVAL="daily/approved/${{ steps.dates.outputs.yesterday }}.md"
+          if [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+            echo "reason=forced via workflow_dispatch" >> "$GITHUB_OUTPUT"
+          elif [ -f "$APPROVAL" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+            echo "reason=approval file $APPROVAL present" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+            echo "reason=no $APPROVAL — skipping PyPI upload" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read current version
+        id: version
+        run: |
+          V=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "current=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Build sdist + wheel
+        if: steps.gate.outputs.approved == 'true'
+        run: python -m build
+
+      - name: Publish to PyPI
+        if: steps.gate.outputs.approved == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --non-interactive dist/*
+
+      - name: Send daily email
+        if: always()
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_TO: ${{ secrets.GMAIL_TO }}
+          DRIFTBENCH_DATE: ${{ steps.dates.outputs.today }}
+          DRIFTBENCH_VERSION: ${{ steps.version.outputs.current }}
+          DRIFTBENCH_TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          DRIFTBENCH_APPROVED: ${{ steps.gate.outputs.approved }}
+          DRIFTBENCH_GATE_REASON: ${{ steps.gate.outputs.reason }}
+          DRIFTBENCH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python scripts/send_daily_email.py
