@@ -1,0 +1,35 @@
+pattern_id: dp-tpcc-drift
+seed: 42
+
+# Generate TPC-C data first:
+#   from driftbench.data.tpcc import TPCCData
+#   result = TPCCData().generate()
+# Default output: ~/.driftbench/data/tpcc/data/
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ~/.driftbench/data/tpcc/data/customer.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ~/.driftbench/data/tpcc/drift/customer_schema.json
+
+variables:
+  base_table: customer
+  drifts:
+    - name: value_skew_balance_discount
+      drift_type: value_skew
+      output_path: ~/.driftbench/data/tpcc/drift/customer_skew_balance.csv
+      columns: ["c_balance", "c_discount"]
+      portion: 1.0
+      skewness: 2
+
+    - name: vary_cardinality_2x
+      drift_type: vary_cardinality
+      output_path: ~/.driftbench/data/tpcc/drift/customer_cardinality_2x.csv
+      scale: 2.0

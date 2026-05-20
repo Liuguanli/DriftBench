@@ -2,6 +2,7 @@
 TODO.md
 PLAN.md
 COMMANDS.md
+CLAUDE.md
 docs/driftbench_upgrade_todo.md
 docs/driftbench_todo.md
 docs/driftbench_product_demo_plan.md
@@ -69,6 +70,9 @@ lecarb/estimator/.DS_Store
 existing_benchmarks
 
 .codex/
+
+# Local Claude Code settings (never shared — may contain bypassPermissions)
+.claude/
 
 # Local development helper directories (agent/skill prompts)
 agents/

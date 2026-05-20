@@ -79,8 +79,9 @@ def _load_filter_modules(modules: Any) -> None:
 
 
 def _run_single_table(local_path: str, schema: Dict[str, Any], base_table: str,
-                      drifts: list[Dict[str, Any]], filter_registry_modules: Any = None) -> None:
-    gen = SingleTableDriftGenerator(local_path, schema, base_table=base_table)
+                      drifts: list[Dict[str, Any]], filter_registry_modules: Any = None,
+                      seed: int = 42) -> None:
+    gen = SingleTableDriftGenerator(local_path, schema, base_table=base_table, seed=seed)
     _load_filter_modules(filter_registry_modules)
     for drift in drifts:
         _load_filter_modules(drift.get("filter_registry_modules") or drift.get("filter_func_module"))
@@ -196,7 +197,8 @@ def handle_data_single_table(spec: Dict[str, Any]) -> None:
     }
     schema = _load_or_extract_schema_for_table(ds, table_cfg, spec.get("pattern_id", "data-drift"))
     _run_single_table(path, schema, base_table, variables.get("drifts", []),
-                      filter_registry_modules=filter_registry_modules)
+                      filter_registry_modules=filter_registry_modules,
+                      seed=int(spec.get("seed", 42)))
 
 @register(family="data", category="drift", subtype="multi_table")
 def handle_data_multi_table(spec: Dict[str, Any]) -> None:
@@ -254,4 +256,5 @@ def handle_data_multi_table(spec: Dict[str, Any]) -> None:
         if not path: raise ValueError(f"Table '{name}' requires local 'path' to run drifts.")
         schema = _load_or_extract_schema_for_table(ds, tcfg, pattern_id)
         _run_single_table(path, schema, base_table, tcfg.get("drifts", []),
-                          filter_registry_modules=filter_registry_modules)
+                          filter_registry_modules=filter_registry_modules,
+                          seed=int(spec.get("seed", 42)))

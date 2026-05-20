@@ -1,0 +1,37 @@
+pattern_id: dp-pgbench-drift
+seed: 42
+
+# Generate pgbench data first:
+#   from driftbench.data.pgbench import PgBenchData
+#   result = PgBenchData().generate(scale=10)
+# Default output: ~/.driftbench/data/pgbench/data/
+
+type:
+  family: data
+  category: drift
+  subtype: single_table
+
+data_source:
+  kind: csv
+  path: ~/.driftbench/data/pgbench/data/pgbench_accounts.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ~/.driftbench/data/pgbench/drift/accounts_schema.json
+
+variables:
+  base_table: pgbench_accounts
+  drifts:
+    - name: outlier_injection_balance
+      drift_type: outlier_injection
+      output_path: ~/.driftbench/data/pgbench/drift/accounts_outlier_balance.csv
+      column: abalance
+      n: 200
+      extreme_scale: 5.0
+
+    - name: value_skew_balance
+      drift_type: value_skew
+      output_path: ~/.driftbench/data/pgbench/drift/accounts_skew_balance.csv
+      columns: ["abalance"]
+      portion: 1.0
+      skewness: 3

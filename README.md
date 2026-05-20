@@ -125,11 +125,58 @@ result = tpch_data(scale_factor=1, mode="generate").generate(output_dir=out)
 result.files      # list of generated file paths
 result.metadata   # path to the manifest JSON
 
-# Convert pipe-delimited .tbl / .dat to standard CSV (both kept on disk)
+# Convert pipe-delimited .tbl / .dat to standard CSV (both kept on disk).
+# Known TPC-H (8 tables) and TPC-DS (5 synthetic tables) get a proper
+# header row, so the CSV is self-describing and usable directly by .drift().
 csv_result = result.as_csv()
 ```
 
 Second call reuses existing files automatically. Pass `force=True` to regenerate.
+
+### Applying drift to benchmark data
+
+`GenerationResult` exposes `.drift()` and `.drift_multi()` to apply data drift directly — no manual schema extraction or generator setup needed.
+
+**Single-table drift:**
+
+```python
+from driftbench.data.tpch import TPCHData
+
+result = TPCHData(scale_factor=1, source_dir="path/to/tbls").generate().as_csv()
+
+# Inject outliers into lineitem.l_quantity
+drifted = result.drift("lineitem", "outlier_injection", column="l_quantity", n=500)
+
+# Skew the price/discount distribution
+drifted = result.drift("lineitem", "value_skew",
+                       columns=["l_extendedprice", "l_discount"], skewness=2)
+```
+
+`drift()` writes the drifted CSV to `<output_dir>/<table>_<drift_type>.csv` by default. Pass `output_path=` to override. Returns a new `GenerationResult` pointing at the drifted file.
+
+Every `.drift()` call also emits a reproducible DriftSpec YAML (`<output_stem>.driftspec.yaml`) next to the CSV — kept out of `result.files` but recorded under the manifest's `driftspec` key. Running that YAML through `driftbench.spec.core.run_all` regenerates **byte-identical** output, so a Python-generated drift can be shared or automated as a spec without rework. The function-call path (fast, imperative) and the spec path (declarative, version-controllable, reproducible) are the same engine and produce identical results for the same seed and parameters.
+
+**Multi-table drift:**
+
+```python
+# FK relationships for tpch / job are wired automatically
+drifted = result.drift_multi([
+    {"op": "skew_column", "target": "lineitem", "column": "l_quantity",
+     "fraction": 0.2, "skewness": 2},
+    {"op": "delete_keys", "target": "orders", "key_column": "o_orderkey",
+     "fraction": 0.05,
+     "propagate": [{"relationship": "lineitem_orders", "policy": "drop"}]},
+])
+```
+
+Pass `relationships=[]` or a custom list to override the built-in FK maps. Supported benchmarks with auto-wiring: `tpch`, `job`. `tpcc` and `tpcc_skew` require explicit relationship definitions because their joins use composite keys.
+
+**DriftSpec YAMLs** — ready-to-run example specs for all five adapters are in `driftspec/examples/`:
+- `tpch_lineitem_drift.yaml`
+- `tpcc_drift.yaml`
+- `job_drift.yaml`
+- `ycsb_drift.yaml`
+- `pgbench_drift.yaml`
 
 ---
 
