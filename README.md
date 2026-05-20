@@ -129,6 +129,12 @@ result.metadata   # path to the manifest JSON
 # Known TPC-H (8 tables) and TPC-DS (5 synthetic tables) get a proper
 # header row, so the CSV is self-describing and usable directly by .drift().
 csv_result = result.as_csv()
+
+# Lightweight JSON-serializable summary for logs / dashboards / quick asserts.
+result.summary()
+# {'benchmark': 'tpch', 'artifact_type': 'data',
+#  'output_dir': '/tmp/...', 'file_count': 8,
+#  'tables': ['customer', 'lineitem', 'nation', ...]}
 ```
 
 Second call reuses existing files automatically. Pass `force=True` to regenerate.

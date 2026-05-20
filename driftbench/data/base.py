@@ -86,6 +86,22 @@ class GenerationResult:
     files: list[Path]
     metadata: Path
 
+    def summary(self) -> dict[str, Any]:
+        """Return a lightweight, JSON-serializable summary of this result.
+
+        Keys: ``benchmark``, ``artifact_type``, ``output_dir`` (str),
+        ``file_count`` (int), ``tables`` (sorted unique stems). Designed
+        for logging, UI surfaces, and quick assertions without reaching
+        into dataclass internals or filesystem paths.
+        """
+        return {
+            "benchmark": self.benchmark,
+            "artifact_type": self.artifact_type,
+            "output_dir": str(self.output_dir),
+            "file_count": len(self.files),
+            "tables": sorted({f.stem for f in self.files}),
+        }
+
     def as_csv(self) -> "GenerationResult":
         """Convert any pipe-delimited .tbl/.dat files to .csv and return a new result.
 

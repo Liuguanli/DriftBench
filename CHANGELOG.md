@@ -6,6 +6,15 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [v0.1.0b9] - 2026-05-20
+
+### Services
+- `Data`: Benchmark results now expose a one-call summary helper for logging, dashboards, and quick assertions.
+
+### Added
+- **`GenerationResult.summary()`**: returns a lightweight, JSON-serializable dict with `benchmark`, `artifact_type`, `output_dir`, `file_count`, and the sorted list of unique table stems. Designed for log lines, the driftbench-web UI, and one-line notebook assertions without reaching into dataclass internals.
+- 2 new tests in `test/test_generation_result_summary.py` covering key/value correctness and JSON serializability.
+
 ## [v0.1.0b8] - 2026-05-17
 
 ### Services
