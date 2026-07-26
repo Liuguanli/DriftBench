@@ -7,7 +7,15 @@ Examples:
     tpch_queries(mode="qgen", queries_per_template=3).generate(output_dir="./artifacts")
 """
 
-from .base import GenerationResult, OutputDirRequiredError
+from .base import (
+    GenerationResult,
+    OutputDirRequiredError,
+    SUPPORT_PROFILES,
+    assert_referential_integrity,
+    assert_row_count_law,
+    find_optional_binary,
+    get_support_profile,
+)
 from .tpch import TPCHData, TPCHQueries
 from .tpcds import TPCDSData, TPCDSQueries
 from .ycsb import YCSBData, YCSBQueries
@@ -21,6 +29,11 @@ from .benchbase import BenchBaseData, BenchBaseQueries
 __all__ = [
     "GenerationResult",
     "OutputDirRequiredError",
+    "SUPPORT_PROFILES",
+    "assert_referential_integrity",
+    "assert_row_count_law",
+    "find_optional_binary",
+    "get_support_profile",
     "TPCHData",
     "TPCHQueries",
     "TPCDSData",

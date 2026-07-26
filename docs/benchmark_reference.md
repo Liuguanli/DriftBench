@@ -1,6 +1,22 @@
 # DriftBench Benchmark Reference
 
-Complete reference for all 7 benchmark adapters, including data features, query characteristics, and selection guidance.
+Complete reference for all 9 benchmark adapters, including data features, query characteristics, and selection guidance.
+
+Support claims follow the [adapter support contract](adapter_support_contract.md). Tiers describe each generated artifact and mode; they are not official benchmark compliance claims.
+
+## Current Support Summary
+
+| Adapter | Data support | Query/workload support |
+|---|---|---|
+| TPC-H | Tier 2 `copied-official-format`; Tier 3 `dbgen` | Tier 3 `qgen`; Tier 2 `custom-parameterized-sql` |
+| TPC-DS | Tier 1 `synthetic-subset` (5/24 tables) | Tier 0 `query-ids-and-config-only` (0/99 SQL queries shipped) |
+| TPC-C | Tier 1 `synthetic-subset` (9 tables) | Tier 1 `sql-transaction-templates` (5 transactions) |
+| TPC-C Skew | Tier 1 `synthetic-subset-with-inert-weights` | Tier 1 `annotated-sql-transaction-templates` |
+| JOB | Tier 1 `synthetic-subset` (11 physical tables) | Tier 2 `executable-sql-subset` (20/113 queries) |
+| YCSB | Tier 1 `synthetic-usertable` | Tier 1 `workload-config-only` (6 operation types) |
+| DSB | Tier 1 `synthetic-toy-subset` (3 tables) | Tier 2 `executable-sql-toy-subset` (3 queries) |
+| pgbench | Tier 1 `synthetic-pgbench-shape` (4 tables) | Tier 2 `executable-pgbench-script` (3 selectable workloads) |
+| BenchBase | Tier 2 `external-benchbase-load-config` | Tier 2 `external-benchbase-execute-config` |
 
 ---
 
@@ -14,6 +30,8 @@ Complete reference for all 7 benchmark adapters, including data features, query 
 | Join-order sensitivity / cardinality estimation | JOB |
 | Key-value / NoSQL workloads | YCSB |
 | Decision support with complex schemas | DSB |
+| PostgreSQL-native transaction scripts | pgbench |
+| External multi-benchmark execution | BenchBase |
 
 ---
 
@@ -66,23 +84,23 @@ tpch_queries(query_ids=[1, 6, 14], queries_per_template=5, mode="qgen").generate
 
 ## TPC-DS
 
-**Type:** OLAP / Decision Support · **Tables:** 4 (synth subset) · **Queries:** templates
+**Type:** OLAP / Decision Support · **Tables:** 5/24 (synth subset) · **Queries:** 99 IDs, no SQL text
 
 ### Data features (synth subset)
 | Table | Rows at sf=1 |
 |-------|--------------|
-| customer | 100 K |
-| item | 18 K |
-| date_dim | 73 K (fixed) |
-| store_sales | 300 K |
+| date_dim | 3 360 (fixed) |
+| store | 1 |
+| item | 1 000 |
+| customer | 1 000 |
+| store_sales | 10 000 |
 
 ### Query features
-- Range predicates over `date_dim`, join-heavy multi-table patterns
-- Analytical functions, ROLLUP, GROUPING SETS
-- Selectivity ranges from highly selective date filters to full-dimension scans
+- Emits IDs `query01` through `query99` and a sample BenchBase XML profile.
+- Does not ship TPC-DS SQL text; attach templates from a local kit.
 
 ### Modes
-- `mode="synth"` — generates 4-table CSV subset locally
+- Synthetic generation emits 5 pipe-delimited `.dat` tables locally.
 
 ### Python API
 ```python
@@ -253,10 +271,11 @@ ycsb_queries(workload="A", run_seconds=60).generate(output_dir="./artifacts")
 
 ## DSB
 
-**Type:** Decision Support Benchmark · **Tables:** configurable · **Queries:** template set
+**Type:** Decision-support toy subset · **Tables:** 3 · **Queries:** 3 executable SQL templates
 
-DSB extends TPC-DS with more complex queries and a richer schema designed to stress
-modern query optimizers beyond TPC-DS.
+This adapter emits a deterministic 3-table star-schema toy dataset (`date_dim`,
+`customer`, `lineorder`) and 3 SQL queries. DriftBench does not claim an official
+DSB table or query count.
 
 ### Python API
 ```python
@@ -264,6 +283,42 @@ from driftbench.data.dsb import data as dsb_data, queries as dsb_queries
 
 dsb_data(scale_factor=2).generate(output_dir="./artifacts")
 dsb_queries().generate(output_dir="./artifacts")
+```
+
+---
+
+## pgbench
+
+**Type:** PostgreSQL TPC-B-like OLTP · **Tables:** 4 · **Workloads:** 3 selectable scripts
+
+Data generation emits synthetic `pgbench_branches`, `pgbench_tellers`,
+`pgbench_accounts`, and empty `pgbench_history` CSVs. Query generation selects one
+of `tpcb`, `simple_update`, or `select_only` and emits an executable pgbench script.
+DriftBench does not run `pgbench` during generation.
+
+```python
+from driftbench.data.pgbench import data as pgbench_data, queries as pgbench_queries
+
+pgbench_data(scale_factor=1).generate(output_dir="./artifacts")
+pgbench_queries(workload="tpcb").generate(output_dir="./artifacts")
+```
+
+---
+
+## BenchBase
+
+**Type:** External Java benchmark framework · **Targets:** 10 · **Artifacts:** load/execute XML and shell scripts
+
+The adapter supports TPC-C, TPC-H, YCSB, SEATS, AuctionMark, Smallbank, Epinions,
+Wikipedia, Twitter, and Voter configuration. Set `BENCHBASE_JAR` and provide a
+database before running the generated script; DriftBench does not invoke the jar
+during generation.
+
+```python
+from driftbench.data.benchbase import data as benchbase_data, queries as benchbase_queries
+
+benchbase_data(benchmark="tpcc").generate(output_dir="./artifacts")
+benchbase_queries(benchmark="tpcc", terminals=4).generate(output_dir="./artifacts")
 ```
 
 ---
@@ -295,4 +350,6 @@ Use this index to find queries that heavily access a specific table.
 | TPC-C Skew | High (9 tables + weights) | Medium | Warehouses + Zipf α | Access skew |
 | JOB | High (21 tables full) | Very high (113 queries) | Proportional | Join-order sensitivity |
 | YCSB | Minimal (1 table) | Low | Record count | Read/write ratio |
-| DSB | Very high | Very high | Scale factor | Query complexity |
+| DSB | Small (3 tables) | Low (3 templates) | Scale factor | Query complexity |
+| pgbench | Small (4 tables) | Low (3 scripts) | Scale factor | Transaction mix |
+| BenchBase | Target-dependent | Target-dependent | Config parameters | External execution |
