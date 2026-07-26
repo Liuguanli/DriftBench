@@ -222,6 +222,10 @@ Core workflow via MCP: `trace_to_spec` → `validate_spec` → `run_spec` → `l
 
 ---
 
+Adapter capabilities: [support contract](docs/adapter_support_contract.md) · [benchmark reference](docs/benchmark_reference.md)
+
+---
+
 ## Testing
 
 ```bash

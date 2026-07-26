@@ -6,6 +6,21 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [Unreleased]
+
+### Services
+- `Data`: All nine benchmark adapters now publish machine-checkable, artifact-level support claims.
+- `Docs`: Adapter coverage and limitations now use a shared four-tier contract.
+
+### Added
+- A centralized Tier 0–3 adapter support contract, normalized manifest `support` metadata, and explicit non-compliance disclaimer.
+- Reusable `assert_referential_integrity()`, `assert_row_count_law()`, and `find_optional_binary()` helpers.
+- Targeted tests for every registered data/query support profile, documentation synchronization, validation failures, and offline binary discovery.
+
+### Changed
+- TPC-H reuses shared optional-binary discovery while retaining its existing explicit-path, repository/cache, auto-build, and runtime behavior.
+- The benchmark reference now covers all nine adapters, including pgbench and BenchBase, and reports current support tiers and modes without overstating official compliance.
+
 ## [v0.1.0b9] - 2026-05-20
 
 ### Services

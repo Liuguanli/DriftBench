@@ -3,13 +3,353 @@ from __future__ import annotations
 import csv
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from types import MappingProxyType
+from typing import Any, Dict, Hashable, Iterable, List, Literal, Mapping, Optional, Sequence
 
 
 class OutputDirRequiredError(ValueError):
     """Kept for backwards compatibility. No longer raised by the library."""
+
+
+SupportTier = Literal[0, 1, 2, 3]
+ArtifactType = Literal["data", "queries"]
+CountValue = int | None
+SupportKey = tuple[str, ArtifactType, str | None]
+
+SUPPORT_CONTRACT_VERSION = 1
+SUPPORT_TIER_NAMES: Mapping[SupportTier, str] = MappingProxyType(
+    {
+        0: "illustrative",
+        1: "synthetic-conformant",
+        2: "executable",
+        3: "official-tool/spec-traceable",
+    }
+)
+SUPPORT_COMPLIANCE_DISCLAIMER = (
+    "DriftBench does not claim official or audited TPC/YCSB compliance, "
+    "nor certification by the maintainers of JOB, DSB, pgbench, or BenchBase."
+)
+
+
+@dataclass(frozen=True)
+class ArtifactCounts:
+    """Official-suite and shipped-adapter artifact counts."""
+
+    table_count: CountValue = None
+    query_count: CountValue = None
+    transaction_count: CountValue = None
+
+    def as_dict(self) -> dict[str, CountValue]:
+        return {
+            "table_count": self.table_count,
+            "query_count": self.query_count,
+            "transaction_count": self.transaction_count,
+        }
+
+
+@dataclass(frozen=True)
+class SupportProfile:
+    """Machine-readable support claim for one adapter artifact and mode."""
+
+    tier: SupportTier
+    mode: str
+    official: ArtifactCounts
+    shipped: ArtifactCounts
+    compliance_disclaimer: str = SUPPORT_COMPLIANCE_DISCLAIMER
+
+    def as_dict(
+        self,
+        *,
+        shipped_transaction_count: int | None = None,
+    ) -> dict[str, Any]:
+        shipped = self.shipped.as_dict()
+        if shipped_transaction_count is not None:
+            shipped["transaction_count"] = shipped_transaction_count
+        return {
+            "contract_version": SUPPORT_CONTRACT_VERSION,
+            "tier": self.tier,
+            "tier_name": SUPPORT_TIER_NAMES[self.tier],
+            "mode": self.mode,
+            "official": self.official.as_dict(),
+            "shipped": shipped,
+            "compliance_disclaimer": self.compliance_disclaimer,
+        }
+
+
+_TPCC_SYNTHETIC_DISCLAIMER = (
+    f"{SUPPORT_COMPLIANCE_DISCLAIMER} The synthetic TPC-C item population is "
+    "10,000 per warehouse up to 100,000, rather than the official fixed 100,000 rows."
+)
+
+
+_SUPPORT_PROFILES: dict[SupportKey, SupportProfile] = {
+    ("tpch", "data", "copy"): SupportProfile(
+        2, "copied-official-format", ArtifactCounts(table_count=8), ArtifactCounts(table_count=8)
+    ),
+    ("tpch", "data", "generate"): SupportProfile(
+        3, "dbgen", ArtifactCounts(table_count=8), ArtifactCounts(table_count=8)
+    ),
+    ("tpch", "queries", "qgen"): SupportProfile(
+        3, "qgen", ArtifactCounts(query_count=22), ArtifactCounts(query_count=22)
+    ),
+    ("tpch", "queries", "custom"): SupportProfile(
+        2, "custom-parameterized-sql", ArtifactCounts(query_count=22), ArtifactCounts(query_count=22)
+    ),
+    ("tpcds", "data", None): SupportProfile(
+        1, "synthetic-subset", ArtifactCounts(table_count=24), ArtifactCounts(table_count=5)
+    ),
+    ("tpcds", "queries", None): SupportProfile(
+        0, "query-ids-and-config-only", ArtifactCounts(query_count=99), ArtifactCounts(query_count=0)
+    ),
+    ("tpcc", "data", None): SupportProfile(
+        1,
+        "synthetic-subset",
+        ArtifactCounts(table_count=9),
+        ArtifactCounts(table_count=9),
+        _TPCC_SYNTHETIC_DISCLAIMER,
+    ),
+    ("tpcc", "queries", None): SupportProfile(
+        1,
+        "sql-transaction-templates",
+        ArtifactCounts(transaction_count=5),
+        ArtifactCounts(transaction_count=5),
+        _TPCC_SYNTHETIC_DISCLAIMER,
+    ),
+    ("tpcc_skew", "data", None): SupportProfile(
+        1,
+        "synthetic-subset-with-inert-weights",
+        ArtifactCounts(table_count=9),
+        ArtifactCounts(table_count=9),
+        _TPCC_SYNTHETIC_DISCLAIMER,
+    ),
+    ("tpcc_skew", "queries", None): SupportProfile(
+        1,
+        "annotated-sql-transaction-templates",
+        ArtifactCounts(transaction_count=5),
+        ArtifactCounts(transaction_count=5),
+        _TPCC_SYNTHETIC_DISCLAIMER,
+    ),
+    ("job", "data", None): SupportProfile(
+        1,
+        "synthetic-subset",
+        ArtifactCounts(table_count=21),
+        ArtifactCounts(table_count=11),
+    ),
+    ("job", "queries", None): SupportProfile(
+        2,
+        "executable-sql-subset",
+        ArtifactCounts(query_count=113),
+        ArtifactCounts(query_count=20),
+    ),
+    ("ycsb", "data", None): SupportProfile(
+        1, "synthetic-usertable", ArtifactCounts(table_count=1), ArtifactCounts(table_count=1)
+    ),
+    ("ycsb", "queries", None): SupportProfile(
+        1,
+        "workload-config-only",
+        ArtifactCounts(transaction_count=6),
+        ArtifactCounts(transaction_count=6),
+    ),
+    ("dsb", "data", None): SupportProfile(
+        1, "synthetic-toy-subset", ArtifactCounts(), ArtifactCounts(table_count=3)
+    ),
+    ("dsb", "queries", None): SupportProfile(
+        2, "executable-sql-toy-subset", ArtifactCounts(), ArtifactCounts(query_count=3)
+    ),
+    ("pgbench", "data", None): SupportProfile(
+        1, "synthetic-pgbench-shape", ArtifactCounts(table_count=4), ArtifactCounts(table_count=4)
+    ),
+    ("pgbench", "queries", None): SupportProfile(
+        2,
+        "executable-pgbench-script",
+        ArtifactCounts(transaction_count=3),
+        ArtifactCounts(transaction_count=3),
+    ),
+    ("benchbase", "data", None): SupportProfile(
+        2, "external-benchbase-load-config", ArtifactCounts(), ArtifactCounts()
+    ),
+    ("benchbase", "queries", None): SupportProfile(
+        2, "external-benchbase-execute-config", ArtifactCounts(), ArtifactCounts()
+    ),
+}
+SUPPORT_PROFILES: Mapping[SupportKey, SupportProfile] = MappingProxyType(_SUPPORT_PROFILES)
+
+_DEFAULT_SUPPORT_MODES: Mapping[tuple[str, ArtifactType], str | None] = MappingProxyType(
+    {
+        ("tpch", "data"): "copy",
+        ("tpch", "queries"): "qgen",
+        **{
+            (benchmark, artifact_type): None
+            for benchmark in (
+                "tpcds",
+                "tpcc",
+                "tpcc_skew",
+                "job",
+                "ycsb",
+                "dsb",
+                "pgbench",
+                "benchbase",
+            )
+            for artifact_type in ("data", "queries")
+        },
+    }
+)
+
+
+def get_support_profile(
+    benchmark: str,
+    artifact_type: ArtifactType,
+    mode: str | None = None,
+) -> SupportProfile:
+    """Return the centralized support claim or raise for an unregistered artifact."""
+    lookup_mode = mode
+    if lookup_mode is None:
+        default_key = (benchmark, artifact_type)
+        if default_key not in _DEFAULT_SUPPORT_MODES:
+            raise KeyError(f"No default support mode registered for {benchmark}/{artifact_type}")
+        lookup_mode = _DEFAULT_SUPPORT_MODES[default_key]
+    key = (benchmark, artifact_type, lookup_mode)
+    try:
+        return SUPPORT_PROFILES[key]
+    except KeyError as exc:
+        raise KeyError(
+            f"No support profile registered for benchmark={benchmark!r}, "
+            f"artifact_type={artifact_type!r}, mode={lookup_mode!r}"
+        ) from exc
+
+
+def build_support_metadata(
+    benchmark: str,
+    artifact_type: ArtifactType,
+    mode: str | None = None,
+    *,
+    shipped_transaction_count: int | None = None,
+) -> dict[str, Any]:
+    """Build the normalized JSON support block for an adapter manifest."""
+    if shipped_transaction_count is not None:
+        _validate_count(shipped_transaction_count, "shipped_transaction_count")
+    return get_support_profile(benchmark, artifact_type, mode).as_dict(
+        shipped_transaction_count=shipped_transaction_count
+    )
+
+
+def assert_referential_integrity(
+    child_rows: Iterable[Mapping[str, Any]],
+    parent_rows: Iterable[Mapping[str, Any]],
+    *,
+    child_key: str | Sequence[str],
+    parent_key: str | Sequence[str],
+    relationship: str = "relationship",
+    allow_null: bool = True,
+) -> None:
+    """Assert that every child key resolves to a parent key.
+
+    Missing columns raise ``KeyError``, invalid key specifications raise
+    ``ValueError``, unhashable key values raise ``TypeError``, and orphaned
+    child keys raise ``AssertionError``.
+    """
+    child_columns = _normalize_key_spec(child_key, "child_key")
+    parent_columns = _normalize_key_spec(parent_key, "parent_key")
+    if len(child_columns) != len(parent_columns):
+        raise ValueError("child_key and parent_key must contain the same number of columns")
+    if not relationship.strip():
+        raise ValueError("relationship must be a non-empty string")
+
+    parent_values = {
+        _extract_row_key(row, parent_columns, "parent", index)
+        for index, row in enumerate(parent_rows)
+    }
+    orphaned: set[Hashable] = set()
+    for index, row in enumerate(child_rows):
+        key = _extract_row_key(row, child_columns, "child", index)
+        values = key if isinstance(key, tuple) else (key,)
+        if allow_null and any(value is None for value in values):
+            continue
+        if key not in parent_values:
+            orphaned.add(key)
+    if orphaned:
+        examples = sorted((repr(value) for value in orphaned))[:5]
+        raise AssertionError(
+            f"{relationship} referential integrity failed: "
+            f"{len(orphaned)} orphan key(s); examples: {', '.join(examples)}"
+        )
+
+
+def assert_row_count_law(
+    actual_count: int,
+    expected_count: int,
+    *,
+    label: str = "artifact",
+) -> None:
+    """Assert one computed row-count law with precise input and failure errors."""
+    _validate_count(actual_count, "actual_count")
+    _validate_count(expected_count, "expected_count")
+    if not label.strip():
+        raise ValueError("label must be a non-empty string")
+    if actual_count != expected_count:
+        raise AssertionError(
+            f"{label} row-count law failed: expected {expected_count}, got {actual_count}"
+        )
+
+
+def find_optional_binary(
+    names: str | Sequence[str],
+    *,
+    candidate_paths: Iterable[str | Path] = (),
+) -> Path | None:
+    """Find an optional executable on PATH, then among explicit candidate files.
+
+    This helper performs discovery only. Callers own any installation, build,
+    or error fallback when no binary is found.
+    """
+    binary_names = (names,) if isinstance(names, str) else tuple(names)
+    if not binary_names or any(not name.strip() for name in binary_names):
+        raise ValueError("names must contain at least one non-empty binary name")
+    for name in binary_names:
+        found = shutil.which(name)
+        if found is not None:
+            return Path(found).expanduser().resolve()
+    for candidate in candidate_paths:
+        path = Path(candidate).expanduser()
+        if path.exists() and path.is_file():
+            return path.resolve()
+    return None
+
+
+def _normalize_key_spec(value: str | Sequence[str], name: str) -> tuple[str, ...]:
+    columns = (value,) if isinstance(value, str) else tuple(value)
+    if not columns or any(not isinstance(column, str) or not column for column in columns):
+        raise ValueError(f"{name} must contain at least one non-empty column name")
+    return columns
+
+
+def _extract_row_key(
+    row: Mapping[str, Any],
+    columns: tuple[str, ...],
+    side: str,
+    index: int,
+) -> Hashable:
+    values: list[Any] = []
+    for column in columns:
+        if column not in row:
+            raise KeyError(f"{side} row {index} is missing key column {column!r}")
+        values.append(row[column])
+    key: Any = values[0] if len(values) == 1 else tuple(values)
+    try:
+        hash(key)
+    except TypeError as exc:
+        raise TypeError(f"{side} row {index} key is not hashable: {key!r}") from exc
+    return key
+
+
+def _validate_count(value: int, name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} must be an integer")
+    if value < 0:
+        raise ValueError(f"{name} must be non-negative")
 
 
 def get_default_data_dir() -> Path:
@@ -444,6 +784,8 @@ class BenchmarkArtifact:
                 return None
             files = [root / p for p in rel_paths]
             if all(f.exists() and f.is_file() for f in files):
+                if "support" not in payload:
+                    self._write_json(manifest_path, payload)
                 return GenerationResult(
                     benchmark=self.benchmark,
                     artifact_type=self.artifact_type,
@@ -461,6 +803,31 @@ class BenchmarkArtifact:
         return path
 
     def _write_json(self, path: Path, payload: dict[str, Any]) -> Path:
+        if (
+            path.name.endswith("_manifest.json")
+            and "benchmark" in payload
+            and "artifact_type" in payload
+            and "support" not in payload
+        ):
+            artifact_type = payload["artifact_type"]
+            if artifact_type not in ("data", "queries"):
+                raise ValueError(f"Unsupported adapter artifact_type: {artifact_type!r}")
+            transaction_types = payload.get("transaction_types")
+            shipped_transaction_count = (
+                len(transaction_types)
+                if payload["benchmark"] == "benchbase"
+                and isinstance(transaction_types, list)
+                else None
+            )
+            payload = {
+                **payload,
+                "support": build_support_metadata(
+                    payload["benchmark"],
+                    artifact_type,
+                    payload.get("mode"),
+                    shipped_transaction_count=shipped_transaction_count,
+                ),
+            }
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         return path

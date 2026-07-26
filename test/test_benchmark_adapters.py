@@ -40,6 +40,15 @@ class BenchmarkAdapterTests(unittest.TestCase):
         self.assertTrue(result.metadata.exists())
         self.assertGreater(result.metadata.stat().st_size, 0)
         payload = json.loads(result.metadata.read_text(encoding="utf-8"))
+        support = payload["support"]
+        self.assertIn(support["tier"], range(4))
+        self.assertIsInstance(support["mode"], str)
+        self.assertEqual(
+            set(support["official"]),
+            {"table_count", "query_count", "transaction_count"},
+        )
+        self.assertEqual(set(support["shipped"]), set(support["official"]))
+        self.assertIn("TPC/YCSB", support["compliance_disclaimer"])
         if "files" in payload:
             for rel in payload["files"]:
                 self.assertFalse(str(rel).startswith("/"))

@@ -14,7 +14,7 @@ from driftbench.core.workload.tpch_sql_generator import (
     list_tpch_query_ids,
 )
 
-from .base import BenchmarkArtifact, GenerationResult
+from .base import BenchmarkArtifact, GenerationResult, find_optional_binary
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -135,25 +135,13 @@ class TPCHData(BenchmarkArtifact):
             if not dbgen.exists():
                 raise FileNotFoundError(f"dbgen not found at dbgen_path={dbgen}")
         else:
-            found = None
-            for name in dbgen_names:
-                found = shutil.which(name)
-                if found:
-                    break
-            if found is None:
-                # Check the repo's own dbgen build
-                for name in dbgen_names:
-                    repo_bin = _REPO_TPCH_DIR / "dbgen" / name
-                    if repo_bin.exists():
-                        found = str(repo_bin)
-                        break
-            if found is None:
-                # Check the default cache location from a previous auto-build
-                if _DBGEN_CACHE_BINARY.exists():
-                    found = str(_DBGEN_CACHE_BINARY)
-            if found is None:
-                found = str(self._auto_build_dbgen())
-            dbgen = Path(found)
+            candidates = [
+                *(_REPO_TPCH_DIR / "dbgen" / name for name in dbgen_names),
+                _DBGEN_CACHE_BINARY,
+            ]
+            dbgen = find_optional_binary(dbgen_names, candidate_paths=candidates)
+            if dbgen is None:
+                dbgen = self._auto_build_dbgen()
 
         tables_dir = out_dir / "tables"
         tables_dir.mkdir(parents=True, exist_ok=True)
