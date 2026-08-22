@@ -5,7 +5,14 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
+
+
+_DSB_DATE_DIM_ROWS = 10 * 12 * 28
+_DSB_CUSTOMERS_PER_SCALE = 1_000
+_DSB_LINEORDERS_PER_SCALE = 5_000
 
 
 _DSB_SQL_TEMPLATES: dict[str, str] = {
@@ -47,31 +54,37 @@ class DSBData(BenchmarkArtifact):
         out_dir = root / "dsb" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        sf = max(1, int(round(float(self.scale_factor))))
+        cache_parameters = {"scale_factor": sf}
+
         if not force:
-            existing = self._load_existing(out_dir / "dsb_data_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "dsb_data_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] DSB data already exists at {out_dir}. Reusing.")
+                console_print(f"[driftbench] DSB data already exists at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating DSB data (sf={self.scale_factor}) → {out_dir}")
+        console_print(f"[driftbench] Generating DSB data (sf={sf}) -> {out_dir}")
 
         ddl = self._write_text(out_dir / "dsb_schema.sql", self._schema_sql())
         files = self._generate_synth(out_dir)
         files.insert(0, ddl)
-        sf = max(1, int(round(float(self.scale_factor))))
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "dsb_data_manifest.json",
             {
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
-                "scale_factor": self.scale_factor,
+                "scale_factor": sf,
                 "tables": {
-                    "date_dim": 3650,
-                    "customer": 1000 * sf,
-                    "lineorder": 5000 * sf,
+                    "date_dim": _DSB_DATE_DIM_ROWS,
+                    "customer": _DSB_CUSTOMERS_PER_SCALE * sf,
+                    "lineorder": _DSB_LINEORDERS_PER_SCALE * sf,
                 },
                 "files": self._paths_relative_to(root, files),
                 "note": "Synthetic DSB star-schema data for onboarding and API testing.",
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 
@@ -97,7 +110,7 @@ class DSBData(BenchmarkArtifact):
 
         # customer
         cust_path = out_dir / "customer.csv"
-        cust_count = 1000 * sf
+        cust_count = _DSB_CUSTOMERS_PER_SCALE * sf
         with cust_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["customer_key", "region", "nation"])
@@ -107,7 +120,7 @@ class DSBData(BenchmarkArtifact):
 
         # lineorder
         lo_path = out_dir / "lineorder.csv"
-        lo_count = 5000 * sf
+        lo_count = _DSB_LINEORDERS_PER_SCALE * sf
         date_keys = list(range(1, key))
         with lo_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.writer(f)
@@ -155,18 +168,22 @@ class DSBQueries(BenchmarkArtifact):
         out_dir = root / "dsb" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        cache_parameters: dict[str, object] = {}
+
         if not force:
-            existing = self._load_existing(out_dir / "dsb_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "dsb_queries_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] DSB queries already exist at {out_dir}. Reusing.")
+                console_print(f"[driftbench] DSB queries already exist at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating DSB queries → {out_dir}")
+        console_print(f"[driftbench] Generating DSB queries -> {out_dir}")
 
         files: list[Path] = []
         for name, sql in _DSB_SQL_TEMPLATES.items():
             files.append(self._write_text(out_dir / f"{name}.sql", sql))
 
-        manifest = self._write_json(
+        manifest = self._write_manifest(
             out_dir / "dsb_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -174,6 +191,8 @@ class DSBQueries(BenchmarkArtifact):
                 "query_count": len(_DSB_SQL_TEMPLATES),
                 "files": self._paths_relative_to(root, files),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, manifest)
 

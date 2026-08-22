@@ -25,6 +25,8 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
 from .tpcc import TPCCData, _TPCC_DDL, _TPCC_TRANSACTIONS
 
@@ -55,14 +57,24 @@ class TPCCSkewData(TPCCData):
         out_dir = root / "tpcc_skew" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        if not force:
-            existing = self._load_existing(out_dir / "tpcc_skew_data_manifest.json", root)
-            if existing is not None:
-                print(f"[driftbench] TPC-C Skew data already exists at {out_dir}. Reusing.")
-                return existing
-        print(f"[driftbench] Generating TPC-C Skew data (W={self._w()}, skew={self.skew_factor}) → {out_dir}")
-
         w = self._w()
+        cache_parameters = {
+            "scale_factor": w,
+            "hot_warehouse_fraction": self.hot_warehouse_fraction,
+            "skew_factor": self.skew_factor,
+        }
+
+        if not force:
+            existing = self._load_existing(
+                out_dir / "tpcc_skew_data_manifest.json", root, cache_parameters
+            )
+            if existing is not None:
+                console_print(f"[driftbench] TPC-C Skew data already exists at {out_dir}. Reusing.")
+                return existing
+        console_print(
+            f"[driftbench] Generating TPC-C Skew data (W={w}, skew={self.skew_factor}) -> {out_dir}"
+        )
+
         weights = self._zipf_weights(w)
         hot_count = max(1, int(math.ceil(w * self.hot_warehouse_fraction)))
 
@@ -73,7 +85,7 @@ class TPCCSkewData(TPCCData):
         wts_file = self._write_warehouse_weights(out_dir, weights, hot_count)
         synth_files.append(wts_file)
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpcc_skew_data_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -89,6 +101,8 @@ class TPCCSkewData(TPCCData):
                     "Use warehouse_access_weights.csv to drive warehouse selection."
                 ),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, synth_files, metadata)
 
@@ -140,14 +154,22 @@ class TPCCSkewQueries(BenchmarkArtifact):
         out_dir = root / "tpcc_skew" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        if not force:
-            existing = self._load_existing(out_dir / "tpcc_skew_queries_manifest.json", root)
-            if existing is not None:
-                print(f"[driftbench] TPC-C Skew queries already exist at {out_dir}. Reusing.")
-                return existing
-        print(f"[driftbench] Generating TPC-C Skew queries → {out_dir}")
-
         w = max(1, int(round(float(self.scale_factor))))
+        cache_parameters = {
+            "scale_factor": w,
+            "hot_warehouse_fraction": self.hot_warehouse_fraction,
+            "skew_factor": self.skew_factor,
+        }
+
+        if not force:
+            existing = self._load_existing(
+                out_dir / "tpcc_skew_queries_manifest.json", root, cache_parameters
+            )
+            if existing is not None:
+                console_print(f"[driftbench] TPC-C Skew queries already exist at {out_dir}. Reusing.")
+                return existing
+        console_print(f"[driftbench] Generating TPC-C Skew queries -> {out_dir}")
+
         hot_count = max(1, int(math.ceil(w * self.hot_warehouse_fraction)))
 
         skew_header = (
@@ -166,7 +188,7 @@ class TPCCSkewQueries(BenchmarkArtifact):
         )
         files.append(self._write_text(out_dir / "tpcc_skew_all_transactions.sql", bundle))
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpcc_skew_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -183,6 +205,8 @@ class TPCCSkewQueries(BenchmarkArtifact):
                     "in new_order and payment transactions."
                 ),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 

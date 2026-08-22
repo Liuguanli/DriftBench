@@ -20,6 +20,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from xml.sax.saxutils import escape
+
+from driftbench.console import console_print
 
 from .base import BenchmarkArtifact, GenerationResult
 
@@ -157,6 +160,15 @@ _BENCHBASE_BENCHMARKS: dict[str, dict] = {
 _VALID_BENCHMARKS = set(_BENCHBASE_BENCHMARKS.keys())
 
 
+def _xml_text(value: object) -> str:
+    return escape(str(value), {'"': "&quot;", "'": "&apos;"})
+
+
+def _effective_scale(value: int | float) -> int | float:
+    numeric = float(value)
+    return int(numeric) if numeric.is_integer() else numeric
+
+
 def _xml_config(
     benchmark: str,
     scale_factor: int | float,
@@ -175,7 +187,7 @@ def _xml_config(
     weights = ",".join(str(t[1]) for t in meta["transactions"])
 
     txn_types_xml = "\n".join(
-        f"        <transactiontype><name>{name}</name></transactiontype>"
+        f"        <transactiontype><name>{_xml_text(name)}</name></transactiontype>"
         for name in txn_names
     )
 
@@ -186,18 +198,18 @@ def _xml_config(
         "<parameters>\n"
         "    <type>POSTGRES</type>\n"
         "    <driver>org.postgresql.Driver</driver>\n"
-        f"    <url>{db_url}</url>\n"
-        f"    <username>{username}</username>\n"
-        f"    <password>{password}</password>\n"
+        f"    <url>{_xml_text(db_url)}</url>\n"
+        f"    <username>{_xml_text(username)}</username>\n"
+        f"    <password>{_xml_text(password)}</password>\n"
         "    <isolation>TRANSACTION_SERIALIZABLE</isolation>\n"
-        f"    <scalefactor>{scale_factor}</scalefactor>\n"
-        f"    <terminals>{terminals}</terminals>\n"
+        f"    <scalefactor>{_xml_text(scale_factor)}</scalefactor>\n"
+        f"    <terminals>{_xml_text(terminals)}</terminals>\n"
         f"    <!-- create={str(create).lower()} load={str(load).lower()} execute={str(execute).lower()} -->\n"
         "    <works>\n"
         "        <work>\n"
-        f"            <time>{duration}</time>\n"
-        f"            <rate>{rate_str}</rate>\n"
-        f"            <weights>{weights}</weights>\n"
+        f"            <time>{_xml_text(duration)}</time>\n"
+        f"            <rate>{_xml_text(rate_str)}</rate>\n"
+        f"            <weights>{_xml_text(weights)}</weights>\n"
         "        </work>\n"
         "    </works>\n"
         "    <transactiontypes>\n"
@@ -254,24 +266,42 @@ class BenchBaseData(BenchmarkArtifact):
 
     def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         self._validate()
+        url = self.db_url or f"jdbc:postgresql://localhost:5432/benchbase?sslmode=disable&ApplicationName={self.benchmark_name}"
+        scale_factor = _effective_scale(self.scale_factor)
+        cache_parameters = {
+            "benchmark_name": self.benchmark_name,
+            "scale_factor": scale_factor,
+            "terminals": self.terminals,
+            "db_url": url,
+            "username": self.username,
+            "password": self.password,
+        }
         root = self._require_output_dir(output_dir)
         out_dir = root / "benchbase" / self.benchmark_name / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         if not force:
-            existing = self._load_existing(out_dir / "benchbase_data_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "benchbase_data_manifest.json",
+                root,
+                cache_parameters,
+                sensitive_parameters={"db_url", "password"},
+            )
             if existing is not None:
-                print(f"[driftbench] BenchBase {self.benchmark_name} config already exists at {out_dir}. Reusing.")
+                console_print(
+                    f"[driftbench] BenchBase {self.benchmark_name} config already exists at {out_dir}. Reusing."
+                )
                 return existing
-        print(f"[driftbench] Generating BenchBase {self.benchmark_name} load config → {out_dir}")
+        console_print(
+            f"[driftbench] Generating BenchBase {self.benchmark_name} load config -> {out_dir}"
+        )
 
-        url = self.db_url or f"jdbc:postgresql://localhost:5432/benchbase?sslmode=disable&ApplicationName={self.benchmark_name}"
         config_name = f"{self.benchmark_name}_load_config.xml"
         xml = self._write_text(
             out_dir / config_name,
             _xml_config(
                 benchmark=self.benchmark_name,
-                scale_factor=self.scale_factor,
+                scale_factor=scale_factor,
                 terminals=self.terminals,
                 duration=0,
                 rate=0,
@@ -290,13 +320,13 @@ class BenchBaseData(BenchmarkArtifact):
         script.chmod(0o755)
 
         meta = _BENCHBASE_BENCHMARKS[self.benchmark_name]
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "benchbase_data_manifest.json",
             {
                 "benchmark": self.benchmark,
                 "benchmark_name": self.benchmark_name,
                 "artifact_type": self.artifact_type,
-                "scale_factor": self.scale_factor,
+                "scale_factor": scale_factor,
                 "description": meta["description"],
                 "files": self._paths_relative_to(root, [xml, script]),
                 "note": (
@@ -304,6 +334,9 @@ class BenchBaseData(BenchmarkArtifact):
                     "Download BenchBase from https://github.com/cmu-db/benchbase/releases."
                 ),
             },
+            cache_parameters,
+            root=root,
+            sensitive_parameters={"db_url", "password"},
         )
         return self._result(root, [xml, script], metadata)
 
@@ -346,24 +379,44 @@ class BenchBaseQueries(BenchmarkArtifact):
 
     def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
         self._validate()
+        url = self.db_url or f"jdbc:postgresql://localhost:5432/benchbase?sslmode=disable&ApplicationName={self.benchmark_name}"
+        scale_factor = _effective_scale(self.scale_factor)
+        cache_parameters = {
+            "benchmark_name": self.benchmark_name,
+            "scale_factor": scale_factor,
+            "terminals": self.terminals,
+            "duration": self.duration,
+            "rate": self.rate if self.rate > 0 else 0,
+            "db_url": url,
+            "username": self.username,
+            "password": self.password,
+        }
         root = self._require_output_dir(output_dir)
         out_dir = root / "benchbase" / self.benchmark_name / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         if not force:
-            existing = self._load_existing(out_dir / "benchbase_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "benchbase_queries_manifest.json",
+                root,
+                cache_parameters,
+                sensitive_parameters={"db_url", "password"},
+            )
             if existing is not None:
-                print(f"[driftbench] BenchBase {self.benchmark_name} execute config already exists at {out_dir}. Reusing.")
+                console_print(
+                    f"[driftbench] BenchBase {self.benchmark_name} execute config already exists at {out_dir}. Reusing."
+                )
                 return existing
-        print(f"[driftbench] Generating BenchBase {self.benchmark_name} execute config → {out_dir}")
+        console_print(
+            f"[driftbench] Generating BenchBase {self.benchmark_name} execute config -> {out_dir}"
+        )
 
-        url = self.db_url or f"jdbc:postgresql://localhost:5432/benchbase?sslmode=disable&ApplicationName={self.benchmark_name}"
         config_name = f"{self.benchmark_name}_execute_config.xml"
         xml = self._write_text(
             out_dir / config_name,
             _xml_config(
                 benchmark=self.benchmark_name,
-                scale_factor=self.scale_factor,
+                scale_factor=scale_factor,
                 terminals=self.terminals,
                 duration=self.duration,
                 rate=self.rate,
@@ -382,13 +435,13 @@ class BenchBaseQueries(BenchmarkArtifact):
         script.chmod(0o755)
 
         meta = _BENCHBASE_BENCHMARKS[self.benchmark_name]
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "benchbase_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
                 "benchmark_name": self.benchmark_name,
                 "artifact_type": self.artifact_type,
-                "scale_factor": self.scale_factor,
+                "scale_factor": scale_factor,
                 "terminals": self.terminals,
                 "duration_seconds": self.duration,
                 "rate": self.rate if self.rate > 0 else "unlimited",
@@ -401,6 +454,9 @@ class BenchBaseQueries(BenchmarkArtifact):
                     "Database must already be loaded via the BenchBase load config."
                 ),
             },
+            cache_parameters,
+            root=root,
+            sensitive_parameters={"db_url", "password"},
         )
         return self._result(root, [xml, script], metadata)
 

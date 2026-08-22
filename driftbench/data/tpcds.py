@@ -5,7 +5,12 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
+
+
+_TPCDS_DATE_DIM_ROWS = 10 * 12 * 28
 
 
 @dataclass
@@ -22,24 +27,28 @@ class TPCDSData(BenchmarkArtifact):
         out_dir = root / "tpcds" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        if not force:
-            existing = self._load_existing(out_dir / "tpcds_data_manifest.json", root)
-            if existing is not None:
-                print(f"[driftbench] TPC-DS data already exists at {out_dir}. Reusing.")
-                return existing
-        print(f"[driftbench] Generating TPC-DS data (sf={self.scale_factor}) → {out_dir}")
-
         sf = max(1, int(round(float(self.scale_factor))))
+        cache_parameters = {"scale_factor": sf}
+
+        if not force:
+            existing = self._load_existing(
+                out_dir / "tpcds_data_manifest.json", root, cache_parameters
+            )
+            if existing is not None:
+                console_print(f"[driftbench] TPC-DS data already exists at {out_dir}. Reusing.")
+                return existing
+        console_print(f"[driftbench] Generating TPC-DS data (sf={sf}) -> {out_dir}")
+
         dats = self._generate_synth(out_dir, sf)
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpcds_data_manifest.json",
             {
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
-                "scale_factor": self.scale_factor,
+                "scale_factor": sf,
                 "source": "synthetic",
                 "tables": {
-                    "date_dim": 3360,
+                    "date_dim": _TPCDS_DATE_DIM_ROWS,
                     "store": max(1, sf),
                     "item": 1000 * sf,
                     "customer": 1000 * sf,
@@ -47,6 +56,8 @@ class TPCDSData(BenchmarkArtifact):
                 },
                 "files": self._paths_relative_to(root, dats),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, dats, metadata)
 
@@ -128,12 +139,16 @@ class TPCDSQueries(BenchmarkArtifact):
         out_dir = root / "tpcds" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        cache_parameters: dict[str, object] = {}
+
         if not force:
-            existing = self._load_existing(out_dir / "tpcds_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "tpcds_queries_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] TPC-DS queries already exist at {out_dir}. Reusing.")
+                console_print(f"[driftbench] TPC-DS queries already exist at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating TPC-DS queries → {out_dir}")
+        console_print(f"[driftbench] Generating TPC-DS queries -> {out_dir}")
 
         ids = list(range(1, 100))
         ids_file = self._write_text(
@@ -145,7 +160,7 @@ class TPCDSQueries(BenchmarkArtifact):
             self._benchbase_template(ids),
         )
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpcds_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -154,6 +169,8 @@ class TPCDSQueries(BenchmarkArtifact):
                 "files": self._paths_relative_to(root, [ids_file, benchbase_cfg]),
                 "note": "Use this as a starter workload profile; attach SQL text from your local TPC-DS kit query templates.",
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, [ids_file, benchbase_cfg], metadata)
 

@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
+import math
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from driftbench.console import console_print
 
 
 class OutputDirRequiredError(ValueError):
@@ -76,6 +81,38 @@ _TBL_SCHEMAS: Dict[tuple[str, str], List[str]] = {
 }
 
 _DRIFT_RESERVED_PARAMS = ("table", "drift_type", "seed", "output_path")
+
+_CACHE_SCHEMA = "driftbench.benchmark-cache"
+_CACHE_VERSION = 2
+_CACHE_REDACTED = "<redacted>"
+_CACHE_HASH_CHUNK_BYTES = 1024 * 1024
+
+
+def _normalize_cache_value(value: Any) -> Any:
+    """Convert cache parameters to deterministic JSON-native values."""
+
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("benchmark cache parameters must be finite")
+        return int(value) if value.is_integer() else value
+    if isinstance(value, os.PathLike):
+        return str(Path(value).expanduser().resolve())
+    if isinstance(value, Mapping):
+        return {
+            str(key): _normalize_cache_value(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, (list, tuple)):
+        return [_normalize_cache_value(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        normalized = [_normalize_cache_value(item) for item in value]
+        return sorted(
+            normalized,
+            key=lambda item: json.dumps(item, ensure_ascii=True, sort_keys=True),
+        )
+    raise TypeError(f"Unsupported benchmark cache parameter type: {type(value).__name__}")
 
 
 @dataclass(frozen=True)
@@ -420,7 +457,7 @@ class BenchmarkArtifact:
         """Resolve output_dir, defaulting to get_default_data_dir() if None."""
         if output_dir is None:
             root = get_default_data_dir()
-            print(
+            console_print(
                 f"[driftbench] No output_dir specified. "
                 f"Writing {self.benchmark}/{self.artifact_type} to: {root}"
             )
@@ -429,31 +466,201 @@ class BenchmarkArtifact:
         root.mkdir(parents=True, exist_ok=True)
         return root
 
-    def _load_existing(self, manifest_path: Path, root: Path) -> GenerationResult | None:
+    def _load_existing(
+        self,
+        manifest_path: Path,
+        root: Path,
+        parameters: Mapping[str, Any],
+        *,
+        sensitive_parameters: set[str] | frozenset[str] = frozenset(),
+    ) -> GenerationResult | None:
         """Return a GenerationResult if all previously generated files still exist.
 
-        Returns None when the manifest is missing, unreadable, or any listed
-        file has been deleted — signalling that generation must proceed.
+        Cache reuse is deliberately fail-closed: legacy/corrupt manifests,
+        generator or parameter mismatches, and changed artifacts are misses.
         """
         if not manifest_path.exists():
             return None
         try:
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-            rel_paths: list[str] = payload.get("files", [])
-            if not rel_paths:
+            expected_cache = self._cache_record(parameters, sensitive_parameters)
+            cache = payload.get("cache")
+            if not isinstance(cache, dict):
                 return None
-            files = [root / p for p in rel_paths]
-            if all(f.exists() and f.is_file() for f in files):
-                return GenerationResult(
-                    benchmark=self.benchmark,
-                    artifact_type=self.artifact_type,
-                    output_dir=root,
-                    files=files,
-                    metadata=manifest_path,
-                )
+
+            artifacts = cache.get("artifacts")
+            cache_without_artifacts = dict(cache)
+            cache_without_artifacts.pop("artifacts", None)
+            if cache_without_artifacts != expected_cache:
+                return None
+
+            rel_paths = payload.get("files")
+            if not isinstance(rel_paths, list) or not rel_paths or not all(
+                isinstance(path, str) and path for path in rel_paths
+            ):
+                return None
+            if len(set(rel_paths)) != len(rel_paths):
+                return None
+            if not isinstance(artifacts, list) or len(artifacts) != len(rel_paths):
+                return None
+
+            artifact_paths: list[str] = []
+            for descriptor in artifacts:
+                if not isinstance(descriptor, dict) or set(descriptor) != {
+                    "path",
+                    "bytes",
+                    "sha256",
+                }:
+                    return None
+                descriptor_path = descriptor["path"]
+                descriptor_bytes = descriptor["bytes"]
+                descriptor_sha256 = descriptor["sha256"]
+                if not isinstance(descriptor_path, str) or not descriptor_path:
+                    return None
+                if type(descriptor_bytes) is not int or descriptor_bytes < 0:
+                    return None
+                if (
+                    not isinstance(descriptor_sha256, str)
+                    or len(descriptor_sha256) != 64
+                    or descriptor_sha256 != descriptor_sha256.lower()
+                ):
+                    return None
+                try:
+                    int(descriptor_sha256, 16)
+                except ValueError:
+                    return None
+                artifact_paths.append(descriptor_path)
+
+            if artifact_paths != rel_paths:
+                return None
+
+            files = self._resolve_managed_paths(root, rel_paths)
+            for file_path, descriptor in zip(files, artifacts):
+                if not file_path.exists() or not file_path.is_file():
+                    return None
+                if file_path.stat().st_size != descriptor["bytes"]:
+                    return None
+                byte_count, sha256 = self._stream_file_signature(file_path)
+                if byte_count != descriptor["bytes"] or sha256 != descriptor["sha256"]:
+                    return None
+
+            return GenerationResult(
+                benchmark=self.benchmark,
+                artifact_type=self.artifact_type,
+                output_dir=root,
+                files=files,
+                metadata=manifest_path,
+            )
         except Exception:
             pass
         return None
+
+    def _write_manifest(
+        self,
+        path: Path,
+        payload: dict[str, Any],
+        parameters: Mapping[str, Any],
+        *,
+        root: Path,
+        sensitive_parameters: set[str] | frozenset[str] = frozenset(),
+    ) -> Path:
+        """Write a versioned, parameter-aware, content-addressed cache manifest."""
+
+        manifest = dict(payload)
+        rel_paths = manifest.get("files")
+        if not isinstance(rel_paths, list) or not rel_paths or not all(
+            isinstance(relative_path, str) and relative_path
+            for relative_path in rel_paths
+        ):
+            raise ValueError("benchmark cache manifest requires a non-empty files list")
+        if len(set(rel_paths)) != len(rel_paths):
+            raise ValueError("benchmark cache manifest files must be unique")
+
+        files = self._resolve_managed_paths(root, rel_paths)
+        artifacts: list[dict[str, Any]] = []
+        for relative_path, file_path in zip(rel_paths, files):
+            if not file_path.exists() or not file_path.is_file():
+                raise FileNotFoundError(f"Managed benchmark artifact does not exist: {file_path}")
+            byte_count, sha256 = self._stream_file_signature(file_path)
+            artifacts.append(
+                {
+                    "path": relative_path,
+                    "bytes": byte_count,
+                    "sha256": sha256,
+                }
+            )
+
+        cache = self._cache_record(parameters, sensitive_parameters)
+        cache["artifacts"] = artifacts
+        manifest["cache"] = cache
+        return self._write_json(path, manifest)
+
+    def _resolve_managed_paths(self, root: Path, rel_paths: list[str]) -> list[Path]:
+        root_resolved = root.resolve()
+        files: list[Path] = []
+        seen: set[Path] = set()
+        for relative_path in rel_paths:
+            raw_path = Path(relative_path)
+            if raw_path.is_absolute() or raw_path.anchor:
+                raise ValueError(f"Managed artifact path must be relative: {relative_path}")
+            resolved = (root_resolved / raw_path).resolve()
+            try:
+                resolved.relative_to(root_resolved)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Managed artifact path escapes output root: {relative_path}"
+                ) from exc
+            if resolved in seen:
+                raise ValueError(f"Managed artifact paths must be unique: {relative_path}")
+            seen.add(resolved)
+            files.append(resolved)
+        return files
+
+    def _stream_file_signature(self, path: Path) -> tuple[int, str]:
+        digest = hashlib.sha256()
+        byte_count = 0
+        with path.open("rb") as stream:
+            while chunk := stream.read(_CACHE_HASH_CHUNK_BYTES):
+                digest.update(chunk)
+                byte_count += len(chunk)
+        return byte_count, digest.hexdigest()
+
+    def _cache_record(
+        self,
+        parameters: Mapping[str, Any],
+        sensitive_parameters: set[str] | frozenset[str],
+    ) -> dict[str, Any]:
+        normalized = _normalize_cache_value(parameters)
+        if not isinstance(normalized, dict):
+            raise TypeError("benchmark cache parameters must be a mapping")
+
+        generator = f"{type(self).__module__}.{type(self).__qualname__}/{self.artifact_type}"
+        canonical = {
+            "schema": _CACHE_SCHEMA,
+            "version": _CACHE_VERSION,
+            "generator": generator,
+            "parameters": normalized,
+        }
+        encoded = json.dumps(
+            canonical,
+            ensure_ascii=True,
+            allow_nan=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+
+        recorded_parameters = dict(normalized)
+        for name in sensitive_parameters:
+            if name in recorded_parameters:
+                recorded_parameters[name] = _CACHE_REDACTED
+
+        return {
+            "schema": _CACHE_SCHEMA,
+            "version": _CACHE_VERSION,
+            "generator": generator,
+            "parameters": recorded_parameters,
+            "fingerprint": hashlib.sha256(encoded).hexdigest(),
+        }
 
     def _write_text(self, path: Path, content: str) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)

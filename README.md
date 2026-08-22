@@ -33,14 +33,16 @@ Verify:
 
 ```bash
 driftbench --help
+python -c "from driftbench.data.ycsb import data; print(data(record_count=10).generate('./artifacts').summary())"
 ```
 
 ---
 
 ## Benchmark Adapters (`driftbench.data`)
 
-Nine adapters generate real data files and SQL query workloads with no external dependencies
-(TPC-H `mode="generate"` auto-downloads and builds `dbgen` on first use).
+Nine adapters generate local benchmark artifacts. Most synthetic generators need no
+external tool; TPC-H `mode="generate"` builds `dbgen`, pgbench regression runs need
+PostgreSQL/pgbench, and BenchBase generates configuration rather than a local dataset.
 
 | Adapter | Workload type | Data format | Tables | Queries |
 |---------|--------------|-------------|--------|---------|
@@ -53,6 +55,10 @@ Nine adapters generate real data files and SQL query workloads with no external 
 | `dsb` | Decision support | `.csv` | 3 star-schema | 3 SQL templates |
 | `pgbench` | TPC-B (OLTP) | `.csv` | 4 | 3 workloads |
 | `benchbase` | Multi-benchmark | XML + shell script | via live DB | 10 benchmarks |
+
+Related benchmark docs: [complete adapter reference](docs/benchmark_reference.md),
+[target orchestration contract](docs/benchmark_target_contract.md), and
+[hands-on testing guide](docs/benchmark_testing_guide.html).
 
 ### Generate data and queries
 
@@ -92,7 +98,7 @@ ycsb_data(scale_factor=1).generate(output_dir=out)
 ycsb_queries(workload="B").generate(output_dir=out)
 dsb_data(scale_factor=10).generate(output_dir=out)
 pgbench_data(scale_factor=1).generate(output_dir=out)
-pgbench_queries(workload="tpcb").generate(output_dir=out)
+pgbench_queries(workload="select_only", clients=2, duration=5).generate(output_dir=out)
 
 # BenchBase — generates XML configs + shell scripts for a live database
 bb_data(benchmark="tpcc", scale_factor=10).generate(output_dir=out)
@@ -137,7 +143,63 @@ result.summary()
 #  'tables': ['customer', 'lineitem', 'nation', ...]}
 ```
 
-Second call reuses existing files automatically. Pass `force=True` to regenerate.
+A second call reuses files only when its normalized generation parameters match the
+manifest and every managed file has the recorded path, byte count, and SHA-256. Older
+manifests rebuild once. Pass `force=True` to regenerate unconditionally; if an external
+`source_dir` changes in place, use `force=True` because source contents are not checksummed.
+
+### Real pgbench regression gate
+
+`driftbench benchmark pgbench` runs a native `pgbench -b select-only` baseline and a
+DriftBench-generated `select_only` candidate against the same PostgreSQL instance.
+Each of three paired rounds runs an isolated warmup and measurement, retaining raw
+stdout/stderr and transaction logs. The version-controlled CI policy requires
+PostgreSQL/pgbench 16, scale 1, two clients, 3-second warmups and 5-second measurements.
+The PostgreSQL server must be running and its role/authentication configured first.
+
+```bash
+# Confirm that the pgbench client is major version 16, then create and initialize
+# a new database using an already configured PostgreSQL role.
+pgbench --version
+createdb --host localhost --port 5432 --username driftbench driftbench_ci
+pgbench --initialize --scale=1 \
+  --host localhost --port 5432 --username driftbench driftbench_ci
+
+# Generate the candidate used by the checked-in default policy.
+python -c "from driftbench.data.pgbench import queries; queries(workload='select_only', clients=2, duration=5).generate(output_dir='artifacts', force=True)"
+
+driftbench benchmark pgbench \
+  --candidate-script artifacts/pgbench/queries/pgbench_select_only.sql \
+  --output-dir benchmark-artifacts/results \
+  --database driftbench_ci --host localhost --port 5432 --username driftbench \
+  --json
+
+# Verify a copied bundle later, without PostgreSQL, network access, or Git.
+driftbench benchmark verify --bundle benchmark-artifacts/results --json
+```
+
+The command requires a new or empty output directory and writes `baseline.json`,
+`candidate.json`, `decision.json`, `execution_order.json`, hashed raw evidence, the
+canonical policy at `inputs/policy.json`, the exact executed candidate at
+`inputs/candidate.sql`, and `environment.json`. Both results record byte counts and
+SHA-256 digests for those inputs and the environment snapshot. The snapshot includes the
+DriftBench version/source revision, Python, OS/CPU, password-free connection identity,
+PostgreSQL/pgbench versions, key server settings, and the scale inferred from initialized
+pgbench tables. Producing a valid bundle requires a clean DriftBench source checkout:
+the runner checks the runtime-source paths before the first phase and again after the last
+measurement, requiring the same full 40-character HEAD both times. `DRIFTBENCH_GIT_SHA`
+is only an assertion that must equal that HEAD; it cannot bypass a dirty checkout, and an
+installed wheel never borrows the caller repository's SHA.
+
+For each measurement (not warmup), authoritative TPS is successful transactions divided
+by runner-measured elapsed seconds. It must be within an inclusive 5% of pgbench-reported
+TPS before any aggregation or threshold decision; a mismatch is invalid evidence and exits
+4. Exit codes are 0 (verified pass), 3 (configuration/path), 4
+(execution/parser/provenance/integrity), and 5 (complete verified threshold regression).
+The offline verifier proves that a bundle is internally self-consistent with its captured
+bytes and policy; it does not authenticate who produced the bundle or where it originated.
+Incomplete capture fails closed while retaining evidence. DriftBench never updates a
+baseline or policy automatically.
 
 ### Applying drift to benchmark data
 
@@ -177,7 +239,7 @@ drifted = result.drift_multi([
 
 Pass `relationships=[]` or a custom list to override the built-in FK maps. Supported benchmarks with auto-wiring: `tpch`, `job`. `tpcc` and `tpcc_skew` require explicit relationship definitions because their joins use composite keys.
 
-**DriftSpec YAMLs** — ready-to-run example specs for all five adapters are in `driftspec/examples/`:
+**DriftSpec YAMLs** — five ready-to-run benchmark drift examples are in `driftspec/examples/`:
 - `tpch_lineitem_drift.yaml`
 - `tpcc_drift.yaml`
 - `job_drift.yaml`
@@ -188,9 +250,15 @@ Pass `relationships=[]` or a custom list to override the built-in FK maps. Suppo
 
 ## CLI Quickstart
 
+The commands below use repository fixtures and must be run from a source checkout.
+PyPI installations do not include `driftspec/examples/` or its fixture data.
+
 ```bash
 # Validate a DriftSpec
 python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --json
+
+# Deep local readiness check (schema, handler parameters, inputs, outputs, adapter import)
+python -m driftbench.cli validate-spec driftspec/examples/demo_data_single.yaml --deep --json
 
 # Dry-run (preview execution plan)
 python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
@@ -198,6 +266,15 @@ python -m driftbench.cli dry-run driftspec/examples/demo_data_single.yaml --json
 # Execute
 python -m driftbench.cli run-yaml driftspec/examples/demo_data_single.yaml
 ```
+
+Deep validation is an opt-in, read-only preflight. Relative paths resolve from
+the current working directory, just as they do during execution. It checks
+local files/directories, output collisions and writability, all registered
+DriftSpec handler contracts, and benchmark-adapter availability. It does not
+generate data, execute handlers, create directories, connect to databases, or
+probe external tools. Existing outputs and unchecked external services are
+reported as warnings. Exit code `0` means no validation errors, `3` means the
+spec is not locally ready, and `4` means the validator itself failed.
 
 ---
 
@@ -225,8 +302,15 @@ Core workflow via MCP: `trace_to_spec` → `validate_spec` → `run_spec` → `l
 ## Testing
 
 ```bash
+pip install -e ".[test]"
 python -m unittest discover -s test -p 'test_*.py' -v
 ```
+
+The five real PostgreSQL 16 integration tests are discovered by this command but skip by
+default whenever `DRIFTBENCH_REQUIRE_PG_INTEGRATION` is not exactly `1`. The remote
+[Benchmark Regression workflow](.github/workflows/benchmark-regression-pgbench.yml)
+explicitly sets it to `1` and runs those tests against PostgreSQL 16 with no mocks or
+skips.
 
 ---
 

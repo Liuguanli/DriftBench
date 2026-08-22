@@ -262,9 +262,17 @@ def orchestrate_targets(
     failed = sum(1 for x in run_items if x["status"] in {"setup_failed", "run_failed", "invalid_target_workdir"})
     planned = sum(1 for x in run_items if x["status"] == "planned")
 
+    ok = failed == 0
+    if failed:
+        outcome = "failed" if failed == len(run_items) else "partial_failure"
+    else:
+        outcome = "completed" if execute else "planned"
+
     manifest: Dict[str, Any] = {
         "schema_version": "0.1",
         "release_context": "dev-orchestrate-mvp",
+        "ok": ok,
+        "outcome": outcome,
         "spec_path": str(spec),
         "targets_file": str(Path(targets_file).expanduser().resolve()),
         "execute": bool(execute),

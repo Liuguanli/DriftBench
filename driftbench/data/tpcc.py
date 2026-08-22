@@ -27,6 +27,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Iterable
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
 
 
@@ -329,18 +331,25 @@ class TPCCData(BenchmarkArtifact):
         out_dir = root / "tpcc" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        warehouses = self._w()
+        cache_parameters = {"scale_factor": warehouses}
+
         if not force:
-            existing = self._load_existing(out_dir / "tpcc_data_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "tpcc_data_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] TPC-C data (W={self._w()}) already exists at {out_dir}. Reusing.")
+                console_print(
+                    f"[driftbench] TPC-C data (W={warehouses}) already exists at {out_dir}. Reusing."
+                )
                 return existing
-        print(f"[driftbench] Generating TPC-C data (W={self._w()}) → {out_dir}")
+        console_print(f"[driftbench] Generating TPC-C data (W={warehouses}) -> {out_dir}")
 
         ddl = self._write_text(out_dir / "tpcc_schema.sql", _TPCC_DDL)
 
         files = self._generate_synth(out_dir)
         files.insert(0, ddl)
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpcc_data_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -363,6 +372,8 @@ class TPCCData(BenchmarkArtifact):
                     "Not a standards-compliant TPC-C dataset."
                 ),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 
@@ -494,12 +505,16 @@ class TPCCQueries(BenchmarkArtifact):
         out_dir = root / "tpcc" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        cache_parameters: dict[str, object] = {}
+
         if not force:
-            existing = self._load_existing(out_dir / "tpcc_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "tpcc_queries_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] TPC-C queries already exist at {out_dir}. Reusing.")
+                console_print(f"[driftbench] TPC-C queries already exist at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating TPC-C queries → {out_dir}")
+        console_print(f"[driftbench] Generating TPC-C queries -> {out_dir}")
 
         files: list[Path] = []
         for name, sql in _TPCC_TRANSACTIONS.items():
@@ -512,7 +527,7 @@ class TPCCQueries(BenchmarkArtifact):
         )
         files.append(self._write_text(out_dir / "tpcc_all_transactions.sql", bundle))
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpcc_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -525,6 +540,8 @@ class TPCCQueries(BenchmarkArtifact):
                     "Bind values at runtime with your preferred DB driver."
                 ),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 

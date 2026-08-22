@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "pgbench-ci-v1",
+  "benchmark": "pgbench",
+  "workload": "select_only",
+  "execution_order": "alternating_baseline_first",
+  "versions": {
+    "postgresql_major": 16,
+    "pgbench_major": 16
+  },
+  "config": {
+    "scale_factor": 1,
+    "clients": 2,
+    "jobs": 2,
+    "warmup_seconds": 3,
+    "measurement_seconds": 5,
+    "repetitions": 3
+  },
+  "thresholds": {
+    "min_tps_ratio": 0.7,
+    "max_p95_latency_ratio": 1.5,
+    "max_error_rate": 0.0,
+    "max_tps_relative_delta": 0.05
+  }
+}

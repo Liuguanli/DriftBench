@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://driftbench.dev/schemas/benchmark-run-result-v1.json",
+  "title": "DriftBench BenchmarkRunResult v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark",
+    "role",
+    "workload",
+    "config",
+    "git_sha",
+    "versions",
+    "inputs",
+    "environment",
+    "warmups",
+    "repetitions",
+    "metrics",
+    "valid"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "role": { "const": "baseline" } },
+        "required": ["role"]
+      },
+      "then": {
+        "properties": {
+          "workload": {
+            "properties": { "source": { "const": "builtin" } },
+            "not": { "required": ["script_sha256"] }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "role": { "const": "candidate" } },
+        "required": ["role"]
+      },
+      "then": {
+        "properties": {
+          "workload": {
+            "properties": { "source": { "const": "driftbench_script" } },
+            "required": ["script_sha256"]
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "benchmark": { "const": "pgbench" },
+    "role": { "enum": ["baseline", "candidate"] },
+    "valid": { "const": true },
+    "git_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "source"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "source": { "enum": ["builtin", "driftbench_script"] },
+        "script_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scale_factor",
+        "clients",
+        "jobs",
+        "warmup_seconds",
+        "measurement_seconds",
+        "repetitions"
+      ],
+      "properties": {
+        "scale_factor": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "clients": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "jobs": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "warmup_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "measurement_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "repetitions": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["postgresql", "pgbench"],
+      "properties": {
+        "postgresql": { "$ref": "#/$defs/version" },
+        "pgbench": { "$ref": "#/$defs/version" }
+      }
+    },
+    "inputs": { "$ref": "#/$defs/inputs" },
+    "environment": {
+      "allOf": [
+        { "$ref": "#/$defs/inputArtifact" },
+        { "properties": { "path": { "const": "environment.json" } } }
+      ]
+    },
+    "warmups": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/warmup" }
+    },
+    "repetitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/repetition" }
+    },
+    "metrics": { "$ref": "#/$defs/aggregateMetrics" }
+  },
+  "$defs": {
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full", "major"],
+      "properties": {
+        "full": { "type": "string", "minLength": 1 },
+        "major": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }
+      }
+    },
+    "inputArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "candidate_script"],
+      "properties": {
+        "policy": {
+          "allOf": [
+            { "$ref": "#/$defs/inputArtifact" },
+            { "properties": { "path": { "const": "inputs/policy.json" } } }
+          ]
+        },
+        "candidate_script": {
+          "allOf": [
+            { "$ref": "#/$defs/inputArtifact" },
+            { "properties": { "path": { "const": "inputs/candidate.sql" } } }
+          ]
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stdout", "stderr", "transaction_logs"],
+      "properties": {
+        "stdout": { "$ref": "#/$defs/artifact" },
+        "stderr": { "$ref": "#/$defs/artifact" },
+        "transaction_logs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/artifact" }
+        }
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mean", "p50", "p95", "p99"],
+      "properties": {
+        "mean": { "type": "number", "minimum": 0 },
+        "p50": { "type": "number", "minimum": 0 },
+        "p95": { "type": "number", "minimum": 0 },
+        "p99": { "type": "number", "minimum": 0 }
+      }
+    },
+    "errors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "total", "rate", "types"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "total": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "types": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }
+        }
+      }
+    },
+    "warmup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "actual_seconds",
+        "transactions_successful",
+        "transactions_failed",
+        "artifacts"
+      ],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "actual_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "transactions_successful": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "transactions_failed": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "artifacts": { "$ref": "#/$defs/artifacts" }
+      }
+    },
+    "repetition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "actual_measurement_seconds",
+        "transactions",
+        "tps",
+        "latency_ms",
+        "errors",
+        "pgbench_reported",
+        "tps_consistency",
+        "artifacts"
+      ],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "actual_measurement_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "transactions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["successful", "total"],
+          "properties": {
+            "successful": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+            "total": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 }
+          }
+        },
+        "tps": { "type": "number", "exclusiveMinimum": 0 },
+        "latency_ms": { "$ref": "#/$defs/latency" },
+        "errors": { "$ref": "#/$defs/errors" },
+        "pgbench_reported": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tps", "latency_mean_ms"],
+          "properties": {
+            "tps": { "type": "number", "exclusiveMinimum": 0 },
+            "latency_mean_ms": { "type": "number", "minimum": 0 }
+          }
+        },
+        "tps_consistency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["computed", "reported", "relative_delta", "tolerance", "passed"],
+          "properties": {
+            "computed": { "type": "number", "exclusiveMinimum": 0 },
+            "reported": { "type": "number", "exclusiveMinimum": 0 },
+            "relative_delta": { "type": "number", "minimum": 0, "maximum": 0.05 },
+            "tolerance": { "const": 0.05 },
+            "passed": { "const": true }
+          }
+        },
+        "artifacts": { "$ref": "#/$defs/artifacts" }
+      }
+    },
+    "aggregateMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregation",
+        "tps",
+        "latency_ms",
+        "errors",
+        "percentile_method"
+      ],
+      "properties": {
+        "aggregation": { "const": "median_of_repetitions" },
+        "tps": { "type": "number", "exclusiveMinimum": 0 },
+        "latency_ms": { "$ref": "#/$defs/latency" },
+        "errors": { "$ref": "#/$defs/errors" },
+        "percentile_method": { "const": "linear-r7" }
+      }
+    }
+  }
+}

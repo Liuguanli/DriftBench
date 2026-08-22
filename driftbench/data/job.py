@@ -11,10 +11,10 @@ Quick start:
     job_queries().generate(output_dir="./artifacts")
 
 Scale note:
-    Synth mode generates an 8-table subset proportional to scale_factor:
+    Synth mode generates an 11-table subset proportional to scale_factor:
       title: 500*sf rows, name: 1000*sf, cast_info: 5000*sf, movie_info: 3000*sf,
       keyword: 200*sf, movie_keyword: 2000*sf, company_name: 100*sf, movie_companies: 1000*sf.
-    The synth adapter generates an 8-table subset; full IMDB data must be loaded manually.
+    The synth adapter generates an 11-table subset; full IMDB data must be loaded manually.
 
 Queries:
     20 representative templates (simplified from the original 113) covering all
@@ -27,11 +27,25 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
 
 
+_JOB_KIND_TYPES = (
+    "movie", "tv series", "tv movie", "video movie", "video game", "episode", "tv mini series",
+)
+_JOB_INFO_TYPES = (
+    "genres", "rating", "votes", "languages", "countries", "runtimes",
+    "color info", "sound mix", "certificates", "aspect ratio",
+)
+_JOB_COMPANY_TYPES = (
+    "distributors", "production companies", "miscellaneous companies", "special effects companies",
+)
+
+
 _JOB_DDL = """\
--- JOB (IMDB) Schema — 8-table synth subset (PostgreSQL-compatible)
+-- JOB (IMDB) Schema - 11-table synth subset (PostgreSQL-compatible)
 
 CREATE TABLE IF NOT EXISTS kind_type (
     id    INTEGER PRIMARY KEY,
@@ -384,7 +398,7 @@ ORDER BY t.production_year DESC;
 class JOBData(BenchmarkArtifact):
     """Generate synthetic JOB (IMDB) data artifacts.
 
-    Generates an 8-table subset of the IMDB schema.
+    Generates an 11-table subset of the IMDB schema.
     Scale controls row counts proportionally.
 
     Args:
@@ -401,22 +415,26 @@ class JOBData(BenchmarkArtifact):
         out_dir = root / "job" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        sf = self._sf()
+        cache_parameters = {"scale_factor": sf}
+
         if not force:
-            existing = self._load_existing(out_dir / "job_data_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "job_data_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] JOB data already exists at {out_dir}. Reusing.")
+                console_print(f"[driftbench] JOB data already exists at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating JOB data (sf={self._sf()}) → {out_dir}")
+        console_print(f"[driftbench] Generating JOB data (sf={sf}) -> {out_dir}")
 
         ddl = self._write_text(out_dir / "job_schema.sql", _JOB_DDL)
 
         files = self._generate_synth(out_dir)
         files.insert(0, ddl)
-        sf = self._sf()
         row_counts = {
-            "kind_type": 7,
-            "info_type": 113,
-            "company_type": 4,
+            "kind_type": len(_JOB_KIND_TYPES),
+            "info_type": len(_JOB_INFO_TYPES),
+            "company_type": len(_JOB_COMPANY_TYPES),
             "title": 500 * sf,
             "name": 1000 * sf,
             "keyword": 200 * sf,
@@ -426,7 +444,7 @@ class JOBData(BenchmarkArtifact):
             "movie_keyword": 2000 * sf,
             "movie_companies": 1000 * sf,
         }
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "job_data_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -434,8 +452,10 @@ class JOBData(BenchmarkArtifact):
                 "scale_factor": sf,
                 "tables": row_counts,
                 "files": self._paths_relative_to(root, files),
-                "note": "Synthetic 8-table JOB subset for onboarding and API testing.",
+                "note": "Synthetic 11-table JOB subset for onboarding and API testing.",
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 
@@ -447,23 +467,17 @@ class JOBData(BenchmarkArtifact):
         rng = random.Random(42)
         files: list[Path] = []
 
-        kind_types = ["movie", "tv series", "tv movie", "video movie", "video game", "episode", "tv mini series"]
         files.append(self._write_csv(out_dir / "kind_type.csv",
             ["id", "kind"],
-            [[i + 1, k] for i, k in enumerate(kind_types)]))
+            [[i + 1, k] for i, k in enumerate(_JOB_KIND_TYPES)]))
 
-        info_types_sample = [
-            "genres", "rating", "votes", "languages", "countries", "runtimes",
-            "color info", "sound mix", "certificates", "aspect ratio",
-        ]
         files.append(self._write_csv(out_dir / "info_type.csv",
             ["id", "info"],
-            [[i + 1, it] for i, it in enumerate(info_types_sample)]))
+            [[i + 1, it] for i, it in enumerate(_JOB_INFO_TYPES)]))
 
-        company_types = ["distributors", "production companies", "miscellaneous companies", "special effects companies"]
         files.append(self._write_csv(out_dir / "company_type.csv",
             ["id", "kind"],
-            [[i + 1, ct] for i, ct in enumerate(company_types)]))
+            [[i + 1, ct] for i, ct in enumerate(_JOB_COMPANY_TYPES)]))
 
         title_count = 500 * sf
         genres = ["Drama", "Comedy", "Action", "Thriller", "Crime", "Horror", "Romance"]
@@ -471,7 +485,7 @@ class JOBData(BenchmarkArtifact):
         for i in range(1, title_count + 1):
             titles.append([
                 i, f"Movie Title {i}", None,
-                rng.randint(1, len(kind_types)),
+                rng.randint(1, len(_JOB_KIND_TYPES)),
                 rng.randint(1960, 2023),
                 None, None, None, None, None, None, None,
             ])
@@ -570,7 +584,7 @@ class JOBData(BenchmarkArtifact):
                 i,
                 rng.randint(1, title_count),
                 rng.randint(1, company_count),
-                rng.randint(1, len(company_types)),
+                rng.randint(1, len(_JOB_COMPANY_TYPES)),
                 None,
             ])
         files.append(self._write_csv(out_dir / "movie_companies.csv",
@@ -604,12 +618,16 @@ class JOBQueries(BenchmarkArtifact):
         out_dir = root / "job" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        cache_parameters: dict[str, object] = {}
+
         if not force:
-            existing = self._load_existing(out_dir / "job_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "job_queries_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] JOB queries already exist at {out_dir}. Reusing.")
+                console_print(f"[driftbench] JOB queries already exist at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating JOB queries → {out_dir}")
+        console_print(f"[driftbench] Generating JOB queries -> {out_dir}")
 
         files: list[Path] = []
         for name, sql in _JOB_QUERIES.items():
@@ -621,7 +639,7 @@ class JOBQueries(BenchmarkArtifact):
         )
         files.append(self._write_text(out_dir / "job_all_queries.sql", bundle))
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "job_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -640,10 +658,12 @@ class JOBQueries(BenchmarkArtifact):
                 "files": self._paths_relative_to(root, files),
                 "note": (
                     "20 representative templates derived from the 113-query JOB suite "
-                    "(Leis et al., VLDB 2015). Queries reference the 8-table synth subset; "
+                    "(Leis et al., VLDB 2015). Queries reference the 11-table synth subset; "
                     "adapt table names for the full 21-table IMDB snapshot."
                 ),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 

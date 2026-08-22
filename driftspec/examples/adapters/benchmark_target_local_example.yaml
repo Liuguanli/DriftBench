@@ -1,0 +1,9 @@
+# Self-contained target for exercising orchestration from a DriftBench checkout.
+# Paths are resolved relative to this YAML file; ../../.. is the repository root.
+targets:
+  - name: driftbench-self-check
+    workdir: ../../..
+    run_command: 'python -m driftbench.cli validate-spec "{spec_path}" --json'
+    output_globs: []
+    env:
+      PYTHONUTF8: "1"

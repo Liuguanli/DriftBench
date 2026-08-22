@@ -1,6 +1,10 @@
 # DriftBench Benchmark Reference
 
-Complete reference for all 7 benchmark adapters, including data features, query characteristics, and selection guidance.
+Complete reference for all 9 benchmark adapters, including generated artifacts, query characteristics, and selection guidance.
+
+Related docs: [README and quickstart](../README.md),
+[target orchestration contract](benchmark_target_contract.md), and
+[hands-on testing guide](benchmark_testing_guide.html).
 
 ---
 
@@ -14,6 +18,8 @@ Complete reference for all 7 benchmark adapters, including data features, query 
 | Join-order sensitivity / cardinality estimation | JOB |
 | Key-value / NoSQL workloads | YCSB |
 | Decision support with complex schemas | DSB |
+| PostgreSQL throughput/regression gating | pgbench |
+| Generate configs for an external Java benchmark driver | BenchBase |
 
 ---
 
@@ -66,23 +72,21 @@ tpch_queries(query_ids=[1, 6, 14], queries_per_template=5, mode="qgen").generate
 
 ## TPC-DS
 
-**Type:** OLAP / Decision Support · **Tables:** 4 (synth subset) · **Queries:** templates
+**Type:** OLAP / Decision Support · **Tables:** 5 (synthetic subset) · **Queries:** 99 IDs (SQL text not included)
 
 ### Data features (synth subset)
 | Table | Rows at sf=1 |
 |-------|--------------|
-| customer | 100 K |
-| item | 18 K |
-| date_dim | 73 K (fixed) |
-| store_sales | 300 K |
+| date_dim | 3 360 (fixed) |
+| store | 1 |
+| item | 1 000 |
+| customer | 1 000 |
+| store_sales | 10 000 |
 
-### Query features
-- Range predicates over `date_dim`, join-heavy multi-table patterns
-- Analytical functions, ROLLUP, GROUPING SETS
-- Selectivity ranges from highly selective date filters to full-dimension scans
-
-### Modes
-- `mode="synth"` — generates 4-table CSV subset locally
+### Query artifacts
+- `query_ids.txt` lists `query01` through `query99`.
+- `sample_tpcds_config.xml` is a BenchBase starter profile.
+- The adapter does **not** ship TPC-DS SQL bodies; attach templates from a licensed/local TPC-DS kit.
 
 ### Python API
 ```python
@@ -171,7 +175,7 @@ tpcc_skew_queries(scale_factor=10, hot_warehouse_fraction=0.2, skew_factor=0.99)
 
 ## JOB (Join Order Benchmark)
 
-**Type:** OLAP / Join-order sensitivity · **Tables:** 8 (synth) / 21 (full IMDB) · **Queries:** 20 templates (original: 113)
+**Type:** OLAP / Join-order sensitivity · **Tables:** 11 synthetic CSVs / 21 full IMDB · **Queries:** 20 templates (original: 113)
 
 Reference: Leis et al., "How Good Are Query Optimizers, Really?", VLDB 2015.
 
@@ -186,8 +190,11 @@ Reference: Leis et al., "How Good Are Query Optimizers, Really?", VLDB 2015.
 | keyword | 200 | Keyword vocabulary |
 | movie_companies | 1 000 | Movie-company links |
 | company_name | 100 | Production companies |
+| kind_type | 7 | Fixed lookup |
+| info_type | 10 | Fixed lookup |
+| company_type | 4 | Fixed lookup |
 
-Full IMDB snapshot: 21 tables, ~36M rows in cast_info alone. The synth adapter generates an 8-table subset.
+Full IMDB snapshot: 21 tables, ~36M rows in cast_info alone. The synthetic adapter writes 8 primary tables plus 3 lookup tables (11 CSVs total).
 
 ### Query features (20 representative templates)
 All queries use standard SQL (no proprietary extensions). Join depths:
@@ -210,9 +217,6 @@ All queries use standard SQL (no proprietary extensions). Join depths:
 | Genre / info type | 3a, 6a, 13a, 18a |
 | Cast / actor | 4a, 8a, 12a, 16a |
 | Multi-way join | 10a, 11a, 14a, 17a, 20a |
-
-### Modes
-- `mode="synth"` — generates 8-table CSV subset locally
 
 ### Python API
 ```python
@@ -253,10 +257,16 @@ ycsb_queries(workload="A", run_seconds=60).generate(output_dir="./artifacts")
 
 ## DSB
 
-**Type:** Decision Support Benchmark · **Tables:** configurable · **Queries:** template set
+**Type:** Decision Support Benchmark · **Tables:** 3 synthetic star-schema CSVs · **Queries:** 3 SQL templates
 
 DSB extends TPC-DS with more complex queries and a richer schema designed to stress
 modern query optimizers beyond TPC-DS.
+
+| Table | Rows at sf=1 | Scaling |
+|-------|--------------|---------|
+| date_dim | 3 360 | Fixed |
+| customer | 1 000 | × sf |
+| lineorder | 5 000 | × sf |
 
 ### Python API
 ```python
@@ -264,6 +274,79 @@ from driftbench.data.dsb import data as dsb_data, queries as dsb_queries
 
 dsb_data(scale_factor=2).generate(output_dir="./artifacts")
 dsb_queries().generate(output_dir="./artifacts")
+```
+
+---
+
+## pgbench
+
+**Type:** PostgreSQL TPC-B-like OLTP · **Tables:** 4 · **Workloads:** 3
+
+The artifact adapter writes synthetic CSV/DDL and transaction scripts for `tpcb`,
+`simple_update`, and `select_only`. At sf=1 it writes 1 branch, 10 tellers,
+100 000 accounts, and an empty history table.
+
+For real regression measurement, `driftbench benchmark pgbench` uses PostgreSQL 16
+initialized by `pgbench -i -s 1`. It measures a native `-b select-only` baseline and
+the generated `select_only` script in alternating paired rounds. `BenchmarkRunResult`
+v1 records median TPS, mean/p50/p95/p99 transaction-log latency, errors, full versions,
+run configuration, and raw-evidence paths. Each result also points to SHA-256/byte-counted
+copies of the canonical loaded policy, the exact candidate SQL executed from the bundle,
+and an environment snapshot. That snapshot records the DriftBench version and source SHA,
+Python and OS/CPU identity, password-free connection identity, PostgreSQL/pgbench
+versions, key PostgreSQL settings, and the scale inferred from `pgbench_branches` and
+validated against all four initialized pgbench table counts. A producer run requires the
+DriftBench runtime-source scope (`driftbench/`, `driftbench_service/`,
+`driftbench_mcp/`, and `pyproject.toml`) to be clean at the initial preflight and after
+the final measurement, with the same full 40-character HEAD. `DRIFTBENCH_GIT_SHA` is a
+full-SHA assertion against that real HEAD, not an override and never a dirty-state bypass;
+wheel installs do not borrow a caller repository SHA. Missing, dirty, changed, or
+incomplete provenance fails closed and leaves a failure bundle for diagnosis.
+
+Measurement TPS is `successful transactions / runner elapsed measurement seconds`. The
+unrounded value must agree with the TPS parsed from hashed pgbench stdout within an
+inclusive 5%, using the reported TPS as the denominator. This check is measurement-only;
+failure makes the evidence invalid before aggregation and is exit 4, not a threshold
+regression. The approved `pgbench-ci-v1` thresholds are:
+
+- candidate median TPS ≥ 70% of baseline;
+- candidate median p95 latency ≤ 150% of baseline;
+- baseline and candidate error rates = 0.
+
+Persisted evidence can be checked on another machine with no Git, database, or network:
+
+```bash
+driftbench benchmark verify --bundle benchmark-artifacts/results --json
+```
+
+The verifier validates safe relative descriptors and reconstructs raw counts, R-7 latency,
+TPS, aggregates, execution order, and the bundled-policy decision. It establishes internal
+bundle consistency, not the external authenticity or identity of the bundle producer.
+
+```python
+from driftbench.data.pgbench import data as pgbench_data, queries as pgbench_queries
+
+pgbench_data(scale_factor=1).generate(output_dir="./artifacts")
+pgbench_queries(workload="select_only", clients=2, duration=5).generate(output_dir="./artifacts")
+```
+
+---
+
+## BenchBase
+
+**Type:** External Java benchmark configuration generator · **Benchmarks:** 10
+
+BenchBase does not generate a local dataset. It creates XML plus `load.sh`/`execute.sh`
+for TPC-C, TPC-H, YCSB, SEATS, AuctionMark, Smallbank, Epinions, Wikipedia, Twitter,
+and Voter. A BenchBase JAR and live database are required to execute those files.
+Connection values are XML-escaped; JDBC URLs and passwords are redacted from cache
+parameters while still participating in cache invalidation.
+
+```python
+from driftbench.data.benchbase import data as bb_data, queries as bb_queries
+
+bb_data(benchmark="tpcc", scale_factor=1).generate(output_dir="./artifacts")
+bb_queries(benchmark="tpcc", terminals=4, duration=60).generate(output_dir="./artifacts")
 ```
 
 ---
@@ -290,9 +373,11 @@ Use this index to find queries that heavily access a specific table.
 | Benchmark | Schema complexity | Query complexity | Scale control | Drift type |
 |-----------|-------------------|------------------|---------------|------------|
 | TPC-H | Medium (8 tables) | High (22 templates) | Scale factor | Data volume |
-| TPC-DS | High (26 tables full) | Very high | Scale factor | Data volume |
+| TPC-DS | Medium (5 synthetic; 24 full) | Query IDs only in adapter | Scale factor | Data volume |
 | TPC-C | High (9 tables) | Medium (5 txn types) | Warehouses | Throughput |
 | TPC-C Skew | High (9 tables + weights) | Medium | Warehouses + Zipf α | Access skew |
-| JOB | High (21 tables full) | Very high (113 queries) | Proportional | Join-order sensitivity |
+| JOB | High (11 synthetic; 21 full) | Very high (20 included; 113 original) | Proportional | Join-order sensitivity |
 | YCSB | Minimal (1 table) | Low | Record count | Read/write ratio |
-| DSB | Very high | Very high | Scale factor | Query complexity |
+| DSB | Low (3 synthetic tables) | Medium (3 templates) | Scale factor | Query complexity |
+| pgbench | Low (4 tables) | Low/medium (3 workloads) | Scale factor + clients | Throughput / latency |
+| BenchBase | External benchmark dependent | External benchmark dependent | Benchmark config | Live-driver execution |

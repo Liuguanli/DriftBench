@@ -5,6 +5,8 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
 
 
@@ -33,16 +35,23 @@ class YCSBData(BenchmarkArtifact):
         out_dir = root / "ycsb" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        if not force:
-            existing = self._load_existing(out_dir / "ycsb_data_manifest.json", root)
-            if existing is not None:
-                print(f"[driftbench] YCSB data already exists at {out_dir}. Reusing.")
-                return existing
-        print(f"[driftbench] Generating YCSB data (sf={self.scale_factor}) → {out_dir}")
-
         records = self.record_count if self.record_count is not None else self.scale_factor * 1000
+        cache_parameters = {
+            "scale_factor": self.scale_factor,
+            "record_count": records,
+        }
+
+        if not force:
+            existing = self._load_existing(
+                out_dir / "ycsb_data_manifest.json", root, cache_parameters
+            )
+            if existing is not None:
+                console_print(f"[driftbench] YCSB data already exists at {out_dir}. Reusing.")
+                return existing
+        console_print(f"[driftbench] Generating YCSB data (sf={self.scale_factor}) -> {out_dir}")
+
         files = self._generate_synth(out_dir, records)
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "ycsb_data_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -52,6 +61,8 @@ class YCSBData(BenchmarkArtifact):
                 "tables": {"usertable": records},
                 "files": self._paths_relative_to(root, files),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 
@@ -82,21 +93,31 @@ class YCSBQueries(BenchmarkArtifact):
     artifact_type: str = "queries"
 
     def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
-        root = self._require_output_dir(output_dir)
-        out_dir = root / "ycsb" / "queries"
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        if not force:
-            existing = self._load_existing(out_dir / "ycsb_queries_manifest.json", root)
-            if existing is not None:
-                print(f"[driftbench] YCSB queries (workload={self.workload}) already exist at {out_dir}. Reusing.")
-                return existing
-        print(f"[driftbench] Generating YCSB queries (workload={self.workload}) → {out_dir}")
-
         profile = self.workload.upper()
         if profile not in _YCSB_WORKLOAD_WEIGHTS:
             valid = ", ".join(sorted(_YCSB_WORKLOAD_WEIGHTS.keys()))
             raise ValueError(f"Unsupported YCSB workload '{self.workload}'. Use one of: {valid}")
+
+        root = self._require_output_dir(output_dir)
+        out_dir = root / "ycsb" / "queries"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        cache_parameters = {
+            "workload": profile,
+            "run_seconds": self.run_seconds,
+            "target_rate": self.target_rate,
+        }
+
+        if not force:
+            existing = self._load_existing(
+                out_dir / "ycsb_queries_manifest.json", root, cache_parameters
+            )
+            if existing is not None:
+                console_print(
+                    f"[driftbench] YCSB queries (workload={profile}) already exists at {out_dir}. Reusing."
+                )
+                return existing
+        console_print(f"[driftbench] Generating YCSB queries (workload={profile}) -> {out_dir}")
 
         weights = _YCSB_WORKLOAD_WEIGHTS[profile]
         props = self._write_text(out_dir / f"workload_{profile.lower()}.properties", self._properties_body())
@@ -105,7 +126,7 @@ class YCSBQueries(BenchmarkArtifact):
             self._benchbase_template(weights),
         )
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "ycsb_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -123,6 +144,8 @@ class YCSBQueries(BenchmarkArtifact):
                 },
                 "files": self._paths_relative_to(root, [props, benchbase_cfg]),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, [props, benchbase_cfg], metadata)
 

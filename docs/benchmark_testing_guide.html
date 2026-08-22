@@ -250,9 +250,10 @@
       <li><a href="#tpcc-skew">6. TPC-C Skew</a></li>
       <li><a href="#job">7. JOB</a></li>
       <li><a href="#pgbench">8. pgbench</a></li>
+      <li><a href="#pgbench-gate" class="sub">Real regression gate</a></li>
       <li><a href="#benchbase">9. BenchBase</a></li>
       <div class="nav-section">Shared</div>
-      <li><a href="#reuse">Lazy Reuse</a></li>
+      <li><a href="#reuse">Verified Reuse</a></li>
       <li><a href="#default-dir">Default Directory</a></li>
       <li><a href="#as-csv">as_csv()</a></li>
       <li><a href="#summary">Summary Table</a></li>
@@ -267,6 +268,12 @@
       How to use DriftBench to generate data and queries for each supported benchmark.
       Run snippets from the repo root. Artifacts land in <code>./test_artifacts/</code>.
     </p>
+    <p>
+      <strong>Related docs:</strong>
+      <a href="../README.md">README and quickstart</a>,
+      <a href="benchmark_reference.md">complete adapter reference</a>, and
+      <a href="benchmark_target_contract.md">target orchestration contract</a>.
+    </p>
 
     <pre><span class="kw">from</span> pathlib <span class="kw">import</span> Path
 <span class="kw">import</span> json
@@ -274,11 +281,20 @@ OUT = Path(<span class="st">"./test_artifacts"</span>)</pre>
 
     <!-- ── Automated Tests ── -->
     <h2 id="tests">Automated Test Suite</h2>
-    <pre><span class="sh">python -m unittest discover -s test -v</span></pre>
+    <pre><span class="sh">pip install -e ".[test]"
+python -m unittest discover -s test -p <span class="st">'test_*.py'</span> -v</span></pre>
     <div class="callout green">
       <strong>Expected result</strong>
-      Ran 74 tests in ~35s &nbsp;·&nbsp; OK
+      All discovered tests pass &nbsp;·&nbsp; OK (the exact count grows with coverage)
     </div>
+    <p>
+      The five real PostgreSQL 16 integration tests are discovered but skip by default
+      whenever <code>DRIFTBENCH_REQUIRE_PG_INTEGRATION</code> is not exactly
+      <code>1</code>. The remote
+      <a href="../.github/workflows/benchmark-regression-pgbench.yml">Benchmark Regression workflow</a>
+      explicitly sets it to <code>1</code> and runs those tests against PostgreSQL 16
+      with no mocks or skips.
+    </p>
 
     <hr>
 
@@ -360,8 +376,10 @@ manifest = json.loads((OUT / <span class="st">"tpch/queries/tpch_queries_manifes
 <span class="bi">print</span>(<span class="st">"TPC-H queries OK"</span>)</pre>
 
     <div class="callout">
-      <strong>Lazy reuse</strong>
-      Running the same adapter twice reuses existing files: <em>[driftbench] TPC-H queries already exist at … Reusing.</em>
+      <strong>Verified reuse</strong>
+      Running the same adapter twice reuses existing files only when the normalized
+      parameters and managed-file digests still match:
+      <em>[driftbench] TPC-H queries already exist at … Reusing.</em>
     </div>
 
     <hr>
@@ -584,7 +602,10 @@ r_queries = job_queries().generate(output_dir=OUT)
       <tr><td><code>keyword</code></td><td>200</td></tr>
       <tr><td><code>movie_keyword</code></td><td>2,000</td></tr>
       <tr><td><code>company_name</code></td><td>100</td></tr>
-      <tr><td><code>movie_companies</code></td><td>1,500</td></tr>
+      <tr><td><code>movie_companies</code></td><td>1,000</td></tr>
+      <tr><td><code>kind_type</code></td><td>7 (fixed)</td></tr>
+      <tr><td><code>info_type</code></td><td>10 (fixed)</td></tr>
+      <tr><td><code>company_type</code></td><td>4 (fixed)</td></tr>
     </table>
 
     <p><strong>Query files:</strong> 20 individual <code>.sql</code> files (J1a … J20a) + 1 bundle = <strong>21 total</strong></p>
@@ -636,6 +657,46 @@ run_script = (OUT / <span class="st">"pgbench/queries/run_pgbench.sh"</span>).re
 <span class="kw">assert</span> <span class="st">"-c 4"</span> <span class="kw">in</span> run_script
 <span class="kw">assert</span> <span class="st">"-T 30"</span> <span class="kw">in</span> run_script
 <span class="bi">print</span>(<span class="st">"pgbench OK"</span>)</pre>
+
+    <h3 id="pgbench-gate">Real PostgreSQL regression gate</h3>
+    <p>
+      Adapter generation alone does not measure a database. The release gate runs the
+      generated <code>select_only</code> script and PostgreSQL 16's native
+      <code>-b select-only</code> workload in three alternating AB/BA/AB rounds. Each side
+      receives its own 3-second warmup followed by a 5-second measurement. Before the
+      first run, start PostgreSQL 16 and configure a role that can create and initialize
+      the test database; the <code>pgbench</code> client must also be major version 16.
+    </p>
+    <pre><span class="sh">pgbench --version
+createdb --host localhost --port 5432 --username driftbench driftbench_ci
+pgbench --initialize --scale=1 \
+  --host localhost --port 5432 --username driftbench driftbench_ci
+
+driftbench benchmark pgbench \
+  --policy driftbench/benchmarking/policies/pgbench_ci_v1.json \
+  --candidate-script test_artifacts/pgbench_ro/pgbench/queries/pgbench_select_only.sql \
+  --output-dir benchmark-artifacts/results \
+  --database driftbench_ci --host localhost --port 5432 --username driftbench \
+  --json</span></pre>
+    <p>
+      The output directory must be new or empty. Successful runs retain
+      <code>baseline.json</code>, <code>candidate.json</code>, <code>decision.json</code>,
+      <code>execution_order.json</code>, stdout/stderr, and per-transaction logs. Exit
+      codes are <code>0</code> (pass), <code>3</code> (configuration), <code>4</code>
+      (execution/parser), and <code>5</code> (threshold regression). TPS, mean/p50/p95/p99
+      latency, typed failures, versions, configuration, hashes, and raw paths are all
+      preserved for recomputation.
+    </p>
+    <pre><span class="sh">driftbench benchmark verify --bundle benchmark-artifacts/results --json</span></pre>
+    <p>
+      This offline command verifies a persisted or moved bundle without PostgreSQL,
+      network access, or Git. Invalid evidence exits <code>4</code> with
+      <code>verified: false</code> and <code>verification_error</code>; a complete verified
+      policy breach exits <code>5</code> with <code>verified: true</code> and
+      <code>threshold_failed</code>. See the
+      <a href="benchmark_target_contract.md#metrics-and-real-database-evidence">target contract</a>
+      for complete JSON examples and the distinction from target orchestration outcomes.
+    </p>
 
     <hr>
 
@@ -698,19 +759,37 @@ exec_xml = (OUT / <span class="st">"benchbase/tpcc/queries/tpcc_execute_config.x
     <!-- ══════════════════════════════════════════ Shared ══════ -->
     <h2>Shared Behaviors</h2>
 
-    <h3 id="reuse">Lazy reuse (all adapters)</h3>
-    <p>Every adapter checks for an existing manifest before generating. If all files are present it reuses them:</p>
+    <h3 id="reuse">Parameter- and content-aware reuse (all adapters)</h3>
+    <p>
+      Every adapter reuses a manifest only when its schema, generator identity, normalized
+      parameters, fingerprint, and each managed file's path, byte count, and SHA-256 all
+      match. A parameter change, content modification, legacy/corrupt manifest, missing
+      file, or path outside the output root is a cache miss and regenerates the artifacts:
+    </p>
     <pre>r1 = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
-r1.files[<span class="nu">0</span>].write_text(<span class="st">"MODIFIED"</span>)
+original = r1.files[<span class="nu">0</span>].read_bytes()
 
-r2 = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+r_same = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
 <span class="cm"># [driftbench] TPC-C data (W=1) already exists at ... Reusing.</span>
-<span class="kw">assert</span> r1.files[<span class="nu">0</span>].read_text() == <span class="st">"MODIFIED"</span>   <span class="cm"># not regenerated</span>
+<span class="kw">assert</span> r_same.files[<span class="nu">0</span>].read_bytes() == original
 
+r1.files[<span class="nu">0</span>].write_bytes(<span class="st">b"MODIFIED"</span>)
+r_repaired = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT)
+<span class="kw">assert</span> r_repaired.files[<span class="nu">0</span>].read_bytes() == original   <span class="cm"># digest mismatch rebuilt</span>
+
+r_changed = tpcc_data(scale_factor=<span class="nu">2</span>).generate(output_dir=OUT)
+<span class="kw">assert</span> json.loads(r_changed.metadata.read_text())[<span class="st">"cache"</span>][<span class="st">"parameters"</span>][<span class="st">"scale_factor"</span>] == <span class="nu">2</span>
+
+r_changed.files[<span class="nu">0</span>].write_bytes(<span class="st">b"MODIFIED"</span>)
 r3 = tpcc_data(scale_factor=<span class="nu">1</span>).generate(output_dir=OUT, force=<span class="op">True</span>)
 <span class="cm"># [driftbench] Generating TPC-C data (W=1) → ...</span>
-<span class="kw">assert</span> r1.files[<span class="nu">0</span>].read_text() != <span class="st">"MODIFIED"</span>   <span class="cm"># regenerated</span>
-<span class="bi">print</span>(<span class="st">"Lazy reuse + force=True OK"</span>)</pre>
+<span class="kw">assert</span> r3.files[<span class="nu">0</span>].read_bytes() != <span class="st">b"MODIFIED"</span>   <span class="cm"># unconditional rebuild</span>
+<span class="bi">print</span>(<span class="st">"Verified reuse + force=True OK"</span>)</pre>
+    <p>
+      BenchBase passwords and JDBC URLs still participate in the fingerprint but appear as
+      <code>&lt;redacted&gt;</code> in manifests. Generated XML necessarily contains the live
+      connection values, so protect the artifact directory as credential-bearing output.
+    </p>
 
     <h3 id="default-dir">Default output directory</h3>
     <p>When <code>output_dir</code> is omitted, artifacts go to <code>~/.driftbench/data/</code> (or <code>$DRIFTBENCH_DATA_DIR</code>):</p>

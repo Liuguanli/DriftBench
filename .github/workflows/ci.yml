@@ -38,7 +38,7 @@ jobs:
       - name: Install package (editable)
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e ".[test]"
 
       - name: Smoke check console scripts
         run: |
@@ -50,10 +50,38 @@ jobs:
       - name: Run unittest suite
         run: python -m unittest discover -s test -p 'test_*.py' -v
 
+  windows-cp1252-adapters:
+    name: Windows CP1252 benchmark adapters
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package (editable)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run complete adapter suite with strict CP1252 output
+        shell: pwsh
+        run: |
+          $env:PYTHONUTF8 = "0"
+          $env:PYTHONIOENCODING = "cp1252:strict"
+          python -c "import sys; assert sys.stdout.encoding.lower().replace('-', '') == 'cp1252', sys.stdout.encoding"
+          python -c "import unittest; suite = unittest.defaultTestLoader.discover('test/benchmarks', pattern='test_adapter*.py', top_level_dir='.'); count = suite.countTestCases(); print(f'adapter tests discovered: {count}'); assert count == 47, count"
+          python -m unittest discover -s test/benchmarks -t . -p 'test_adapter*.py' -v
+
   build:
     name: Build sdist + wheel
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, windows-cp1252-adapters]
     steps:
       - uses: actions/checkout@v4
 

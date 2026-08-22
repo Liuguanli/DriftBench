@@ -1,0 +1,140 @@
+name: Benchmark Regression
+
+on:
+  workflow_call:
+  push:
+    branches: [main, "dev/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  benchmark-regression-pgbench:
+    name: benchmark-regression-pgbench
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: driftbench_ci
+          POSTGRES_USER: driftbench
+          POSTGRES_PASSWORD: driftbench-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U driftbench -d driftbench_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGDATABASE: driftbench_ci
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: driftbench
+      PGPASSWORD: driftbench-ci-password
+      DRIFTBENCH_GIT_SHA: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create evidence directory
+        run: |
+          mkdir -p benchmark-artifacts
+          printf 'workflow=%s\nsha=%s\n' "${GITHUB_WORKFLOW}" "${GITHUB_SHA}" > benchmark-artifacts/workflow.txt
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install PostgreSQL 16 pgbench and DriftBench
+        run: |
+          sudo apt-get update
+          sudo install -d /etc/postgresql-common
+          printf 'create_main_cluster = false\n' | sudo tee /etc/postgresql-common/createcluster.conf >/dev/null
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes postgresql-16
+          pgbench --version
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Capture workflow environment fingerprint
+        run: |
+          python - <<'PY' > benchmark-artifacts/workflow-environment.json
+          import json
+          import os
+          import platform
+          import subprocess
+          import sys
+
+          def output(command):
+              return subprocess.run(command, check=True, capture_output=True, text=True).stdout.strip()
+
+          server = json.loads(output([
+              "psql", "--tuples-only", "--no-align", "--command",
+              "SELECT json_build_object("
+              "'address', inet_server_addr()::text, "
+              "'port', inet_server_port(), "
+              "'version', version(), "
+              "'version_num', current_setting('server_version_num')::integer"
+              ")::text;",
+          ]))
+
+          print(json.dumps({
+              "commit_sha": os.environ["GITHUB_SHA"],
+              "os": platform.platform(),
+              "python": sys.version,
+              "pgbench": output(["pgbench", "--version"]),
+              "postgresql_server": server,
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Initialize real PostgreSQL with pgbench scale 1
+        run: pgbench --initialize --scale=1
+
+      - name: Generate DriftBench select_only candidate workload
+        run: |
+          python -c "from driftbench.data.pgbench import queries; queries(workload='select_only', clients=2, duration=5).generate(output_dir='benchmark-artifacts/generated', force=True)"
+
+      - name: Run paired baseline and candidate regression gate
+        run: |
+          driftbench benchmark pgbench \
+            --policy driftbench/benchmarking/policies/pgbench_ci_v1.json \
+            --candidate-script benchmark-artifacts/generated/pgbench/queries/pgbench_select_only.sql \
+            --output-dir benchmark-artifacts/results \
+            --database "${PGDATABASE}" \
+            --host "${PGHOST}" \
+            --port "${PGPORT}" \
+            --username "${PGUSER}" \
+            --json > benchmark-artifacts/cli-result.json
+
+      - name: Verify the persisted bundle through the public offline verifier
+        run: |
+          driftbench benchmark verify \
+            --bundle benchmark-artifacts/results \
+            --json > benchmark-artifacts/verifier-result.json
+
+      - name: Verify real PostgreSQL evidence (no mocks or skips)
+        env:
+          DRIFTBENCH_REQUIRE_PG_INTEGRATION: "1"
+          DRIFTBENCH_PGBENCH_ARTIFACT_DIR: benchmark-artifacts/results
+        run: python -m unittest test.benchmarks.pgbench.test_postgres_integration -v
+
+      - name: Upload pgbench regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-regression-pgbench-${{ github.run_id }}
+          path: benchmark-artifacts/
+          if-no-files-found: error
+          retention-days: 30

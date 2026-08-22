@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import sys
@@ -8,7 +10,18 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
 from driftbench.agent_init import init_agent_directory
+from driftbench.benchmarking.pgbench import (
+    PgBenchConnection,
+    PgBenchExecutionError,
+    run_paired_pgbench,
+)
+from driftbench.benchmarking.policy import (
+    BenchmarkPolicyError,
+    load_pgbench_policy,
+)
+from driftbench.benchmarking.verify import BenchmarkBundleError, verify_pgbench_bundle
 from driftbench.bootstrap import BootstrapError, bootstrap_dataset
+from driftbench.console import console_print
 from driftbench.orchestrate import TargetConfigError, orchestrate_targets
 import driftbench.spec.types  # ensure handlers registered
 from driftbench.spec.core import (
@@ -20,12 +33,14 @@ from driftbench.spec.core import (
     validate_spec,
 )
 from driftbench.spec.registry import get_handler
+from driftbench.spec.preflight import deep_validate_spec_file
 from driftbench.spec.trace_spec import trace_to_spec
 
 
 EXIT_OK = 0
 EXIT_VALIDATION_ERROR = 3
 EXIT_RUNTIME_ERROR = 4
+EXIT_REGRESSION_FAILURE = 5
 
 
 class CLIError(Exception):
@@ -36,10 +51,13 @@ class CLIError(Exception):
 
 def _emit(data: Dict[str, Any], as_json: bool) -> None:
     if as_json:
-        print(json.dumps(data, ensure_ascii=False, indent=2))
+        # ASCII JSON remains valid on legacy Windows consoles (for example
+        # CP1252), including non-BMP characters that Python would otherwise
+        # backslash-escape as the non-JSON ``\Uxxxxxxxx`` form.
+        console_print(json.dumps(data, ensure_ascii=True, allow_nan=False, indent=2))
         return
     for key, value in data.items():
-        print(f"{key}: {value}")
+        console_print(f"{key}: {value}")
 
 
 def _collect_declared_outputs(obj: Any) -> List[str]:
@@ -72,7 +90,7 @@ def _validate_and_resolve(spec_path: str) -> Tuple[Dict[str, Any], Tuple[str, st
 
 def _cmd_run_yaml(args: argparse.Namespace) -> int:
     run_yaml_all(args.spec)
-    print(f"[OK] run-yaml completed: {args.spec}")
+    console_print(f"[OK] run-yaml completed: {args.spec}")
     return EXIT_OK
 
 
@@ -87,11 +105,53 @@ def _cmd_trace_to_spec(args: argparse.Namespace) -> int:
         mapping_path=args.mapping,
     )
     pattern_id = spec.get("pattern_id", "")
-    print(f"[OK] trace-to-spec generated: {output} (pattern_id={pattern_id})")
+    console_print(f"[OK] trace-to-spec generated: {output} (pattern_id={pattern_id})")
     return EXIT_OK
 
 
 def _cmd_validate_spec(args: argparse.Namespace) -> int:
+    if bool(getattr(args, "deep", False)):
+        try:
+            report = deep_validate_spec_file(args.spec)
+            payload = report.as_dict()
+        except Exception:
+            # Deep JSON validation is an automation boundary: unexpected
+            # validator defects are reported without traceback or exception
+            # text, which could contain secrets from a spec or environment.
+            payload = {
+                "ok": False,
+                "outcome": "validator_error",
+                "command": "validate-spec",
+                "spec_path": args.spec,
+                "pattern_id": "",
+                "type": "",
+                "declared_outputs": 0,
+                "mode": "deep",
+                "valid": False,
+                "locally_ready": False,
+                "checks": [],
+                "issues": [
+                    {
+                        "severity": "error",
+                        "code": "validator_internal_error",
+                        "field": "$",
+                        "message": "Deep validation could not be completed.",
+                        "hint": "Report this validator defect without attaching secrets.",
+                    }
+                ],
+                "summary": {
+                    "status": "validator_error",
+                    "errors": 1,
+                    "warnings": 0,
+                    "checks_passed": 0,
+                    "checks_failed": 1,
+                },
+            }
+            _emit(payload, as_json=args.json)
+            return EXIT_RUNTIME_ERROR
+        _emit(payload, as_json=args.json)
+        return EXIT_OK if report.valid else EXIT_VALIDATION_ERROR
+
     spec, triple = _validate_and_resolve(args.spec)
     seed_everything(spec.get("seed"))
     _emit(
@@ -192,13 +252,13 @@ def _cmd_init_agent(args: argparse.Namespace) -> int:
     )
 
     if result.dry_run:
-        print(f"[DRY-RUN] would initialize DriftBench agent files under: {result.output_dir}")
+        console_print(f"[DRY-RUN] would initialize DriftBench agent files under: {result.output_dir}")
     else:
-        print(f"[OK] initialized DriftBench agent files under: {result.output_dir}")
+        console_print(f"[OK] initialized DriftBench agent files under: {result.output_dir}")
 
     for path in result.created_files:
         rel = path.relative_to(result.output_dir).as_posix()
-        print(f"- {rel}")
+        console_print(f"- {rel}")
     return EXIT_OK
 
 
@@ -212,7 +272,8 @@ def _cmd_orchestrate(args: argparse.Namespace) -> int:
     )
     _emit(
         {
-            "ok": True,
+            "ok": manifest["ok"],
+            "outcome": manifest["outcome"],
             "command": "orchestrate",
             "spec_path": manifest["spec_path"],
             "targets_file": manifest["targets_file"],
@@ -222,7 +283,7 @@ def _cmd_orchestrate(args: argparse.Namespace) -> int:
         },
         as_json=args.json,
     )
-    return EXIT_OK
+    return EXIT_OK if manifest["ok"] else EXIT_RUNTIME_ERROR
 
 
 def _cmd_bootstrap_dataset(args: argparse.Namespace) -> int:
@@ -251,6 +312,131 @@ def _cmd_bootstrap_dataset(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _benchmark_result_paths(output_dir: str | Path) -> Dict[str, str]:
+    root = Path(output_dir).expanduser().resolve()
+    return {
+        "output_dir": str(root),
+        "baseline_result": str(root / "baseline.json"),
+        "candidate_result": str(root / "candidate.json"),
+        "decision": str(root / "decision.json"),
+        "execution_order": str(root / "execution_order.json"),
+    }
+
+
+def _emit_benchmark_error(
+    args: argparse.Namespace,
+    *,
+    outcome: str,
+    message: str,
+    exit_code: int,
+) -> int:
+    payload: Dict[str, Any] = {
+        "ok": False,
+        "outcome": outcome,
+        "command": "benchmark pgbench",
+        "error": message,
+        **_benchmark_result_paths(args.output_dir),
+    }
+    if args.json:
+        _emit(payload, as_json=True)
+    else:
+        console_print(f"[ERROR] {message}", file=sys.stderr)
+        _emit({key: value for key, value in payload.items() if key != "error"}, as_json=False)
+    return exit_code
+
+
+def _cmd_benchmark_pgbench(args: argparse.Namespace) -> int:
+    if not str(args.database).strip():
+        return _emit_benchmark_error(
+            args,
+            outcome="configuration_error",
+            message="database must be non-empty",
+            exit_code=EXIT_VALIDATION_ERROR,
+        )
+    if args.port < 1 or args.port > 65535:
+        return _emit_benchmark_error(
+            args,
+            outcome="configuration_error",
+            message="port must be between 1 and 65535",
+            exit_code=EXIT_VALIDATION_ERROR,
+        )
+    try:
+        policy = load_pgbench_policy(args.policy)
+    except BenchmarkPolicyError as exc:
+        return _emit_benchmark_error(
+            args,
+            outcome="configuration_error",
+            message=str(exc),
+            exit_code=EXIT_VALIDATION_ERROR,
+        )
+
+    try:
+        result = run_paired_pgbench(
+            policy=policy,
+            candidate_script=args.candidate_script,
+            output_dir=args.output_dir,
+            connection=PgBenchConnection(
+                database=str(args.database).strip(),
+                host=args.host,
+                port=args.port,
+                username=args.username,
+            ),
+            pgbench_binary=args.pgbench_binary,
+        )
+    except PgBenchExecutionError as exc:
+        return _emit_benchmark_error(
+            args,
+            outcome="execution_error",
+            message=str(exc),
+            exit_code=EXIT_RUNTIME_ERROR,
+        )
+
+    payload = {
+        "ok": result.ok,
+        "outcome": "passed" if result.ok else "threshold_failed",
+        "command": "benchmark pgbench",
+        **_benchmark_result_paths(args.output_dir),
+    }
+    _emit(payload, as_json=args.json)
+    return EXIT_OK if result.ok else EXIT_REGRESSION_FAILURE
+
+
+def _cmd_benchmark_verify(args: argparse.Namespace) -> int:
+    supplied = Path(args.bundle).expanduser()
+    if not supplied.exists() or not supplied.is_dir():
+        payload = {
+            "verified": False,
+            "ok": False,
+            "outcome": "configuration_error",
+            "command": "benchmark verify",
+            "bundle": str(supplied.resolve()),
+            "error": f"bundle directory does not exist: {supplied}",
+        }
+        _emit(payload, as_json=args.json)
+        return EXIT_VALIDATION_ERROR
+    try:
+        verification = verify_pgbench_bundle(supplied)
+    except BenchmarkBundleError as exc:
+        payload = {
+            "verified": False,
+            "ok": False,
+            "outcome": "verification_error",
+            "command": "benchmark verify",
+            "bundle": str(supplied.resolve()),
+            "error": str(exc),
+        }
+        if args.json:
+            _emit(payload, as_json=True)
+        else:
+            console_print(f"[ERROR] {exc}", file=sys.stderr)
+            _emit({key: value for key, value in payload.items() if key != "error"}, False)
+        return EXIT_RUNTIME_ERROR
+
+    payload = verification.payload()
+    _emit(payload, as_json=args.json)
+    return EXIT_OK if verification.ok else EXIT_REGRESSION_FAILURE
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("driftbench-db")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -272,6 +458,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate a DriftSpec and ensure a runnable handler is registered",
     )
     v.add_argument("spec", help="Path to YAML spec")
+    v.add_argument(
+        "--deep",
+        action="store_true",
+        help="Run a read-only local readiness preflight (files, outputs, and adapters)",
+    )
     v.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
     v.set_defaults(func=_cmd_validate_spec)
 
@@ -372,22 +563,241 @@ def build_parser() -> argparse.ArgumentParser:
     boot_data.add_argument("--json", action="store_true", help="Emit machine-readable JSON output")
     boot_data.set_defaults(func=_cmd_bootstrap_dataset)
 
+    benchmark = sub.add_parser(
+        "benchmark",
+        help="Run a reproducible benchmark regression gate",
+    )
+    benchmark_sub = benchmark.add_subparsers(dest="benchmark_cmd", required=True)
+    pgbench = benchmark_sub.add_parser(
+        "pgbench",
+        help="Compare a native pgbench baseline with a DriftBench SQL candidate",
+    )
+    pgbench.add_argument(
+        "--policy",
+        default=str(
+            Path(__file__).resolve().parent
+            / "benchmarking"
+            / "policies"
+            / "pgbench_ci_v1.json"
+        ),
+        help="Path to the version-controlled pgbench regression policy",
+    )
+    pgbench.add_argument(
+        "--candidate-script",
+        required=True,
+        help="Path to the DriftBench-generated pgbench SQL script",
+    )
+    pgbench.add_argument(
+        "--output-dir",
+        default="benchmark-artifacts/results",
+        help="Directory for metrics, decisions, execution order, and raw logs",
+    )
+    pgbench.add_argument("--database", required=True, help="PostgreSQL database name")
+    pgbench.add_argument("--host", default="localhost", help="PostgreSQL host")
+    pgbench.add_argument("--port", type=int, default=5432, help="PostgreSQL port")
+    pgbench.add_argument("--username", default="postgres", help="PostgreSQL user")
+    pgbench.add_argument(
+        "--pgbench-binary",
+        default="pgbench",
+        help="pgbench executable name or path",
+    )
+    pgbench.add_argument("--json", action="store_true", help="Emit one JSON document")
+    pgbench.set_defaults(func=_cmd_benchmark_pgbench)
+
+    verify = benchmark_sub.add_parser(
+        "verify",
+        help="Verify a pgbench evidence bundle without database or network access",
+    )
+    verify.add_argument("--bundle", required=True, help="Path to a pgbench result bundle")
+    verify.add_argument("--json", action="store_true", help="Emit one JSON document")
+    verify.set_defaults(func=_cmd_benchmark_verify)
+
     return parser
+
+
+def _benchmark_json_error_payload(
+    argv: List[str] | None,
+    *,
+    message: str,
+    outcome: str,
+) -> Dict[str, Any] | None:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--json" not in arguments or arguments[:1] != ["benchmark"]:
+        return None
+    subcommand = arguments[1] if len(arguments) > 1 else "unknown"
+    command = f"benchmark {subcommand}"
+    payload: Dict[str, Any] = {
+        "ok": False,
+        "outcome": outcome,
+        "command": command,
+        "error": message,
+    }
+    if subcommand == "verify":
+        payload["verified"] = False
+        if "--bundle" in arguments:
+            index = arguments.index("--bundle") + 1
+            if index < len(arguments):
+                payload["bundle"] = str(Path(arguments[index]).expanduser().resolve())
+    return payload
+
+
+def _deep_validate_json_error_payload(
+    argv: List[str] | None,
+    *,
+    internal: bool,
+) -> Dict[str, Any] | None:
+    """Return a redacted JSON error for failures before the deep command runs."""
+
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if not _deep_json_requested(arguments):
+        return None
+    issue = {
+        "severity": "error",
+        "code": "validator_internal_error" if internal else "cli_argument_invalid",
+        "field": "$" if internal else "spec_path",
+        "message": (
+            "Deep validation could not be completed."
+            if internal
+            else "The deep-validation command arguments are invalid."
+        ),
+        "hint": (
+            "Report this validator defect without attaching secrets."
+            if internal
+            else "Pass one DriftSpec path followed by --deep --json."
+        ),
+    }
+    status = "validator_error" if internal else "not_ready"
+    return {
+        "ok": False,
+        "outcome": status,
+        "command": "validate-spec",
+        # Parsing did not necessarily establish which token is the operand.
+        # Keep it redacted instead of guessing and echoing an option value.
+        "spec_path": "",
+        "pattern_id": "",
+        "type": "",
+        "declared_outputs": 0,
+        "mode": "deep",
+        "valid": False,
+        "locally_ready": False,
+        "checks": [],
+        "issues": [issue],
+        "summary": {
+            "status": status,
+            "errors": 1,
+            "warnings": 0,
+            "checks_passed": 0,
+            "checks_failed": 1,
+        },
+    }
+
+
+def _option_requested(arguments: List[str], canonical: str) -> bool:
+    """Match argparse's unambiguous long-option abbreviation behavior."""
+
+    for token in arguments:
+        if token == "--":
+            break
+        option = token.split("=", 1)[0]
+        if option.startswith("--") and len(option) > 2 and canonical.startswith(option):
+            return True
+    return False
+
+
+def _deep_json_requested(arguments: List[str]) -> bool:
+    return (
+        arguments[:1] == ["validate-spec"]
+        and _option_requested(arguments[1:], "--deep")
+        and _option_requested(arguments[1:], "--json")
+    )
+
+
+def _benchmark_json_requested(arguments: List[str]) -> bool:
+    return arguments[:1] == ["benchmark"] and _option_requested(
+        arguments[1:], "--json"
+    )
 
 
 def main(argv: List[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
     try:
+        structured_parse_error = _deep_json_requested(
+            arguments
+        ) or _benchmark_json_requested(arguments)
+        if structured_parse_error:
+            # Stock argparse writes usage to stderr before raising SystemExit.
+            # Suppress that only for commands that explicitly request a
+            # single machine-readable JSON document.
+            with contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    args = parser.parse_args(arguments)
+                except SystemExit as exc:
+                    if exc.code == 0:
+                        raise
+                    payload = _deep_validate_json_error_payload(
+                        arguments, internal=False
+                    )
+                    if payload is None:
+                        payload = _benchmark_json_error_payload(
+                            arguments,
+                            message="The command arguments are invalid.",
+                            outcome="configuration_error",
+                        )
+                    if payload is not None:
+                        _emit(payload, as_json=True)
+                    return EXIT_VALIDATION_ERROR
+        else:
+            try:
+                args = parser.parse_args(arguments)
+            except SystemExit as exc:
+                # Benchmark commands were added with an explicit exit-code
+                # contract.  Existing commands retain stock argparse
+                # SystemExit/usage behavior.
+                if arguments[:1] == ["benchmark"] and exc.code != 0:
+                    return EXIT_VALIDATION_ERROR
+                raise
         return int(args.func(args))
     except (ValueError, FileNotFoundError, TargetConfigError, BootstrapError) as exc:
-        print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
+        payload = _deep_validate_json_error_payload(argv, internal=False)
+        if payload is None:
+            payload = _benchmark_json_error_payload(
+                argv, message=str(exc), outcome="configuration_error"
+            )
+        if payload is not None:
+            _emit(payload, as_json=True)
+            return EXIT_VALIDATION_ERROR
+        console_print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
         return EXIT_VALIDATION_ERROR
     except CLIError as exc:
-        print(f"[ERROR] {exc}", file=sys.stderr)
+        payload = _deep_validate_json_error_payload(
+            argv, internal=exc.exit_code != EXIT_VALIDATION_ERROR
+        )
+        if payload is None:
+            payload = _benchmark_json_error_payload(
+                argv,
+                message=str(exc),
+                outcome=(
+                    "configuration_error"
+                    if exc.exit_code == EXIT_VALIDATION_ERROR
+                    else "execution_error"
+                ),
+            )
+        if payload is not None:
+            _emit(payload, as_json=True)
+            return exc.exit_code
+        console_print(f"[ERROR] {exc}", file=sys.stderr)
         return exc.exit_code
     except Exception as exc:
-        print(f"[ERROR] {exc}", file=sys.stderr)
+        payload = _deep_validate_json_error_payload(argv, internal=True)
+        if payload is None:
+            payload = _benchmark_json_error_payload(
+                argv, message=str(exc), outcome="execution_error"
+            )
+        if payload is not None:
+            _emit(payload, as_json=True)
+            return EXIT_RUNTIME_ERROR
+        console_print(f"[ERROR] {exc}", file=sys.stderr)
         return EXIT_RUNTIME_ERROR
 
 

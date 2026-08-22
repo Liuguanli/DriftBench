@@ -1,0 +1,1 @@
+"""pgbench test coverage."""

@@ -13,6 +13,7 @@ from driftbench.core.workload.tpch_sql_generator import (
     generate_tpch_queries_indexed_qgen,
     list_tpch_query_ids,
 )
+from driftbench.console import console_print
 
 from .base import BenchmarkArtifact, GenerationResult
 
@@ -49,16 +50,37 @@ class TPCHData(BenchmarkArtifact):
         out_dir = root / "tpch" / "data" / f"sf_{self._scale_key()}"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        source_dir: Path | None = None
+        cache_parameters: dict[str, Any] = {
+            "scale_factor": self._scale_key(),
+            "mode": self.mode,
+        }
+        if self.mode == "generate":
+            cache_parameters["dbgen_path"] = (
+                Path(self.dbgen_path).expanduser().resolve()
+                if self.dbgen_path is not None
+                else None
+            )
+        else:
+            source_dir = self._resolve_source_dir()
+            cache_parameters["source_dir"] = source_dir
+
         if not force:
-            existing = self._load_existing(out_dir / "tpch_data_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "tpch_data_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] TPC-H data (sf={self._scale_key()}) already exists at {out_dir}. Reusing.")
+                console_print(
+                    f"[driftbench] TPC-H data (sf={self._scale_key()}) already exists at {out_dir}. Reusing."
+                )
                 return existing
-        print(f"[driftbench] Generating TPC-H data (sf={self._scale_key()}) → {out_dir}")
+        console_print(
+            f"[driftbench] Generating TPC-H data (sf={self._scale_key()}) -> {out_dir}"
+        )
 
         if self.mode == "generate":
             tbls = self._run_dbgen(out_dir)
-            metadata = self._write_json(
+            metadata = self._write_manifest(
                 out_dir / "tpch_data_manifest.json",
                 {
                     "benchmark": self.benchmark,
@@ -68,23 +90,25 @@ class TPCHData(BenchmarkArtifact):
                     "source": "dbgen",
                     "files": self._paths_relative_to(root, tbls),
                 },
+                cache_parameters,
+                root=root,
             )
             return self._result(root, tbls, metadata)
 
-        src = self._resolve_source_dir()
+        assert source_dir is not None
         copied: list[Path] = []
-        for path in sorted(src.glob("*.tbl")):
+        for path in sorted(source_dir.glob("*.tbl")):
             target = out_dir / path.name
             shutil.copy2(path, target)
             copied.append(target)
 
         if not copied:
             raise FileNotFoundError(
-                f"No .tbl files found in source_dir={src}. "
+                f"No .tbl files found in source_dir={source_dir}. "
                 "Provide a TPC-H data directory that contains table .tbl files."
             )
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpch_data_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -94,6 +118,8 @@ class TPCHData(BenchmarkArtifact):
                 "source": "explicit_source_dir" if self.source_dir is not None else "default_ref_data",
                 "files": self._paths_relative_to(root, copied),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, copied, metadata)
 
@@ -107,8 +133,8 @@ class TPCHData(BenchmarkArtifact):
         """Clone and build tpch-dbgen into _DBGEN_CACHE_DIR if not already cached."""
         if _DBGEN_CACHE_BINARY.exists():
             return _DBGEN_CACHE_BINARY
-        print(
-            f"[driftbench] dbgen not found — cloning and building tpch-dbgen "
+        console_print(
+            f"[driftbench] dbgen not found - cloning and building tpch-dbgen "
             f"(one-time setup, cached at {_DBGEN_CACHE_DIR})..."
         )
         _DBGEN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -119,10 +145,10 @@ class TPCHData(BenchmarkArtifact):
         subprocess.run(["make"], cwd=str(_DBGEN_CACHE_DIR), check=True)
         if not _DBGEN_CACHE_BINARY.exists():
             raise RuntimeError(
-                f"dbgen build failed — binary not found at {_DBGEN_CACHE_BINARY}. "
+                f"dbgen build failed - binary not found at {_DBGEN_CACHE_BINARY}. "
                 "Ensure gcc and make are installed."
             )
-        print(f"[driftbench] dbgen ready at {_DBGEN_CACHE_BINARY}")
+        console_print(f"[driftbench] dbgen ready at {_DBGEN_CACHE_BINARY}")
         return _DBGEN_CACHE_BINARY
 
     def _run_dbgen(self, out_dir: Path) -> list[Path]:
@@ -168,10 +194,10 @@ class TPCHData(BenchmarkArtifact):
             shutil.copy2(dists_src, tables_dir / "dists.dss")
 
         sf = self._scale_key()
-        print(
+        console_print(
             f"[driftbench] Running dbgen -s {sf} in {tables_dir}\n"
             f"[driftbench] This generates all 8 TPC-H tables. "
-            f"sf={sf} ≈ {sf} GB — may take a while for large scale factors."
+            f"sf={sf} ~= {sf} GB - may take a while for large scale factors."
         )
         subprocess.run(
             [str(dbgen), "-vf", "-s", sf],
@@ -185,7 +211,7 @@ class TPCHData(BenchmarkArtifact):
                 f"dbgen ran successfully but no .tbl files were found in {tables_dir}. "
                 "Check dbgen output above for errors."
             )
-        print(f"[driftbench] dbgen complete — {len(tbls)} tables in {tables_dir}")
+        console_print(f"[driftbench] dbgen complete - {len(tbls)} tables in {tables_dir}")
         return tbls
 
     def _resolve_source_dir(self) -> Path:
@@ -228,28 +254,52 @@ class TPCHQueries(BenchmarkArtifact):
     artifact_type: str = "queries"
 
     def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
+        template_dir = self._resolve_template_dir()
+        query_ids = self._resolve_query_ids(template_dir)
+        cache_parameters: dict[str, Any] = {
+            "query_ids": query_ids,
+            "template_dir": template_dir,
+            "mode": self.mode,
+            "queries_per_template": self.queries_per_template,
+            "seed": self.seed,
+            "shuffle": self.shuffle,
+        }
+        dist_file: Path | None = None
+        if self.mode == "qgen":
+            dist_file = self._resolve_dist_file()
+            cache_parameters.update(
+                {
+                    "qgen_dist_file": dist_file,
+                    "scale": self.scale,
+                }
+            )
+        elif self.mode == "custom":
+            cache_parameters["param_specs"] = self.param_specs or {}
+        else:
+            raise ValueError("mode must be one of: 'qgen', 'custom'")
+
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpch" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         if not force:
-            existing = self._load_existing(out_dir / "tpch_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "tpch_queries_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] TPC-H queries already exist at {out_dir}. Reusing.")
+                console_print(f"[driftbench] TPC-H queries already exist at {out_dir}. Reusing.")
                 return existing
-        print(f"[driftbench] Generating TPC-H queries → {out_dir}")
-
-        template_dir = self._resolve_template_dir()
-        query_ids = self._resolve_query_ids(template_dir)
+        console_print(f"[driftbench] Generating TPC-H queries -> {out_dir}")
 
         if self.mode == "qgen":
+            assert dist_file is not None
             entries = generate_tpch_queries_indexed_qgen(
                 template_dir=str(template_dir),
                 query_ids=query_ids,
                 queries_per_template=self.queries_per_template,
                 seed=self.seed,
                 shuffle=self.shuffle,
-                dist_file=str(self._resolve_dist_file()),
+                dist_file=str(dist_file),
                 scale=self.scale,
             )
         elif self.mode == "custom":
@@ -261,12 +311,9 @@ class TPCHQueries(BenchmarkArtifact):
                 seed=self.seed,
                 shuffle=self.shuffle,
             )
-        else:
-            raise ValueError("mode must be one of: 'qgen', 'custom'")
-
         sql_file = self._write_text(out_dir / "tpch_queries.sql", self._render_sql_bundle(entries))
         csv_file = self._write_entries_csv(out_dir / "tpch_queries.csv", entries)
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "tpch_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -280,6 +327,8 @@ class TPCHQueries(BenchmarkArtifact):
                 "count": len(entries),
                 "files": self._paths_relative_to(root, [sql_file, csv_file]),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, [sql_file, csv_file], metadata)
 
@@ -301,7 +350,11 @@ class TPCHQueries(BenchmarkArtifact):
     def _resolve_query_ids(self, template_dir: Path) -> list[str]:
         if self.query_ids is None:
             return list_tpch_query_ids(str(template_dir))
-        return [str(qid) for qid in self.query_ids]
+        resolved = [str(qid) for qid in self.query_ids]
+        # Preserve one-shot iterables for repeated generate() calls on the
+        # same adapter instance and ensure fingerprinting consumes them once.
+        self.query_ids = tuple(resolved)
+        return resolved
 
     def _resolve_dist_file(self) -> Path:
         if self.qgen_dist_file is not None:

@@ -44,6 +44,11 @@ dependencies = [
     "psycopg2-binary>=2.9",
 ]
 
+[project.optional-dependencies]
+test = [
+    "jsonschema>=4.20",
+]
+
 [project.urls]
 Homepage = "https://github.com/Liuguanli/DriftBench"
 Repository = "https://github.com/Liuguanli/DriftBench"

@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from driftbench.console import console_print
+
 from .base import BenchmarkArtifact, GenerationResult
 
 
@@ -95,9 +97,7 @@ END;
 -- pgbench select-only transaction (-b select-only)
 \\set aid random(1, 100000 * :scale)
 
-BEGIN;
 SELECT abalance FROM pgbench_accounts WHERE aid = :aid;
-END;
 """,
 }
 
@@ -121,19 +121,25 @@ class PgBenchData(BenchmarkArtifact):
         out_dir = root / "pgbench" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        sf = self._sf()
+        cache_parameters = {"scale_factor": sf}
+
         if not force:
-            existing = self._load_existing(out_dir / "pgbench_data_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "pgbench_data_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] pgbench data (sf={self._sf()}) already exists at {out_dir}. Reusing.")
+                console_print(
+                    f"[driftbench] pgbench data (sf={sf}) already exists at {out_dir}. Reusing."
+                )
                 return existing
-        print(f"[driftbench] Generating pgbench data (sf={self._sf()}) → {out_dir}")
+        console_print(f"[driftbench] Generating pgbench data (sf={sf}) -> {out_dir}")
 
         ddl = self._write_text(out_dir / "pgbench_schema.sql", _PGBENCH_DDL)
 
         files = self._generate_synth(out_dir)
         files.insert(0, ddl)
-        sf = self._sf()
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "pgbench_data_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -148,6 +154,8 @@ class PgBenchData(BenchmarkArtifact):
                 "files": self._paths_relative_to(root, files),
                 "note": "Synthetic TPC-B-like data. pgbench_history starts empty and grows during execution.",
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, files, metadata)
 
@@ -223,12 +231,25 @@ class PgBenchQueries(BenchmarkArtifact):
         out_dir = root / "pgbench" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        cache_parameters = {
+            "workload": self.workload,
+            "clients": self.clients,
+            "duration": self.duration,
+            "rate": self.rate if self.rate > 0 else 0,
+        }
+
         if not force:
-            existing = self._load_existing(out_dir / "pgbench_queries_manifest.json", root)
+            existing = self._load_existing(
+                out_dir / "pgbench_queries_manifest.json", root, cache_parameters
+            )
             if existing is not None:
-                print(f"[driftbench] pgbench queries ({self.workload}) already exist at {out_dir}. Reusing.")
+                console_print(
+                    f"[driftbench] pgbench queries ({self.workload}) already exist at {out_dir}. Reusing."
+                )
                 return existing
-        print(f"[driftbench] Generating pgbench queries (workload={self.workload}) → {out_dir}")
+        console_print(
+            f"[driftbench] Generating pgbench queries (workload={self.workload}) -> {out_dir}"
+        )
 
         sql_file = self._write_text(
             out_dir / f"pgbench_{self.workload}.sql",
@@ -237,7 +258,7 @@ class PgBenchQueries(BenchmarkArtifact):
         run_script = self._write_text(out_dir / "run_pgbench.sh", self._run_script())
         run_script.chmod(0o755)
 
-        metadata = self._write_json(
+        metadata = self._write_manifest(
             out_dir / "pgbench_queries_manifest.json",
             {
                 "benchmark": self.benchmark,
@@ -253,6 +274,8 @@ class PgBenchQueries(BenchmarkArtifact):
                     f"-f {sql_file.name} <dbname>"
                 ),
             },
+            cache_parameters,
+            root=root,
         )
         return self._result(root, [sql_file, run_script], metadata)
 
