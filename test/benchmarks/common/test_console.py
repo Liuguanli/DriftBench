@@ -12,7 +12,8 @@ from ..helpers import REPO_ROOT, ReliabilityTestMixin
 def _case_cp1252_console_handles_unicode_paths_for_generate_reuse_and_force(
     tmp_path: Path,
 ) -> None:
-    output_dir = tmp_path / "benchmark_路径"
+    output_dir = tmp_path / "benchmark_\u8def\u5f84"
+    assert tuple(map(ord, output_dir.name[-2:])) == (0x8DEF, 0x5F84)
     code = (
         "import sys; "
         "from driftbench.data.ycsb import YCSBQueries; "
