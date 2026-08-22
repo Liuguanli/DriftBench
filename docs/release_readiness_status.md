@@ -23,9 +23,9 @@ PyPI publication has occurred.
    - wheel/sdist tests verified exactly 40 specs, 40 manifests, and 40 PNGs,
      while excluding runtime `visualization/data` and `visualization/cache`.
 5. Final integrated local gate:
-   - `python -m unittest discover -s test -p 'test_*.py'` ran 255 tests and
-     passed with 10 expected skips: five opt-in real-PostgreSQL tests and five
-     legacy manual placeholders;
+   - `python -m unittest discover -s test -p 'test_*.py'` ran 258 tests:
+     248 passed and 10 were expected skips (five opt-in real-PostgreSQL tests
+     and five legacy manual placeholders);
    - `python -m unittest discover -s visualization/tests -p 'test_*.py'` ran
      59 tests and passed;
    - `python -m build` produced `driftbench_db-0.1.0b10` wheel and sdist;
@@ -44,9 +44,18 @@ PyPI publication has occurred.
   successful `CI` and `Benchmark Regression` runs for that exact SHA, rechecks
   the source ref, and pushes only the verified commit.
 
-## Remaining remote gate
+## Exact-SHA remote evidence
 
-The exact final commit must be pushed before remote evidence can exist. Release
-progression remains blocked until both required workflows succeed on that SHA.
-No release branch, main-branch merge, tag, or package publication is authorized
-from this development branch.
+On 2026-08-22, all five required workflows completed successfully for exact
+source SHA `6808c09e4f78d44050c351e5bf8c9ab24cc760c0`:
+
+- `CI`: run `32574718098`;
+- `Benchmark Regression`: run `32574718144`;
+- `CLI Contract`: run `32574718140`;
+- `Schema and Spec Validation`: run `32574718110`;
+- `Content Safety Check`: run `32574718095`.
+
+This evidence applies only to that exact SHA. This documentation correction
+will produce a new final candidate SHA, so all five required workflows must be
+run successfully again against that new exact SHA before release progression.
+There is still no release branch, tag, PyPI publication, or merge to `main`.
