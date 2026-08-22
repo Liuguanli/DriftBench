@@ -22,7 +22,11 @@ class DistributionStrategy:
 @register_strategy("default")
 class KDEStrategy(DistributionStrategy):
     def sample(self, col_data, n, config):
-        # col_data = col_data.dropna()
+        col_data = col_data.dropna()
+        if col_data.empty:
+            raise ValueError("KDE sampling requires at least one non-null value.")
+        if len(col_data) < 2 or col_data.nunique() == 1:
+            return np.full(n, col_data.iloc[0])
         kde = gaussian_kde(col_data)
         samples = kde.resample(n).flatten()
         return np.clip(samples, col_data.min(), col_data.max())

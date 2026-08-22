@@ -80,9 +80,10 @@ def _load_filter_modules(modules: Any) -> None:
 
 def _run_single_table(local_path: str, schema: Dict[str, Any], base_table: str,
                       drifts: list[Dict[str, Any]], filter_registry_modules: Any = None,
-                      seed: int = 42) -> None:
+                      seed: int = 42) -> list[Dict[str, Any]]:
     gen = SingleTableDriftGenerator(local_path, schema, base_table=base_table, seed=seed)
     _load_filter_modules(filter_registry_modules)
+    outputs: list[Dict[str, Any]] = []
     for drift in drifts:
         _load_filter_modules(drift.get("filter_registry_modules") or drift.get("filter_func_module"))
         drift_type = drift.get("drift_type")
@@ -93,7 +94,15 @@ def _run_single_table(local_path: str, schema: Dict[str, Any], base_table: str,
         kwargs = {k: v for k, v in drift.items() if k not in ("name", "drift_type", "output_path")}
         df = gen.apply_drift(drift_type=drift_type, **kwargs)
         df.to_csv(out_path, index=False)
+        outputs.append({
+            "table": base_table,
+            "name": drift.get("name", drift_type),
+            "drift_type": drift_type,
+            "path": os.fspath(out_path),
+            "rows": int(len(df)),
+        })
         print(f"[DATA DRIFT OK] {drift.get('name', drift_type)} -> {out_path}")
+    return outputs
 
 _DDL_CACHE: Dict[str, Dict[str, list[str]]] = {}
 
@@ -180,7 +189,7 @@ def _load_table_frame(table_cfg: Dict[str, Any]) -> pd.DataFrame:
     return pd.read_csv(path)
 
 @register(family="data", category="drift", subtype="single_table")
-def handle_data_single_table(spec: Dict[str, Any]) -> None:
+def handle_data_single_table(spec: Dict[str, Any]) -> Dict[str, Any]:
     ds = spec.get("data_source", {}) or {}
     variables = spec.get("variables", {}) or {}
     filter_registry_modules = spec.get("filter_registry_modules") or variables.get("filter_registry_modules")
@@ -196,12 +205,18 @@ def handle_data_single_table(spec: Dict[str, Any]) -> None:
         "schema_extractor": ds.get("schema_extractor") or {},
     }
     schema = _load_or_extract_schema_for_table(ds, table_cfg, spec.get("pattern_id", "data-drift"))
-    _run_single_table(path, schema, base_table, variables.get("drifts", []),
-                      filter_registry_modules=filter_registry_modules,
-                      seed=int(spec.get("seed", 42)))
+    outputs = _run_single_table(path, schema, base_table, variables.get("drifts", []),
+                                filter_registry_modules=filter_registry_modules,
+                                seed=int(spec.get("seed", 42)))
+    return {
+        "family": "data",
+        "category": "drift",
+        "subtype": "single_table",
+        "outputs": outputs,
+    }
 
 @register(family="data", category="drift", subtype="multi_table")
-def handle_data_multi_table(spec: Dict[str, Any]) -> None:
+def handle_data_multi_table(spec: Dict[str, Any]) -> Dict[str, Any]:
     ds = spec.get("data_source", {}) or {}
     variables = spec.get("variables", {}) or {}
     filter_registry_modules = spec.get("filter_registry_modules") or variables.get("filter_registry_modules")
@@ -238,16 +253,29 @@ def handle_data_multi_table(spec: Dict[str, Any]) -> None:
         gen.apply_steps(drift_steps)
         if variables.get("validate_integrity", True):
             gen.validate_integrity()
+        outputs: list[Dict[str, Any]] = []
         for name, df in gen.tables.items():
             out_path = output_paths.get(name)
             if not out_path:
                 continue
             _ensure_dir(out_path)
             df.to_csv(out_path, index=False)
+            outputs.append({
+                "table": name,
+                "path": os.fspath(out_path),
+                "rows": int(len(df)),
+            })
             print(f"[DATA DRIFT OK] {name} -> {out_path}")
-        return
+        return {
+            "family": "data",
+            "category": "drift",
+            "subtype": "multi_table",
+            "integrity_validated": bool(variables.get("validate_integrity", True)),
+            "outputs": outputs,
+        }
 
     pattern_id = spec.get("pattern_id", "data-drift")
+    outputs: list[Dict[str, Any]] = []
     for tcfg in tables:
         name = tcfg.get("name") or tcfg.get("base_table") or "table"
         path = tcfg.get("path")
@@ -255,6 +283,18 @@ def handle_data_multi_table(spec: Dict[str, Any]) -> None:
         if not base_table: raise ValueError(f"Table '{name}' requires 'base_table'.")
         if not path: raise ValueError(f"Table '{name}' requires local 'path' to run drifts.")
         schema = _load_or_extract_schema_for_table(ds, tcfg, pattern_id)
-        _run_single_table(path, schema, base_table, tcfg.get("drifts", []),
-                          filter_registry_modules=filter_registry_modules,
-                          seed=int(spec.get("seed", 42)))
+        outputs.extend(_run_single_table(
+            path,
+            schema,
+            base_table,
+            tcfg.get("drifts", []),
+            filter_registry_modules=filter_registry_modules,
+            seed=int(spec.get("seed", 42)),
+        ))
+    return {
+        "family": "data",
+        "category": "drift",
+        "subtype": "multi_table",
+        "integrity_validated": False,
+        "outputs": outputs,
+    }

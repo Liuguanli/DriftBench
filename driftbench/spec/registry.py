@@ -1,7 +1,7 @@
 # driftbench/spec/registry.py
-from typing import Callable, Dict, Tuple, Any
+from typing import Any, Callable, Dict, Tuple
 
-Handler = Callable[[dict], None]
+Handler = Callable[..., Any]
 _REGISTRY: Dict[Tuple[str, str, str], Handler] = {}
 
 def register(family: str, category: str, subtype: str):

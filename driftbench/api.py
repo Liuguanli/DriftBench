@@ -10,9 +10,17 @@ from typing import Any, Dict, Tuple
 
 from driftbench.core.data.filter_registry import get_filter, register_filter
 from driftbench.core.schema.factory import get_schema_extractor
+from driftbench.query_drift import (
+    QueryTemplate,
+    QueryTemplateMixSpec,
+    QueryWorkloadMixResult,
+    apply_query_workload_mix_drift,
+    execute_query_template_mix_spec,
+    parse_query_template_mix_spec,
+)
 from driftbench.spec.core import (
     load_spec,
-    run_all as run_spec,
+    run_spec,
     validate_spec,
 )
 from driftbench.spec.trace_spec import trace_to_spec
@@ -48,10 +56,16 @@ def load_and_validate_spec(spec_path: str) -> Tuple[Dict[str, Any], Dict[str, st
 
 
 __all__ = [
+    "QueryTemplate",
+    "QueryTemplateMixSpec",
+    "QueryWorkloadMixResult",
+    "apply_query_workload_mix_drift",
+    "execute_query_template_mix_spec",
     "get_filter",
     "get_schema_extractor",
     "load_and_validate_spec",
     "load_spec",
+    "parse_query_template_mix_spec",
     "register_filter",
     "run_spec",
     "run_spec_and_return_summary",
