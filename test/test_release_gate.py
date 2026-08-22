@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import builtins
 import importlib.util
 import json
 import pathlib
 import sys
 import tempfile
+import types
 import unittest
+from unittest import mock
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -18,6 +21,33 @@ assert SPEC is not None and SPEC.loader is not None
 release_gate = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = release_gate
 SPEC.loader.exec_module(release_gate)
+
+
+def _load_without_stdlib_tomllib():
+    """Load the gate as Python 3.10 would, with a controlled tomli fallback."""
+    fallback = types.ModuleType("tomli")
+    fallback.loads = release_gate.tomllib.loads
+    fallback.TOMLDecodeError = release_gate.tomllib.TOMLDecodeError
+    real_import = builtins.__import__
+
+    def controlled_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "tomllib":
+            raise ModuleNotFoundError("No module named 'tomllib'", name="tomllib")
+        if name == "tomli":
+            return fallback
+        return real_import(name, globals, locals, fromlist, level)
+
+    module_name = "driftbench_release_gate_tomli_fallback"
+    spec = importlib.util.spec_from_file_location(module_name, SCRIPT_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        with mock.patch("builtins.__import__", side_effect=controlled_import):
+            spec.loader.exec_module(module)
+    finally:
+        sys.modules.pop(module_name, None)
+    return module, fallback
 
 
 def _successful_runs(source_sha: str) -> dict:
@@ -35,6 +65,22 @@ def _successful_runs(source_sha: str) -> dict:
 
 
 class ReleaseMetadataGateTests(unittest.TestCase):
+    def test_runtime_selects_the_version_appropriate_toml_parser(self) -> None:
+        expected = "tomllib" if sys.version_info >= (3, 11) else "tomli"
+        self.assertEqual(release_gate.tomllib.__name__, expected)
+
+    def test_missing_stdlib_tomllib_uses_tomli_and_fails_closed(self) -> None:
+        fallback_gate, fallback = _load_without_stdlib_tomllib()
+        self.assertIs(fallback_gate.tomllib, fallback)
+        with self.assertRaisesRegex(
+            fallback_gate.ReleaseGateError, "pyproject.toml is invalid"
+        ):
+            fallback_gate.validate_release_metadata(
+                expected_tag="v0.1.0b10",
+                pyproject_text="[project\n",
+                changelog_text="",
+            )
+
     def test_b10_repository_metadata_passes_exact_release_gate(self) -> None:
         result = release_gate.validate_release_metadata(
             expected_tag="v0.1.0b10",

@@ -8,9 +8,13 @@ import datetime as dt
 import json
 import re
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any, Mapping
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised by the Python 3.10 job
+    import tomli as tomllib
 
 
 REQUIRED_WORKFLOWS = (
