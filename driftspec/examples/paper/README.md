@@ -8,6 +8,8 @@ For richer executable TPC-H workflows, use the root-level
 [data drift](../paper_tpch_data_drift.yaml) and
 [query-workload drift](../paper_tpch_query_workload_drift.yaml) examples. Their
 bindings and offline reproduction steps are in the [examples guide](../README.md).
+The canonical [provenance and execution boundaries](../../../docs/benchmark_reference.md#provenance-conformance-and-execution-boundaries)
+define which artifacts are synthetic, how YAML is executed, and what the tests prove.
 
 ## Traceability
 
@@ -43,6 +45,16 @@ bindings and offline reproduction steps are in the [examples guide](../README.md
 - Manifest: [generation evidence](../../../visualization/manifests/data/job/post_2000_title_deletion.json)
 - Gallery entry: [JOB / `post_2000_title_deletion`](../../../visualization/GALLERY.md#job-job)
 
+Here "FK-safe" is conditional and local to the YAML model. The example loads 11
+tables, declares 7 single-column relationships, and uses `delete_keys` with seed 42
+to select the rounded 40% of unique non-null `title.id` values whose
+`production_year >= 2001`. It requests direct `drop` propagation only along the 4
+declared incoming `title` relationships and then checks all 7 declared relationships
+for non-null FK orphans. It does not discover a database schema, validate composite
+FKs or other constraints, protect omitted tables or edges, or recursively cascade
+through relationships. Single-table `selective_deletion` is a different operation
+and has no FK propagation guarantee.
+
 ### Query template mix
 
 - Paper spec: [`query_template_mix.yaml`](query_template_mix.yaml)
@@ -50,6 +62,12 @@ bindings and offline reproduction steps are in the [examples guide](../README.md
 - Figure: [workload comparison](../../../visualization/figures/query/tpch/complexity_mix_shift.png)
 - Manifest: [generation evidence](../../../visualization/manifests/query/tpch/complexity_mix_shift.json)
 - Gallery entry: [TPC-H / `complexity_mix_shift`](../../../visualization/GALLERY.md#tpc-h-tpch)
+
+In this YAML, `data_source.kind: benchmark_adapter` records the TPC-H identity for
+preflight/provenance; `run_spec()` does not invoke the TPC-H adapter or generate a
+dataset. `variables.baseline` is only the baseline template-sampling distribution.
+It does not create benchmark data or a measured performance baseline, and it does
+not automatically create a separate `baseline.json`.
 
 ## Validate and reproduce
 

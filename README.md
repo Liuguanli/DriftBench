@@ -41,12 +41,13 @@ python -c "from driftbench.data.ycsb import data; print(data(record_count=10).ge
 ## Benchmark Adapters (`driftbench.data`)
 
 Nine adapters generate local benchmark artifacts. Most synthetic generators need no
-external tool; TPC-H `mode="generate"` builds `dbgen`, pgbench regression runs need
-PostgreSQL/pgbench, and BenchBase generates configuration rather than a local dataset.
+external tool; TPC-H `mode="generate"` may auto-build an unpinned upstream `dbgen`,
+pgbench regression runs need PostgreSQL/pgbench, and BenchBase generates configuration
+rather than a local dataset.
 
 | Adapter | Workload type | Data format | Tables | Queries |
 |---------|--------------|-------------|--------|---------|
-| `tpch` | OLAP | `.tbl` (pipe-delimited) | 8 | 22 SQL via qgen |
+| `tpch` | OLAP | `.tbl` (pipe-delimited) | 8 | 22 Python qgen-style SQL templates |
 | `tpcds` | OLAP / Decision support | `.dat` (pipe-delimited) | 5 synthetic | 99 query IDs |
 | `tpcc` | OLTP | `.csv` | 9 | 5 transaction types |
 | `tpcc_skew` | OLTP + hotspot | `.csv` + weight manifest | 9 | 5 transaction types |
@@ -59,6 +60,13 @@ PostgreSQL/pgbench, and BenchBase generates configuration rather than a local da
 Related benchmark docs: [complete adapter reference](docs/benchmark_reference.md),
 [target orchestration contract](docs/benchmark_target_contract.md), and
 [hands-on testing guide](docs/benchmark_testing_guide.html).
+
+Adapter names describe modeled workload families, not official benchmark conformance.
+Most outputs are DriftBench synthetic fixtures, and the TPC-H auto-build neither pins the
+upstream revision nor records the `dbgen` binary hash. The canonical
+[provenance, conformance, YAML-execution, and live-database boundaries](docs/benchmark_reference.md#provenance-conformance-and-execution-boundaries)
+explain what is generated, what `benchmark_adapter` means inside a DriftSpec, and which
+claims the artifacts do and do not support.
 
 ### Generate data and queries
 
@@ -148,8 +156,11 @@ manifest and every managed file has the recorded path, byte count, and SHA-256. 
 manifests rebuild once. Pass `force=True` to regenerate unconditionally; if an external
 `source_dir` changes in place, use `force=True` because source contents are not checksummed.
 
-### Real pgbench regression gate
+### Only real-database regression gate: pgbench
 
+This is currently DriftBench's only no-mock live-database regression gate. It covers
+PostgreSQL 16 `select-only`; the other adapter and example tests validate artifacts and
+do not establish database execution, performance, or benchmark conformance.
 `driftbench benchmark pgbench` runs a native `pgbench -b select-only` baseline and a
 DriftBench-generated `select_only` candidate against the same PostgreSQL instance.
 Each of three paired rounds runs an isolated warmup and measurement, retaining raw

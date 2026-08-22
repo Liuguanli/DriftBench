@@ -96,6 +96,99 @@ class VersionConsistencyTests(unittest.TestCase):
         for example in json_examples:
             self.assertIsInstance(json.loads(example), dict)
 
+    def test_generation_and_conformance_boundaries_are_explicit(self) -> None:
+        root = REPO_ROOT
+        readme = (root / "README.md").read_text(encoding="utf-8")
+        reference = (root / "docs" / "benchmark_reference.md").read_text(
+            encoding="utf-8"
+        )
+        examples_guide = (
+            root / "driftspec" / "examples" / "README.md"
+        ).read_text(encoding="utf-8")
+        paper_guide = (
+            root / "driftspec" / "examples" / "paper" / "README.md"
+        ).read_text(encoding="utf-8")
+
+        canonical_anchor = (
+            "benchmark_reference.md#provenance-conformance-and-execution-boundaries"
+        )
+        self.assertIn("## Provenance, Conformance, and Execution Boundaries", reference)
+        for document, text in (
+            ("README", readme),
+            ("examples guide", examples_guide),
+            ("paper guide", paper_guide),
+        ):
+            with self.subTest(canonical_boundary_link=document):
+                self.assertIn(canonical_anchor, text)
+
+        normalized = re.sub(r"\s+", " ", reference).lower()
+        for expected in (
+            "synthetic fixtures and workload artifacts",
+            "not official, audited, or benchmark-spec-compliant implementations",
+            "must not be reported as official tpc, ycsb, job, dsb, or benchbase scores",
+            "explicit `dbgen_path`, `path`, the repository-local",
+            "repository-local",
+            "user cache",
+            "`electrum/tpch-dbgen`",
+            "unpinned revision",
+            "`dbgen` binary sha-256",
+            "python qgen-style",
+            "does not execute the native or official `qgen` binary",
+            "`yaml.safe_load()`",
+            "exact scalar-string `${name}` bindings, including mapping keys",
+            "`migrate_spec()`",
+            "shallow `validate_spec()`",
+            "python `random` and numpy",
+            "(family, category, subtype)",
+            "`runtime_inputs`",
+            "postgresql schema sources",
+            "configured `output_path`",
+            "current working directory, not from the yaml file's directory",
+            "`benchmark_adapter` does not generate data",
+            "from driftbench.data.ycsb import data; data(scale_factor=1).generate(output_dir=\"artifacts\")`",
+            "does not create a benchmark dataset or a performance baseline",
+            "does not automatically create a separate `baseline.json`",
+            "11 tables",
+            "7 single-column relationships",
+            "4 declared relationships",
+            "declared relationships and direct propagation",
+            "composite fks",
+            "recursive cascade propagation",
+            "only real database gate",
+            "postgresql 16 `select-only`",
+            "three paired rounds",
+            "five opt-in integration tests",
+        ):
+            with self.subTest(canonical_fact=expected):
+                self.assertIn(expected, normalized)
+
+        normalized_examples = re.sub(r"\s+", " ", examples_guide).lower()
+        for expected in (
+            "`benchmark_adapter` does not generate data",
+            "it does not create benchmark tables or measure a performance baseline",
+            "does not automatically create a separate `baseline.json`",
+            "does not accept placeholder bindings",
+            "current working directory, not the yaml file's directory",
+            "from driftbench.data.ycsb import data",
+        ):
+            self.assertIn(expected, normalized_examples)
+
+        normalized_paper = re.sub(r"\s+", " ", paper_guide).lower()
+        for expected in (
+            "7 single-column relationships",
+            "4 declared incoming `title` relationships",
+            "does not discover a database schema",
+            "`run_spec()` does not invoke the tpc-h adapter",
+            "it does not create benchmark data or a measured performance baseline",
+            "does not automatically create a separate `baseline.json`",
+        ):
+            self.assertIn(expected, normalized_paper)
+
+        self.assertNotIn("22 sql via qgen", readme.lower())
+        self.assertNotIn("generates parameterized sql via qgen", reference.lower())
+        self.assertNotIn("driftbench.data.<benchmark>.generate()", reference)
+        self.assertNotIn("driftbench.data.<benchmark>.generate()", examples_guide)
+
 
 if __name__ == "__main__":
     unittest.main()

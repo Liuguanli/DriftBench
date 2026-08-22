@@ -8,12 +8,105 @@ Related docs: [README and quickstart](../README.md),
 
 ---
 
+## Provenance, Conformance, and Execution Boundaries
+
+Unless a section explicitly says otherwise, these adapters create DriftBench
+synthetic fixtures and workload artifacts for testing DriftBench itself. They are
+not official, audited, or benchmark-spec-compliant implementations, and their
+outputs must not be reported as official TPC, YCSB, JOB, DSB, or BenchBase scores.
+The benchmark names identify the modeled workload family; they do not establish
+conformance.
+
+### TPC-H data and query provenance
+
+TPC-H data and queries use separate generation paths:
+
+- Data `mode="copy"` copies existing `.tbl` files. Data `mode="generate"` runs a
+  `dbgen` executable, resolving it in this order: explicit `dbgen_path`, `PATH`,
+  the repository-local TPC-H build, the DriftBench user cache, then a one-time
+  clone and `make` of `electrum/tpch-dbgen` in that cache.
+- The automatic clone follows an **unpinned revision**: DriftBench does not select
+  a commit or tag. The manifest hashes generated table files, but it records
+  neither the upstream revision nor the `dbgen` binary SHA-256. Consequently,
+  auto-built output is not evidence of a fixed toolchain, cross-machine
+  byte-for-byte reproducibility, or official TPC-H conformance.
+- Query `mode="qgen"` is a DriftBench **Python qgen-style** parameter generator.
+  It reads SQL templates and `dists.dss`, samples parameters with Python, and
+  renders SQL. It does not execute the native or official `qgen` binary.
+
+### How a DriftSpec YAML becomes files
+
+The public `driftbench.api.run_spec()` path performs this sequence:
+
+1. Open the YAML as UTF-8 and parse it with `yaml.safe_load()`.
+2. Recursively replace exact scalar-string `${NAME}` bindings, including mapping
+   keys. Partial string interpolation is not supported; missing and unused
+   bindings fail.
+3. Run `migrate_spec()`, then the current shallow `validate_spec()` check for the
+   required `type` and `variables` fields.
+4. Seed Python `random` and NumPy from the top-level `seed`, while saving and later
+   restoring their process-global states.
+5. Resolve the registered handler from the `(family, category, subtype)` type
+   triple and invoke it, optionally with explicit `runtime_inputs` when that
+   handler supports them.
+6. The handler reads explicitly configured inputs—local files and, for supported
+   handlers, PostgreSQL schema sources—or creates an in-memory sample. It applies
+   its Python/Pandas/NumPy transformation and writes the configured `output_path`
+   or output paths, commonly as CSV or JSON. Relative paths are resolved from the
+   process's current working directory, not from the YAML file's directory.
+
+This is distinct from benchmark baseline generation. In deep preflight,
+`data_source.kind: benchmark_adapter` identifies a benchmark and checks whether
+its adapter module can be imported. At runtime, **`benchmark_adapter` does not
+generate data**, and `run_spec()` does not call the adapter's `.generate()` method.
+Generate baseline files separately through an adapter factory—for example,
+`from driftbench.data.ycsb import data; data(scale_factor=1).generate(output_dir="artifacts")`—or
+bind existing files before running a data DriftSpec. Similarly,
+`variables.baseline` in a workload `template_mix` spec is only a comparison
+distribution from which the handler samples; it does not create a benchmark
+dataset or a performance baseline, and it does not automatically create a separate
+`baseline.json`.
+
+### Conditional FK-safety
+
+The paper JOB deletion example is FK-safe only within its explicitly modeled
+multi-table operation. It loads 11 tables, declares 7 single-column relationships,
+uses seed 42 to select the rounded 40% of unique non-null `title.id` candidates
+whose `production_year >= 2001`, and requests direct `drop` propagation along the
+4 declared relationships that point into `title`. With
+`validate_integrity: true`, the final check covers all 7 declared relationships
+and verifies that non-null fact-table FK values occur in the declared dimension
+PK column.
+
+That guarantee requires all relevant tables to be loaded and every affected
+direct incoming edge to appear in both `variables.relationships` and the step's
+`propagate` list with `drop` or `reassign`. It covers only declared relationships
+and direct propagation. It does not discover a database schema, enforce other
+database constraints, support composite FKs, find omitted tables or edges, or
+perform recursive cascade propagation. Single-table `selective_deletion` is a
+different operation and provides no FK cascade guarantee.
+
+### Real-database coverage
+
+The current **only real database gate** with no mocks is PostgreSQL 16
+`select-only`: `pgbench -i -s 1` initializes the database, native
+`pgbench -b select-only` is the baseline, and a DriftBench-generated script is the
+candidate. Three paired rounds each run warmup plus measurement, and five opt-in
+integration tests are forced on by the Benchmark Regression workflow. All other
+adapter, Visualization, paper-example, and DriftSpec tests validate generated
+files, manifests, handler behavior, distributions, or declared integrity only;
+they do not prove database loadability, successful SQL execution, performance,
+or benchmark conformance. BenchBase produces configuration and driver scripts,
+not a local dataset or a DriftBench-run live-database gate.
+
+---
+
 ## Quick Selection Guide
 
 | Goal | Recommended Benchmark |
 |------|-----------------------|
-| Standard OLAP / query optimizer research | TPC-H or TPC-DS |
-| Standard OLTP throughput | TPC-C |
+| Synthetic OLAP / query optimizer fixtures | TPC-H or TPC-DS |
+| Synthetic OLTP transaction fixtures | TPC-C |
 | OLTP with hot-spot / skew drift | TPC-C Skew |
 | Join-order sensitivity / cardinality estimation | JOB |
 | Key-value / NoSQL workloads | YCSB |
@@ -55,7 +148,7 @@ Related docs: [README and quickstart](../README.md),
 | Forecasting | Q15, Q19, Q21 |
 
 ### Modes
-- `mode="qgen"` — generates parameterized SQL via qgen (packaged template dir)
+- `mode="qgen"` — Python qgen-style parameterization using packaged templates and `dists.dss`; no native `qgen` binary
 - `mode="custom"` — custom parameter specs via `param_specs` dict
 - `mode="copy"` for data — copies `.tbl` files from `source_dir`
 - `mode="generate"` for data — runs dbgen to produce `.tbl` files locally
@@ -118,7 +211,7 @@ tpcds_queries().generate(output_dir="./artifacts")
 W = `scale_factor` (integer number of warehouses).
 
 ### Transaction types
-| Transaction | Mix % (standard) | Description |
+| Transaction | Adapter default mix % | Description |
 |-------------|-------------------|-------------|
 | New Order | 45 % | Insert order across warehouse/district/item/stock |
 | Payment | 43 % | Update customer balance, insert history |
@@ -230,7 +323,7 @@ job_queries().generate(output_dir="./artifacts")
 
 ## YCSB
 
-**Type:** Key-value / NoSQL · **Tables:** 1 (usertable) · **Workloads:** 6 standard mixes
+**Type:** Key-value / NoSQL · **Tables:** 1 (usertable) · **Workloads:** 6 modeled mixes
 
 ### Data features
 Row count = `scale_factor × 1000`. Each row has 10 string fields of 100 chars.
