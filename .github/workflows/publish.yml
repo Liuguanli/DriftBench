@@ -22,6 +22,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -83,9 +86,15 @@ jobs:
             echo "::notice::Skipping publish: tag commit is not on main/release-* or release/**."
           fi
 
+  benchmark-regression-pgbench:
+    name: benchmark-regression-pgbench
+    needs: guard-release-branch
+    if: ${{ needs.guard-release-branch.outputs.allowed == 'true' }}
+    uses: ./.github/workflows/benchmark-regression-pgbench.yml
+
   build:
     name: Build sdist + wheel
-    needs: guard-release-branch
+    needs: [guard-release-branch, benchmark-regression-pgbench]
     if: ${{ needs.guard-release-branch.outputs.allowed == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -96,41 +105,10 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          python - <<'PY'
-          import pathlib
-          import re
-          import sys
-          import os
-
-          tag = os.environ["TAG"]
-          p = pathlib.Path("CHANGELOG.md")
-          if not p.exists():
-            print("CHANGELOG.md is required for publish.")
-            sys.exit(1)
-
-          text = p.read_text(encoding="utf-8")
-          heading = f"## [{tag}]"
-          idx = text.find(heading)
-          if idx < 0:
-            print(f"Missing changelog heading for tag: {heading}")
-            sys.exit(1)
-
-          rest = text[idx + len(heading):]
-          next_idx = rest.find("\n## [")
-          section = rest if next_idx < 0 else rest[:next_idx]
-
-          if "### Services" not in section:
-            print(f"Changelog section for {tag} must include '### Services'.")
-            sys.exit(1)
-
-          if ("### Added" not in section) and ("### Changed" not in section) and ("### Fixed" not in section):
-            print(f"Changelog section for {tag} must include at least one of: ### Added / ### Changed / ### Fixed.")
-            sys.exit(1)
-
-          print(f"Changelog validation passed for {tag}.")
-          PY
-        env:
-          TAG: ${{ github.ref_name }}
+          python .github/scripts/release_gate.py metadata \
+            --expected-tag "${TAG}" \
+            --pyproject pyproject.toml \
+            --changelog CHANGELOG.md
 
       - uses: actions/setup-python@v5
         with:
@@ -139,9 +117,41 @@ jobs:
       - name: Install build
         run: |
           python -m pip install --upgrade pip
-          pip install build
+          pip install -e ".[test,visualization]"
+          pip install build twine
 
-      - run: python -m build
+      - name: Run release test gates
+        run: |
+          python -m unittest discover -s test -p 'test_*.py' -v
+          python -m unittest discover -s visualization/tests -p 'test_*.py' -v
+
+      - name: Build and validate distributions
+        run: |
+          python -m build
+          twine check dist/*
+
+      - name: Verify installed wheel visualization contents
+        run: |
+          python -m venv /tmp/publish-wheel-check
+          /tmp/publish-wheel-check/bin/pip install --upgrade pip
+          /tmp/publish-wheel-check/bin/pip install dist/*.whl
+          (
+            cd /tmp
+            /tmp/publish-wheel-check/bin/python - <<'PY'
+          from pathlib import Path
+          import visualization
+
+          root = Path(visualization.__file__).resolve().parent
+          assert (root / "GALLERY.md").is_file()
+          assert (root / "configs" / "benchmarks.yaml").is_file()
+          assert (root / "configs" / "drift_scenarios.yaml").is_file()
+          assert len(tuple((root / "figures").rglob("*.png"))) == 40
+          assert len(tuple((root / "manifests").rglob("*.json"))) == 40
+          assert len(tuple((root / "specs").rglob("*.yaml"))) == 40
+          assert not (root / "data").exists()
+          assert not (root / "cache").exists()
+          PY
+          )
 
       - run: ls -la dist/
 
@@ -152,7 +162,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [guard-release-branch, build]
+    needs: [guard-release-branch, benchmark-regression-pgbench, build]
     runs-on: ubuntu-latest
     if: ${{ needs.guard-release-branch.outputs.allowed == 'true' }}
     environment: pypi

@@ -6,6 +6,42 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [v0.1.0b10] - 2026-08-18
+
+### Services
+- `Data`: Parameter- and content-aware cache manifests and corrected benchmark metadata.
+- `CLI`: Fail-closed orchestration and pgbench regression-gate commands.
+- `DriftSpec`: Deterministic query-mix execution and side-effect-free deep readiness validation.
+- `Visualization`: Reproducible drift evidence for eight benchmark adapters.
+- `CI/Release`: Required real PostgreSQL 16 benchmark regression evidence.
+
+### Added
+- Versioned `BenchmarkRunResult` v1 JSON schema with TPS, mean/p50/p95/p99 latency in milliseconds, transaction/error counts, complete run configuration, and PostgreSQL/pgbench provenance.
+- Paired pgbench runner with per-round warmup, three AB/BA/AB measurement repetitions, raw transaction logs, strict metrics validation, and version-controlled TPS/p95/error thresholds.
+- Required `benchmark-regression-pgbench` PostgreSQL 16 check, wired into development, main, release, tag-publish, and daily-publish paths; all evidence is uploaded even when the gate fails.
+- Self-contained pgbench evidence bundles snapshot the canonical policy and exact executed candidate bytes, hash all input/environment artifacts, capture DriftBench source/version plus Python, OS/CPU, PostgreSQL/pgbench, server-setting, and inferred-scale provenance, and fail closed when environment capture is incomplete.
+- Public offline bundle verification via `driftbench benchmark verify --bundle DIR --json`, including descriptor/path safety checks and exact reconstruction of raw metrics, execution order, and policy decisions.
+- Strict Windows CP1252 adapter CI coverage.
+- Public query-template mix drift with strict weight validation, stable semantic hashes, isolated random streams, and executable DriftSpec handler support.
+- Opt-in `validate-spec --deep` preflight covering handler contracts, local inputs/outputs, collisions, adapter availability, deterministic issue codes, redaction, and single-document JSON output without executing the spec.
+- A versioned visualization package with 40 spec/manifest/PNG evidence triples across eight adapters, effect-policy checks, provenance hashes, a traceable Gallery, and wheel/sdist content tests.
+- Executable paper examples for cardinality, outlier, skew, FK-safe deletion, and TPC-H query-workload drift, with explicit reproducibility limits.
+
+### Fixed
+- Benchmark cache v2 now reuses artifacts only when normalized generation parameters and every managed file's path, byte count, and SHA-256 match. Legacy manifests rebuild once; `force=True` remains an unconditional rebuild.
+- `orchestrate` now reports `ok: false` and exits `4` for any failed target while preserving the complete manifest. Configuration validation remains exit `3`.
+- BenchBase JDBC/user/password values are XML-safe, and DSB/JOB manifest row counts match generated CSV files.
+- Console messages no longer crash under a strict CP1252 stream.
+- Measurement TPS is independently recomputed from successful transactions and runner elapsed time, then required to agree with pgbench-reported TPS within an inclusive 5%; inconsistent evidence is an execution/integrity failure rather than a threshold regression.
+- Benchmark provenance now requires a clean DriftBench runtime-source checkout at both the start and end of a run, with a full 40-character HEAD and fail-closed dirty/change evidence.
+
+### Changed
+- Benchmark documentation consistently describes nine adapters, five synthetic TPC-DS tables, three DSB tables, eleven JOB CSV tables, and BenchBase as a ten-benchmark configuration generator.
+- Orchestration failure changing from exit `0` to exit `4` is an intentional compatibility correction for automation and release gates.
+- Regression policy `pgbench-ci-v1` is fixed at PostgreSQL/pgbench 16, scale 1, two clients, 3-second warmups, 5-second measurements, and three repetitions. Policy changes require explicit PM approval and a changelog entry.
+- Release-branch preparation pins all required workflows and metadata checks to one immutable source SHA, rechecks the source ref immediately before creation, and pushes only that verified commit.
+- CI, release, daily, and tag-publish paths install visualization dependencies, execute its dedicated test suite, and verify that built distributions contain all evidence triples while excluding runtime data/cache.
+
 ## [v0.1.0b9] - 2026-05-20
 
 ### Services
@@ -54,7 +90,7 @@ Format notes:
 ### Added
 - **TPC-C adapter** (`driftbench.data.tpcc`): Full 9-table OLTP schema with synthetic CSV generation. All 5 transaction types as SQL templates (new_order, payment, order_status, delivery, stock_level). Scale factor = number of warehouses.
 - **TPC-C Skew adapter** (`driftbench.data.tpcc_skew`): Extends TPC-C with configurable Zipf warehouse access distribution. Generates `warehouse_access_weights.csv` for driver-side hot-warehouse simulation. Parameters: `hot_warehouse_fraction` (default 0.2) and `skew_factor` (Zipf α, default 0.99).
-- **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 8-table synth subset of the IMDB schema with 20 representative SQL query templates covering 2–8-table join depths.
+- **JOB adapter** (`driftbench.data.job`): Join Order Benchmark (Leis et al., VLDB 2015). 11-table synthetic IMDB snapshot (8 primary tables plus 3 lookup tables) with 20 representative SQL query templates covering 2–8-table join depths.
 - **pgbench adapter** (`driftbench.data.pgbench`): TPC-B-like schema (branches, tellers, accounts, history). Synth CSV generation with correct row counts (branches=sf, tellers=10×sf, accounts=100K×sf). Three workload templates: `tpcb`, `simple_update`, `select_only`.
 - **BenchBase adapter** (`driftbench.data.benchbase`): XML config generator for 10 BenchBase benchmarks (TPC-C, TPC-H, YCSB, SEATS, AuctionMark, Smallbank, Epinions, Wikipedia, Twitter, Voter). Generates separate load config + `load.sh` and execute config + `execute.sh`. Transaction weights and types are pre-configured per benchmark.
 - **`GenerationResult.as_csv()`**: converts pipe-delimited `.tbl` (TPC-H) and `.dat` (TPC-DS) files to standard CSV. Both the original and the new `.csv` files are kept on disk. Method chains off the existing result — no re-generation.

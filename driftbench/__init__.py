@@ -4,7 +4,7 @@ Use exports from this module (or `driftbench.api`) as the stable integration
 surface for P0 instead of importing deep internal modules.
 """
 
-__version__ = "0.1.0b5"
+__version__ = "0.1.0b10"
 
 from driftbench.api import (
     get_filter,

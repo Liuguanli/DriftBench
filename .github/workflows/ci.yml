@@ -112,7 +112,9 @@ jobs:
           /tmp/wheel-check/bin/pip install dist/*.whl
           /tmp/wheel-check/bin/driftbench --help
           /tmp/wheel-check/bin/python -c "import driftbench; print(driftbench.__version__)"
-          /tmp/wheel-check/bin/python - <<'PY'
+          (
+            cd /tmp
+            /tmp/wheel-check/bin/python - <<'PY'
           from pathlib import Path
           import visualization
 
@@ -126,6 +128,7 @@ jobs:
           assert not (root / "data").exists()
           assert not (root / "cache").exists()
           PY
+          )
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4

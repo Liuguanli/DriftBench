@@ -13,6 +13,10 @@ permissions:
   contents: read
 
 jobs:
+  benchmark-regression-pgbench:
+    name: benchmark-regression-pgbench
+    uses: ./.github/workflows/benchmark-regression-pgbench.yml
+
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -34,10 +38,12 @@ jobs:
       - name: Install package (editable)
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e ".[test,visualization]"
 
       - name: Run unittest suite
-        run: python -m unittest discover -s test -p 'test_*.py' -v
+        run: |
+          python -m unittest discover -s test -p 'test_*.py' -v
+          python -m unittest discover -s visualization/tests -p 'test_*.py' -v
 
       - name: Init-agent dry-run contract
         run: |
@@ -46,7 +52,7 @@ jobs:
   build:
     name: Build and wheel smoke
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, benchmark-regression-pgbench]
 
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +79,23 @@ jobs:
           /tmp/release-wheel-check/bin/pip install dist/*.whl
           /tmp/release-wheel-check/bin/driftbench-db --help
           /tmp/release-wheel-check/bin/driftbench-db validate-spec driftspec/examples/demo_data_single.yaml --json
+          (
+            cd /tmp
+            /tmp/release-wheel-check/bin/python - <<'PY'
+          from pathlib import Path
+          import visualization
+
+          root = Path(visualization.__file__).resolve().parent
+          assert (root / "GALLERY.md").is_file()
+          assert (root / "configs" / "benchmarks.yaml").is_file()
+          assert (root / "configs" / "drift_scenarios.yaml").is_file()
+          assert len(tuple((root / "figures").rglob("*.png"))) == 40
+          assert len(tuple((root / "manifests").rglob("*.json"))) == 40
+          assert len(tuple((root / "specs").rglob("*.yaml"))) == 40
+          assert not (root / "data").exists()
+          assert not (root / "cache").exists()
+          PY
+          )
 
       - name: Init-agent real generation structure check
         run: |
