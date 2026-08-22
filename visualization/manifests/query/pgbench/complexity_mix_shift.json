@@ -1,0 +1,500 @@
+{
+  "adapter": "PgBenchData / PgBenchQueries",
+  "analysis": {
+    "basis": "observed_sample",
+    "config": {
+      "categorical_movers": 15,
+      "categorical_top_k": 10,
+      "concentration_max_points": 256,
+      "ecdf_max_points": 512,
+      "effective_count_entropy_base": 2,
+      "jsd_log_base": 2,
+      "numeric_bins": 24,
+      "quantile_levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "quantile_method": "linear",
+      "query_movers": 15,
+      "query_top_n": 15,
+      "tail_threshold_quantile": 0.99
+    },
+    "config_sha256": "690e5bfd43d316c77506edf04092e650c653a0c1df9b0ba5e80e4efbdf5b0e06",
+    "schema": "driftbench.visualization-analysis/v3"
+  },
+  "benchmark": "pgbench",
+  "cache": {
+    "fingerprint": "173e65fa95c8ad7b64f30716de08f59c64a457719360adb7e5f95764f7330a7b",
+    "schema": "driftbench.visualization-cache/v4"
+  },
+  "capabilities": {
+    "lexical_sql_metrics": "supported",
+    "predicate_selectivity": "unsupported",
+    "template_frequency": "supported",
+    "temporal": "unsupported"
+  },
+  "comparison_metrics": {
+    "basis": "observed_sample",
+    "effective_count": {
+      "baseline": 2.99984428000715,
+      "drifted": 1.5004939894178293
+    },
+    "entropy_bits": {
+      "baseline": 1.5848876132904104,
+      "drifted": 0.5854375398929103
+    },
+    "jensen_shannon_divergence_bits": 0.26462705182656887,
+    "max_mover": {
+      "baseline_frequency": 0.33,
+      "delta_percentage_points": 56.60000000000001,
+      "drifted_frequency": 0.896,
+      "template_id": "tpcb"
+    },
+    "reason": null,
+    "status": "supported",
+    "top3_share": {
+      "baseline": 1.0,
+      "drifted": 1.0
+    },
+    "total_variation_distance": 0.5660000000000001
+  },
+  "config_sha256": "6f1b2eac79cdfb78d36b53faa23bce7631f9be253a38128c88e3056faf675c85",
+  "drift_parameters": {
+    "baseline_weights": {
+      "select_only": 0.3333333333333333,
+      "simple_update": 0.3333333333333333,
+      "tpcb": 0.3333333333333333
+    },
+    "sample_size": 1000,
+    "target_weights": {
+      "select_only": 0.05,
+      "simple_update": 0.05,
+      "tpcb": 0.9
+    }
+  },
+  "drift_spec": {
+    "bytes": 769,
+    "path": "specs/query/pgbench/complexity_mix_shift.yaml",
+    "resolved_semantic_sha256": "0814a40b1ba0b36442da61a7e0f8ada1b4fe0b606beb7df6ce296920b9f324bb",
+    "semantic_sha256": "c3e43a6375ed8eb167a30d531062a43ab98249a52abbffff3a87c678a873faea",
+    "sha256": "700c7019a458db3b5489bfb12828f05efd1a5e9dcd9370a82420b7de3692be8d",
+    "type": {
+      "category": "drift",
+      "family": "workload",
+      "subtype": "template_mix"
+    }
+  },
+  "driftbench_version": "0.1.0b10",
+  "effect": {
+    "assertions": [
+      {
+        "metric": "jensen_shannon_divergence_bits",
+        "observed": 0.26462705182656887,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.2
+      },
+      {
+        "metric": "total_variation_distance",
+        "observed": 0.5660000000000001,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.3
+      },
+      {
+        "metric": "max_mover_absolute_pp",
+        "observed": 56.60000000000001,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 15.0
+      }
+    ],
+    "basis": "observed_seeded_sample_and_full_frame_counts",
+    "mode": "all",
+    "passed": true,
+    "status": "supported",
+    "verdict": "PASS"
+  },
+  "execution": {
+    "algorithm": "driftbench.query-workload-mix/v1",
+    "engine": "driftbench.api.run_spec",
+    "engine_version": "driftbench.spec-executor/v3",
+    "output_sha256": "b5d7d0f8ba8af8f245ddea5339ecea23490688010a554b4a67a7ec3e436e7390",
+    "semantic_sha256": "f82466e1dc2ae675621b00271b081b9efa3d56d10de2fc6a731d9bfbff90e35c",
+    "status": "supported"
+  },
+  "figure": {
+    "bytes": 134803,
+    "path": "figures/query/pgbench/complexity_mix_shift.png",
+    "sha256": "5f9143a7f4eb64c839c6770ec36687e1f24264c5956e472fc1cbf869c3bf310a"
+  },
+  "generated_at": "2026-08-19T12:17:40Z",
+  "input_files": [
+    {
+      "bytes": 149,
+      "path": "cache/adapters/query/pgbench/select_only/pgbench/queries/pgbench_select_only.sql",
+      "sha256": "71e34f16ccb94c8b2a024b1ac49412854001c93b1f7fcfe8ce79023685a703d9"
+    },
+    {
+      "bytes": 401,
+      "path": "cache/adapters/query/pgbench/simple_update/pgbench/queries/pgbench_simple_update.sql",
+      "sha256": "f5e6124ffac00e236aae6eca4039e28591ea6cfcf9f8549bdf7e766f8cb100f6"
+    },
+    {
+      "bytes": 637,
+      "path": "cache/adapters/query/pgbench/tpcb/pgbench/queries/pgbench_tpcb.sql",
+      "sha256": "2bbd0c03707c487a4bd848d70e9e44ff9ccdda5a3839ee12be2fcea8896fdc2e"
+    }
+  ],
+  "kind": "query",
+  "limitations": "No PostgreSQL server is executed; SQL metrics are lexical and configured rates are not observed arrivals.",
+  "rationale": "Shift the mix toward the full TPC-B transaction script.",
+  "render": {
+    "background": "#FFFFFF",
+    "dpi": 100,
+    "font_family": "DejaVu Sans",
+    "matplotlib_version": "3.11.1",
+    "numpy_version": "2.5.1",
+    "palette": {
+      "accent": "#009E73",
+      "baseline": "#0072B2",
+      "drifted": "#D55E00",
+      "negative": "#0072B2",
+      "neutral": "#5B6573",
+      "positive": "#D55E00"
+    },
+    "pixel_size": [
+      1600,
+      1000
+    ],
+    "plot_config": {
+      "accent_color": "#009E73",
+      "background": "#FFFFFF",
+      "baseline_color": "#0072B2",
+      "categorical_label_max_chars": 18,
+      "categorical_shift_labels": "rank",
+      "data_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.28,
+        0.38
+      ],
+      "dpi": 100,
+      "drifted_color": "#D55E00",
+      "font_family": "DejaVu Sans",
+      "grid_color": "#D9DEE7",
+      "height_inches": 10,
+      "muted_color": "#5B6573",
+      "negative_color": "#0072B2",
+      "neutral_color": "#5B6573",
+      "positive_color": "#D55E00",
+      "query_label_max_chars": 18,
+      "query_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.3,
+        0.38
+      ],
+      "style_revision": 1,
+      "text_color": "#17202A",
+      "width_inches": 16
+    },
+    "plot_config_sha256": "672975bf07e2a75550d5c9c4c427a9e2375baf18428a471d43c990e2d12d4620",
+    "schema": "driftbench.visualization-renderer/v3",
+    "size_inches": [
+      16,
+      10
+    ]
+  },
+  "reproduce": "python -m visualization.cli generate --benchmark pgbench --kind query --scenario complexity_mix_shift --seed 42 --sample-size 1000 --offline",
+  "sample_size": 1000,
+  "scale": {
+    "scale_factor": 1
+  },
+  "scenario": "complexity_mix_shift",
+  "schema_version": 4,
+  "seed": 42,
+  "semantic_sha256": "4f582814f376a528c61766dea87d24d3a1c83b310f3d108f765358a95fc6b93e",
+  "statistics": {
+    "analysis": {
+      "query_movers": 15,
+      "query_top_n": 15,
+      "schema": "driftbench.visualization-analysis/v3"
+    },
+    "basis": "observed_sample",
+    "comparison_metrics": {
+      "basis": "observed_sample",
+      "effective_count": {
+        "baseline": 2.99984428000715,
+        "drifted": 1.5004939894178293
+      },
+      "entropy_bits": {
+        "baseline": 1.5848876132904104,
+        "drifted": 0.5854375398929103
+      },
+      "jensen_shannon_divergence_bits": 0.26462705182656887,
+      "max_mover": {
+        "baseline_frequency": 0.33,
+        "delta_percentage_points": 56.60000000000001,
+        "drifted_frequency": 0.896,
+        "template_id": "tpcb"
+      },
+      "reason": null,
+      "status": "supported",
+      "top3_share": {
+        "baseline": 1.0,
+        "drifted": 1.0
+      },
+      "total_variation_distance": 0.5660000000000001
+    },
+    "concentration_curve": {
+      "baseline_cumulative": [
+        0.338,
+        0.67,
+        1.0
+      ],
+      "drifted_cumulative": [
+        0.896,
+        0.9500000000000001,
+        1.0
+      ],
+      "rank": [
+        1,
+        2,
+        3
+      ]
+    },
+    "lexical_metrics": {
+      "baseline": {
+        "comparison_count": {
+          "max": 7,
+          "mean": 3.312,
+          "median": 2.0,
+          "min": 1,
+          "p95": 7.0
+        },
+        "explicit_join_count": {
+          "max": 0,
+          "mean": 0.0,
+          "median": 0.0,
+          "min": 0,
+          "p95": 0.0
+        },
+        "statement_count": {
+          "max": 7,
+          "mean": 3.976,
+          "median": 4.0,
+          "min": 1,
+          "p95": 7.0
+        }
+      },
+      "basis": "observed_sample",
+      "drifted": {
+        "comparison_count": {
+          "max": 7,
+          "mean": 6.426,
+          "median": 7.0,
+          "min": 1,
+          "p95": 7.0
+        },
+        "explicit_join_count": {
+          "max": 0,
+          "mean": 0.0,
+          "median": 0.0,
+          "min": 0,
+          "p95": 0.0
+        },
+        "statement_count": {
+          "max": 7,
+          "mean": 6.526,
+          "median": 7.0,
+          "min": 1,
+          "p95": 7.0
+        }
+      },
+      "labels": {
+        "comparison_count": "Comparison operator count (lexical)",
+        "explicit_join_count": "Explicit JOIN keyword count (lexical)",
+        "statement_count": "SQL statement count (lexical)"
+      },
+      "plot_ready": {
+        "comparison_count": {
+          "baseline_frequency": [
+            0.338,
+            0.332,
+            0.33
+          ],
+          "drifted_frequency": [
+            0.054,
+            0.05,
+            0.896
+          ],
+          "values": [
+            1,
+            2,
+            7
+          ]
+        },
+        "explicit_join_count": {
+          "baseline_frequency": [
+            1.0
+          ],
+          "drifted_frequency": [
+            1.0
+          ],
+          "values": [
+            0
+          ]
+        },
+        "statement_count": {
+          "baseline_frequency": [
+            0.338,
+            0.332,
+            0.33
+          ],
+          "drifted_frequency": [
+            0.054,
+            0.05,
+            0.896
+          ],
+          "values": [
+            1,
+            4,
+            7
+          ]
+        }
+      },
+      "status": "supported"
+    },
+    "requested_sample_size": 1000,
+    "sample_count": {
+      "baseline": 1000,
+      "drifted": 1000
+    },
+    "status": "supported",
+    "template_display_frequency": {
+      "baseline": [
+        0.33,
+        0.338,
+        0.332,
+        0.0
+      ],
+      "drifted": [
+        0.896,
+        0.054,
+        0.05,
+        0.0
+      ],
+      "is_aggregate": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "labels": [
+        "tpcb",
+        "select_only",
+        "simple_update",
+        "Other"
+      ],
+      "other": {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "is_aggregate": true,
+        "label": "Other"
+      }
+    },
+    "template_frequency": {
+      "baseline_count": [
+        338,
+        332,
+        330
+      ],
+      "baseline_frequency": [
+        0.338,
+        0.332,
+        0.33
+      ],
+      "delta_percentage_points": [
+        -28.400000000000002,
+        -28.200000000000003,
+        56.60000000000001
+      ],
+      "drifted_count": [
+        54,
+        50,
+        896
+      ],
+      "drifted_frequency": [
+        0.054,
+        0.05,
+        0.896
+      ],
+      "template_ids": [
+        "select_only",
+        "simple_update",
+        "tpcb"
+      ]
+    },
+    "top_movers": [
+      {
+        "baseline_frequency": 0.33,
+        "delta_percentage_points": 56.60000000000001,
+        "drifted_frequency": 0.896,
+        "template_id": "tpcb"
+      },
+      {
+        "baseline_frequency": 0.338,
+        "delta_percentage_points": -28.400000000000002,
+        "drifted_frequency": 0.054,
+        "template_id": "select_only"
+      },
+      {
+        "baseline_frequency": 0.332,
+        "delta_percentage_points": -28.200000000000003,
+        "drifted_frequency": 0.05,
+        "template_id": "simple_update"
+      }
+    ],
+    "top_templates": [
+      {
+        "baseline_frequency": 0.33,
+        "delta_percentage_points": 56.60000000000001,
+        "drifted_frequency": 0.896,
+        "template_id": "tpcb"
+      },
+      {
+        "baseline_frequency": 0.338,
+        "delta_percentage_points": -28.400000000000002,
+        "drifted_frequency": 0.054,
+        "template_id": "select_only"
+      },
+      {
+        "baseline_frequency": 0.332,
+        "delta_percentage_points": -28.200000000000003,
+        "drifted_frequency": 0.05,
+        "template_id": "simple_update"
+      }
+    ],
+    "unsupported": [
+      {
+        "metric": "predicate/selectivity distribution",
+        "reason": "No target database is executed in this phase.",
+        "status": "unsupported"
+      },
+      {
+        "metric": "arrival-rate/inter-arrival distribution",
+        "reason": "The adapter does not materialize observed timestamps.",
+        "status": "unsupported"
+      }
+    ]
+  }
+}

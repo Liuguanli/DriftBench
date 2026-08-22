@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-pgbench-query-select-only-hotset
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: pgbench, kind: query, scenario: select_only_hotset}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: pgbench}
+variables:
+  template_ids: [tpcb, simple_update, select_only]
+  baseline: {mode: uniform}
+  target: {weights: {tpcb: 0.05, simple_update: 0.05, select_only: 0.90}}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

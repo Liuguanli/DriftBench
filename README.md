@@ -246,6 +246,10 @@ Pass `relationships=[]` or a custom list to override the built-in FK maps. Suppo
 - `ycsb_drift.yaml`
 - `pgbench_drift.yaml`
 
+Paper-ready executable TPC-H examples: [data drift](driftspec/examples/paper_tpch_data_drift.yaml),
+[query-workload drift](driftspec/examples/paper_tpch_query_workload_drift.yaml), and the
+[examples reproduction guide](driftspec/examples/README.md).
+
 ---
 
 ## CLI Quickstart
@@ -311,6 +315,10 @@ default whenever `DRIFTBENCH_REQUIRE_PG_INTEGRATION` is not exactly `1`. The rem
 [Benchmark Regression workflow](.github/workflows/benchmark-regression-pgbench.yml)
 explicitly sets it to `1` and runs those tests against PostgreSQL 16 with no mocks or
 skips.
+
+---
+
+Visualization results: [DriftBench Visualization Gallery](visualization/GALLERY.md).
 
 ---
 

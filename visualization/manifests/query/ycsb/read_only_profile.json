@@ -1,0 +1,483 @@
+{
+  "adapter": "YCSBData / YCSBQueries",
+  "analysis": {
+    "basis": "observed_sample",
+    "config": {
+      "categorical_movers": 15,
+      "categorical_top_k": 10,
+      "concentration_max_points": 256,
+      "ecdf_max_points": 512,
+      "effective_count_entropy_base": 2,
+      "jsd_log_base": 2,
+      "numeric_bins": 24,
+      "quantile_levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "quantile_method": "linear",
+      "query_movers": 15,
+      "query_top_n": 15,
+      "tail_threshold_quantile": 0.99
+    },
+    "config_sha256": "690e5bfd43d316c77506edf04092e650c653a0c1df9b0ba5e80e4efbdf5b0e06",
+    "schema": "driftbench.visualization-analysis/v3"
+  },
+  "benchmark": "ycsb",
+  "cache": {
+    "fingerprint": "67010df7c578c68f5f9540832e40e84c33c8f1235564af8b315e21aa2ce002c4",
+    "schema": "driftbench.visualization-cache/v4"
+  },
+  "capabilities": {
+    "lexical_sql_metrics": "unsupported",
+    "predicate_selectivity": "unsupported",
+    "template_frequency": "supported",
+    "temporal": "unsupported"
+  },
+  "comparison_metrics": {
+    "basis": "observed_sample",
+    "effective_count": {
+      "baseline": 1.9999840000213331,
+      "drifted": 1.0
+    },
+    "entropy_bits": {
+      "baseline": 0.9999884584088952,
+      "drifted": -0.0
+    },
+    "jensen_shannon_divergence_bits": 0.3096950821394693,
+    "max_mover": {
+      "baseline_frequency": 0.502,
+      "delta_percentage_points": 49.8,
+      "drifted_frequency": 1.0,
+      "template_id": "ReadRecord"
+    },
+    "reason": null,
+    "status": "supported",
+    "top3_share": {
+      "baseline": 1.0,
+      "drifted": 1.0
+    },
+    "total_variation_distance": 0.498
+  },
+  "config_sha256": "d40c056533ba492a3a3b64c92edc1a3f643593900a1c1e7aab9118c121d2ab1b",
+  "drift_parameters": {
+    "baseline_weights": {
+      "DeleteRecord": 0.0,
+      "InsertRecord": 0.0,
+      "ReadModifyWriteRecord": 0.0,
+      "ReadRecord": 0.5,
+      "ScanRecord": 0.0,
+      "UpdateRecord": 0.5
+    },
+    "sample_size": 1000,
+    "target_weights": {
+      "DeleteRecord": 0.0,
+      "InsertRecord": 0.0,
+      "ReadModifyWriteRecord": 0.0,
+      "ReadRecord": 1.0,
+      "ScanRecord": 0.0,
+      "UpdateRecord": 0.0
+    }
+  },
+  "drift_spec": {
+    "bytes": 975,
+    "path": "specs/query/ycsb/read_only_profile.yaml",
+    "resolved_semantic_sha256": "0621872c09e2dfd302e3f30c6597b8bf06669a4ff9c1e7e094dbddc5a7c1970a",
+    "semantic_sha256": "f8ec93b4fb28447ed901920f9fb783292dd188e7498f0835e9eaeaaa38a8c148",
+    "sha256": "3941fe579ec834920dd95501959d840cd48213a8d0abc07cf748ae6ce7208692",
+    "type": {
+      "category": "drift",
+      "family": "workload",
+      "subtype": "template_mix"
+    }
+  },
+  "driftbench_version": "0.1.0b10",
+  "effect": {
+    "assertions": [
+      {
+        "metric": "jensen_shannon_divergence_bits",
+        "observed": 0.3096950821394693,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.2
+      },
+      {
+        "metric": "total_variation_distance",
+        "observed": 0.498,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.3
+      },
+      {
+        "metric": "max_mover_absolute_pp",
+        "observed": 49.8,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 15.0
+      }
+    ],
+    "basis": "observed_seeded_sample_and_full_frame_counts",
+    "mode": "all",
+    "passed": true,
+    "status": "supported",
+    "verdict": "PASS"
+  },
+  "execution": {
+    "algorithm": "driftbench.query-workload-mix/v1",
+    "engine": "driftbench.api.run_spec",
+    "engine_version": "driftbench.spec-executor/v3",
+    "output_sha256": "32ae0c274ed385020d2a7f882fbb73a7826f56d06a29391f4fe3e55a7ca7f76b",
+    "semantic_sha256": "b1a794e6abce80f0906b90a954499de5e6e5a672aaf2ab07015711ca5876efd1",
+    "status": "supported"
+  },
+  "figure": {
+    "bytes": 145150,
+    "path": "figures/query/ycsb/read_only_profile.png",
+    "sha256": "8a74a37072f91e709404bcaa14440c62a2986aeab07128094c335d20fc5f7f88"
+  },
+  "generated_at": "2026-08-19T12:17:15Z",
+  "input_files": [
+    {
+      "bytes": 1145,
+      "path": "cache/adapters/query/ycsb/profile_a/ycsb/queries/ycsb_queries_manifest.json",
+      "sha256": "3bc2e46df0f436d39cc898b95b355abcb2c18164584017da72b977198768ee9b"
+    },
+    {
+      "bytes": 1145,
+      "path": "cache/adapters/query/ycsb/profile_c/ycsb/queries/ycsb_queries_manifest.json",
+      "sha256": "4698c0ad1c7b5a28f046f36deaf2c82bd6942ddcb50b2ff8e5a6463f37932ba3"
+    },
+    {
+      "bytes": 1144,
+      "path": "cache/adapters/query/ycsb/profile_e/ycsb/queries/ycsb_queries_manifest.json",
+      "sha256": "42b2c5ffb4f721ac30e84a2441eeb76a96de395718e771d8f560d253ccaa0560"
+    }
+  ],
+  "kind": "query",
+  "limitations": "YCSB exposes operation weights rather than SQL; SQL complexity, selectivity, and observed temporal metrics are unsupported.",
+  "rationale": "Shift public workload profile A to read-only profile C.",
+  "render": {
+    "background": "#FFFFFF",
+    "dpi": 100,
+    "font_family": "DejaVu Sans",
+    "matplotlib_version": "3.11.1",
+    "numpy_version": "2.5.1",
+    "palette": {
+      "accent": "#009E73",
+      "baseline": "#0072B2",
+      "drifted": "#D55E00",
+      "negative": "#0072B2",
+      "neutral": "#5B6573",
+      "positive": "#D55E00"
+    },
+    "pixel_size": [
+      1600,
+      1000
+    ],
+    "plot_config": {
+      "accent_color": "#009E73",
+      "background": "#FFFFFF",
+      "baseline_color": "#0072B2",
+      "categorical_label_max_chars": 18,
+      "categorical_shift_labels": "rank",
+      "data_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.28,
+        0.38
+      ],
+      "dpi": 100,
+      "drifted_color": "#D55E00",
+      "font_family": "DejaVu Sans",
+      "grid_color": "#D9DEE7",
+      "height_inches": 10,
+      "muted_color": "#5B6573",
+      "negative_color": "#0072B2",
+      "neutral_color": "#5B6573",
+      "positive_color": "#D55E00",
+      "query_label_max_chars": 18,
+      "query_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.3,
+        0.38
+      ],
+      "style_revision": 1,
+      "text_color": "#17202A",
+      "width_inches": 16
+    },
+    "plot_config_sha256": "672975bf07e2a75550d5c9c4c427a9e2375baf18428a471d43c990e2d12d4620",
+    "schema": "driftbench.visualization-renderer/v3",
+    "size_inches": [
+      16,
+      10
+    ]
+  },
+  "reproduce": "python -m visualization.cli generate --benchmark ycsb --kind query --scenario read_only_profile --seed 42 --sample-size 1000 --offline",
+  "sample_size": 1000,
+  "scale": {
+    "record_count": 1000
+  },
+  "scenario": "read_only_profile",
+  "schema_version": 4,
+  "seed": 42,
+  "semantic_sha256": "78c883d7b973fbae6a876bc779216baeaf0d51ca3bafd1f3ab9189528372f04d",
+  "statistics": {
+    "analysis": {
+      "query_movers": 15,
+      "query_top_n": 15,
+      "schema": "driftbench.visualization-analysis/v3"
+    },
+    "basis": "observed_sample",
+    "comparison_metrics": {
+      "basis": "observed_sample",
+      "effective_count": {
+        "baseline": 1.9999840000213331,
+        "drifted": 1.0
+      },
+      "entropy_bits": {
+        "baseline": 0.9999884584088952,
+        "drifted": -0.0
+      },
+      "jensen_shannon_divergence_bits": 0.3096950821394693,
+      "max_mover": {
+        "baseline_frequency": 0.502,
+        "delta_percentage_points": 49.8,
+        "drifted_frequency": 1.0,
+        "template_id": "ReadRecord"
+      },
+      "reason": null,
+      "status": "supported",
+      "top3_share": {
+        "baseline": 1.0,
+        "drifted": 1.0
+      },
+      "total_variation_distance": 0.498
+    },
+    "concentration_curve": {
+      "baseline_cumulative": [
+        0.502,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "drifted_cumulative": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "rank": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    "lexical_metrics": {
+      "reason": "The public adapter does not expose SQL text.",
+      "status": "unsupported"
+    },
+    "requested_sample_size": 1000,
+    "sample_count": {
+      "baseline": 1000,
+      "drifted": 1000
+    },
+    "status": "supported",
+    "template_display_frequency": {
+      "baseline": [
+        0.502,
+        0.498,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "drifted": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "is_aggregate": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "labels": [
+        "ReadRecord",
+        "UpdateRecord",
+        "DeleteRecord",
+        "InsertRecord",
+        "ReadModifyWriteRecord",
+        "ScanRecord",
+        "Other"
+      ],
+      "other": {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "is_aggregate": true,
+        "label": "Other"
+      }
+    },
+    "template_frequency": {
+      "baseline_count": [
+        0,
+        0,
+        0,
+        502,
+        0,
+        498
+      ],
+      "baseline_frequency": [
+        0.0,
+        0.0,
+        0.0,
+        0.502,
+        0.0,
+        0.498
+      ],
+      "delta_percentage_points": [
+        0.0,
+        0.0,
+        0.0,
+        49.8,
+        0.0,
+        -49.8
+      ],
+      "drifted_count": [
+        0,
+        0,
+        0,
+        1000,
+        0,
+        0
+      ],
+      "drifted_frequency": [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "template_ids": [
+        "DeleteRecord",
+        "InsertRecord",
+        "ReadModifyWriteRecord",
+        "ReadRecord",
+        "ScanRecord",
+        "UpdateRecord"
+      ]
+    },
+    "top_movers": [
+      {
+        "baseline_frequency": 0.502,
+        "delta_percentage_points": 49.8,
+        "drifted_frequency": 1.0,
+        "template_id": "ReadRecord"
+      },
+      {
+        "baseline_frequency": 0.498,
+        "delta_percentage_points": -49.8,
+        "drifted_frequency": 0.0,
+        "template_id": "UpdateRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "DeleteRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "InsertRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "ReadModifyWriteRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "ScanRecord"
+      }
+    ],
+    "top_templates": [
+      {
+        "baseline_frequency": 0.502,
+        "delta_percentage_points": 49.8,
+        "drifted_frequency": 1.0,
+        "template_id": "ReadRecord"
+      },
+      {
+        "baseline_frequency": 0.498,
+        "delta_percentage_points": -49.8,
+        "drifted_frequency": 0.0,
+        "template_id": "UpdateRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "DeleteRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "InsertRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "ReadModifyWriteRecord"
+      },
+      {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "template_id": "ScanRecord"
+      }
+    ],
+    "unsupported": [
+      {
+        "metric": "predicate/selectivity distribution",
+        "reason": "No target database is executed in this phase.",
+        "status": "unsupported"
+      },
+      {
+        "metric": "arrival-rate/inter-arrival distribution",
+        "reason": "The adapter does not materialize observed timestamps.",
+        "status": "unsupported"
+      }
+    ]
+  }
+}

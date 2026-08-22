@@ -1,0 +1,27 @@
+spec_version: 1
+pattern_id: visualization-tpcds-price-skew
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata:
+  benchmark: tpcds
+  kind: data
+  scenario: price_skew
+  comparison: {table: item, column: i_current_price}
+effect_policy:
+  mode: any
+  assertions:
+    - {metric: ks_distance, operator: gte, threshold: 0.20}
+    - {metric: normalized_wasserstein_p95_p05, operator: gte, threshold: 0.12}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: item
+  drifts:
+    - name: price_skew
+      drift_type: value_skew
+      output_path: ${DRIFTBENCH_OUTPUT}
+      columns: [i_current_price]
+      portion: 0.80
+      skewness: 5

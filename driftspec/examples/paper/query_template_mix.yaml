@@ -1,0 +1,23 @@
+# 1. Scientific question: How does a focused TPC-H mix differ from uniform?
+# 2. Comparison: Baseline is uniform; drifted assigns 0.30 each to q19, q2, and q21.
+# 3. Strength: The three templates receive 0.90 total, leaving 0.10 for the rest.
+# 4. Reproduce: Bind DRIFTBENCH_OUTPUT; optionally pass q1-q22 QueryTemplate objects.
+# 5. Scope: Selectivity, temporal arrivals, performance, and causality are unsupported.
+spec_version: 1
+pattern_id: visualization-tpch-query-complexity-mix-shift
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: tpch, kind: query, scenario: complexity_mix_shift}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: tpch}
+variables:
+  template_ids: [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, q16, q17, q18, q19, q20, q21, q22]
+  baseline: {mode: uniform}
+  target: {focus: {q19: 0.30, q2: 0.30, q21: 0.30}, remaining_total: 0.10}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-tpcds-query-late-id-hotset
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: tpcds, kind: query, scenario: late_id_hotset}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: tpcds}
+variables:
+  template_ids: [query01, query02, query03, query04, query05, query06, query07, query08, query09, query10, query11, query12, query13, query14, query15, query16, query17, query18, query19, query20, query21, query22, query23, query24, query25, query26, query27, query28, query29, query30, query31, query32, query33, query34, query35, query36, query37, query38, query39, query40, query41, query42, query43, query44, query45, query46, query47, query48, query49, query50, query51, query52, query53, query54, query55, query56, query57, query58, query59, query60, query61, query62, query63, query64, query65, query66, query67, query68, query69, query70, query71, query72, query73, query74, query75, query76, query77, query78, query79, query80, query81, query82, query83, query84, query85, query86, query87, query88, query89, query90, query91, query92, query93, query94, query95, query96, query97, query98, query99]
+  baseline: {mode: uniform}
+  target: {focus: {query97: 0.30, query98: 0.30, query99: 0.30}, remaining_total: 0.10}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

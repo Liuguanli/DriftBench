@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-tpch-query-hotset-concentration
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: tpch, kind: query, scenario: hotset_concentration}
+effect_policy: &query_effect
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: tpch}
+variables:
+  template_ids: [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, q16, q17, q18, q19, q20, q21, q22]
+  baseline: {mode: uniform}
+  target: {focus: {q1: 0.30, q9: 0.30, q18: 0.30}, remaining_total: 0.10}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

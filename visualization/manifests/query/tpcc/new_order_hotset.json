@@ -1,0 +1,581 @@
+{
+  "adapter": "TPCCData / TPCCQueries",
+  "analysis": {
+    "basis": "observed_sample",
+    "config": {
+      "categorical_movers": 15,
+      "categorical_top_k": 10,
+      "concentration_max_points": 256,
+      "ecdf_max_points": 512,
+      "effective_count_entropy_base": 2,
+      "jsd_log_base": 2,
+      "numeric_bins": 24,
+      "quantile_levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "quantile_method": "linear",
+      "query_movers": 15,
+      "query_top_n": 15,
+      "tail_threshold_quantile": 0.99
+    },
+    "config_sha256": "690e5bfd43d316c77506edf04092e650c653a0c1df9b0ba5e80e4efbdf5b0e06",
+    "schema": "driftbench.visualization-analysis/v3"
+  },
+  "benchmark": "tpcc",
+  "cache": {
+    "fingerprint": "07e1878196b16ad0a67689c588f7c7e8f4983322f995a8b983f304261e1927b3",
+    "schema": "driftbench.visualization-cache/v4"
+  },
+  "capabilities": {
+    "lexical_sql_metrics": "supported",
+    "predicate_selectivity": "unsupported",
+    "template_frequency": "supported",
+    "temporal": "unsupported"
+  },
+  "comparison_metrics": {
+    "basis": "observed_sample",
+    "effective_count": {
+      "baseline": 3.0493863034104414,
+      "drifted": 1.6104878684769082
+    },
+    "entropy_bits": {
+      "baseline": 1.6085189259173087,
+      "drifted": 0.6874977931925546
+    },
+    "jensen_shannon_divergence_bits": 0.22282802114115602,
+    "max_mover": {
+      "baseline_frequency": 0.44,
+      "delta_percentage_points": 45.6,
+      "drifted_frequency": 0.896,
+      "template_id": "new_order"
+    },
+    "reason": null,
+    "status": "supported",
+    "top3_share": {
+      "baseline": 0.925,
+      "drifted": 0.9540000000000001
+    },
+    "total_variation_distance": 0.456
+  },
+  "config_sha256": "363960aa88f52886c59ef0df2be4f620b5b5434f9a317a6ddb841b7ae8c659db",
+  "drift_parameters": {
+    "baseline_weights": {
+      "delivery": 0.04,
+      "new_order": 0.45,
+      "order_status": 0.04,
+      "payment": 0.43,
+      "stock_level": 0.04
+    },
+    "sample_size": 1000,
+    "target_weights": {
+      "delivery": 0.025,
+      "new_order": 0.9,
+      "order_status": 0.025,
+      "payment": 0.025,
+      "stock_level": 0.025
+    }
+  },
+  "drift_spec": {
+    "bytes": 897,
+    "path": "specs/query/tpcc/new_order_hotset.yaml",
+    "resolved_semantic_sha256": "b863e1bc056561185a23660126eb21577a6116f532ab9a4fc5674cb37e17c5c7",
+    "semantic_sha256": "b55c059efa5adbeed307b71ab1a42cc9fc9a324e8faa040df61038755fc13949",
+    "sha256": "38ec2f309bf1f294a6c2aa423caf5c038eea958f9f89ac1a046c2fe97f06701b",
+    "type": {
+      "category": "drift",
+      "family": "workload",
+      "subtype": "template_mix"
+    }
+  },
+  "driftbench_version": "0.1.0b10",
+  "effect": {
+    "assertions": [
+      {
+        "metric": "jensen_shannon_divergence_bits",
+        "observed": 0.22282802114115602,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.2
+      },
+      {
+        "metric": "total_variation_distance",
+        "observed": 0.456,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.3
+      },
+      {
+        "metric": "max_mover_absolute_pp",
+        "observed": 45.6,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 15.0
+      }
+    ],
+    "basis": "observed_seeded_sample_and_full_frame_counts",
+    "mode": "all",
+    "passed": true,
+    "status": "supported",
+    "verdict": "PASS"
+  },
+  "execution": {
+    "algorithm": "driftbench.query-workload-mix/v1",
+    "engine": "driftbench.api.run_spec",
+    "engine_version": "driftbench.spec-executor/v3",
+    "output_sha256": "731ac16b7d0be868e16cae051199e7b24d088c5d9dee598ddd65cd63b6f919e2",
+    "semantic_sha256": "5aa7516640390577ce2645b693f630deae7f32af8caca910ed565441169bf53d",
+    "status": "supported"
+  },
+  "figure": {
+    "bytes": 141157,
+    "path": "figures/query/tpcc/new_order_hotset.png",
+    "sha256": "357fc290b4006a86af752a78f3a403fb14c030bf8dae5cb0e141a92552d6e729"
+  },
+  "generated_at": "2026-08-19T12:16:34Z",
+  "input_files": [
+    {
+      "bytes": 971,
+      "path": "cache/adapters/query/tpcc/tpcc/queries/delivery.sql",
+      "sha256": "45868043a65d5b0e64f27922d073919ea1f6cd98e5f60d984157a72754aeff39"
+    },
+    {
+      "bytes": 1301,
+      "path": "cache/adapters/query/tpcc/tpcc/queries/new_order.sql",
+      "sha256": "990cccf56e21f7b8fa0d85abfc99cde2175c3f17db956d9bdfe874663bd0eea5"
+    },
+    {
+      "bytes": 620,
+      "path": "cache/adapters/query/tpcc/tpcc/queries/order_status.sql",
+      "sha256": "1b30762e2bae76531100a2d29b9e5ec05c9310e0852ebc6bdb81b2bf827043a8"
+    },
+    {
+      "bytes": 1188,
+      "path": "cache/adapters/query/tpcc/tpcc/queries/payment.sql",
+      "sha256": "15f832a105c20614392e4c56dc1f682431b05fe1029b3153c59c3583830700f6"
+    },
+    {
+      "bytes": 473,
+      "path": "cache/adapters/query/tpcc/tpcc/queries/stock_level.sql",
+      "sha256": "c5b30c7e6f0d0c931377eb3d58ec17462cd947e385d13e0b23031105eb3c320f"
+    },
+    {
+      "bytes": 1939,
+      "path": "cache/adapters/query/tpcc/tpcc/queries/tpcc_queries_manifest.json",
+      "sha256": "fa5d308e55dae3504955f926147c38ec6afb792718aa7c7e367b9f9716916471"
+    }
+  ],
+  "kind": "query",
+  "limitations": "SQL metrics are lexical; no database selectivity or observed arrival timestamps are measured.",
+  "rationale": "Move the native transaction mix decisively toward New-Order.",
+  "render": {
+    "background": "#FFFFFF",
+    "dpi": 100,
+    "font_family": "DejaVu Sans",
+    "matplotlib_version": "3.11.1",
+    "numpy_version": "2.5.1",
+    "palette": {
+      "accent": "#009E73",
+      "baseline": "#0072B2",
+      "drifted": "#D55E00",
+      "negative": "#0072B2",
+      "neutral": "#5B6573",
+      "positive": "#D55E00"
+    },
+    "pixel_size": [
+      1600,
+      1000
+    ],
+    "plot_config": {
+      "accent_color": "#009E73",
+      "background": "#FFFFFF",
+      "baseline_color": "#0072B2",
+      "categorical_label_max_chars": 18,
+      "categorical_shift_labels": "rank",
+      "data_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.28,
+        0.38
+      ],
+      "dpi": 100,
+      "drifted_color": "#D55E00",
+      "font_family": "DejaVu Sans",
+      "grid_color": "#D9DEE7",
+      "height_inches": 10,
+      "muted_color": "#5B6573",
+      "negative_color": "#0072B2",
+      "neutral_color": "#5B6573",
+      "positive_color": "#D55E00",
+      "query_label_max_chars": 18,
+      "query_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.3,
+        0.38
+      ],
+      "style_revision": 1,
+      "text_color": "#17202A",
+      "width_inches": 16
+    },
+    "plot_config_sha256": "672975bf07e2a75550d5c9c4c427a9e2375baf18428a471d43c990e2d12d4620",
+    "schema": "driftbench.visualization-renderer/v3",
+    "size_inches": [
+      16,
+      10
+    ]
+  },
+  "reproduce": "python -m visualization.cli generate --benchmark tpcc --kind query --scenario new_order_hotset --seed 42 --sample-size 1000 --offline",
+  "sample_size": 1000,
+  "scale": {
+    "scale_factor": 1
+  },
+  "scenario": "new_order_hotset",
+  "schema_version": 4,
+  "seed": 42,
+  "semantic_sha256": "a79f6d49f606de31c6248b11a5c32a283218fe3ff22e80a90d5cbbe3398a95ca",
+  "statistics": {
+    "analysis": {
+      "query_movers": 15,
+      "query_top_n": 15,
+      "schema": "driftbench.visualization-analysis/v3"
+    },
+    "basis": "observed_sample",
+    "comparison_metrics": {
+      "basis": "observed_sample",
+      "effective_count": {
+        "baseline": 3.0493863034104414,
+        "drifted": 1.6104878684769082
+      },
+      "entropy_bits": {
+        "baseline": 1.6085189259173087,
+        "drifted": 0.6874977931925546
+      },
+      "jensen_shannon_divergence_bits": 0.22282802114115602,
+      "max_mover": {
+        "baseline_frequency": 0.44,
+        "delta_percentage_points": 45.6,
+        "drifted_frequency": 0.896,
+        "template_id": "new_order"
+      },
+      "reason": null,
+      "status": "supported",
+      "top3_share": {
+        "baseline": 0.925,
+        "drifted": 0.9540000000000001
+      },
+      "total_variation_distance": 0.456
+    },
+    "concentration_curve": {
+      "baseline_cumulative": [
+        0.44,
+        0.877,
+        0.925,
+        0.9640000000000001,
+        1.0
+      ],
+      "drifted_cumulative": [
+        0.896,
+        0.929,
+        0.9540000000000001,
+        0.9790000000000001,
+        1.0
+      ],
+      "rank": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "lexical_metrics": {
+      "baseline": {
+        "comparison_count": {
+          "max": 24,
+          "mean": 15.637,
+          "median": 15.0,
+          "min": 8,
+          "p95": 17.0
+        },
+        "explicit_join_count": {
+          "max": 1,
+          "mean": 0.039,
+          "median": 0.0,
+          "min": 0,
+          "p95": 0.0
+        },
+        "statement_count": {
+          "max": 12,
+          "mean": 9.933,
+          "median": 9.0,
+          "min": 4,
+          "p95": 12.0
+        }
+      },
+      "basis": "observed_sample",
+      "drifted": {
+        "comparison_count": {
+          "max": 24,
+          "mean": 15.05,
+          "median": 15.0,
+          "min": 8,
+          "p95": 17.0
+        },
+        "explicit_join_count": {
+          "max": 1,
+          "mean": 0.021,
+          "median": 0.0,
+          "min": 0,
+          "p95": 0.0
+        },
+        "statement_count": {
+          "max": 12,
+          "mean": 11.483,
+          "median": 12.0,
+          "min": 4,
+          "p95": 12.0
+        }
+      },
+      "labels": {
+        "comparison_count": "Comparison operator count (lexical)",
+        "explicit_join_count": "Explicit JOIN keyword count (lexical)",
+        "statement_count": "SQL statement count (lexical)"
+      },
+      "plot_ready": {
+        "comparison_count": {
+          "baseline_frequency": [
+            0.039,
+            0.048,
+            0.44,
+            0.437,
+            0.036
+          ],
+          "drifted_frequency": [
+            0.021,
+            0.025,
+            0.896,
+            0.025,
+            0.033
+          ],
+          "values": [
+            8,
+            9,
+            15,
+            17,
+            24
+          ]
+        },
+        "explicit_join_count": {
+          "baseline_frequency": [
+            0.961,
+            0.039
+          ],
+          "drifted_frequency": [
+            0.979,
+            0.021
+          ],
+          "values": [
+            0,
+            1
+          ]
+        },
+        "statement_count": {
+          "baseline_frequency": [
+            0.039,
+            0.048,
+            0.473,
+            0.44
+          ],
+          "drifted_frequency": [
+            0.021,
+            0.025,
+            0.058,
+            0.896
+          ],
+          "values": [
+            4,
+            5,
+            9,
+            12
+          ]
+        }
+      },
+      "status": "supported"
+    },
+    "requested_sample_size": 1000,
+    "sample_count": {
+      "baseline": 1000,
+      "drifted": 1000
+    },
+    "status": "supported",
+    "template_display_frequency": {
+      "baseline": [
+        0.44,
+        0.437,
+        0.048,
+        0.039,
+        0.036,
+        0.0
+      ],
+      "drifted": [
+        0.896,
+        0.025,
+        0.025,
+        0.021,
+        0.033,
+        0.0
+      ],
+      "is_aggregate": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "labels": [
+        "new_order",
+        "payment",
+        "order_status",
+        "stock_level",
+        "delivery",
+        "Other"
+      ],
+      "other": {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "is_aggregate": true,
+        "label": "Other"
+      }
+    },
+    "template_frequency": {
+      "baseline_count": [
+        36,
+        440,
+        48,
+        437,
+        39
+      ],
+      "baseline_frequency": [
+        0.036,
+        0.44,
+        0.048,
+        0.437,
+        0.039
+      ],
+      "delta_percentage_points": [
+        -0.2999999999999996,
+        45.6,
+        -2.3,
+        -41.199999999999996,
+        -1.7999999999999998
+      ],
+      "drifted_count": [
+        33,
+        896,
+        25,
+        25,
+        21
+      ],
+      "drifted_frequency": [
+        0.033,
+        0.896,
+        0.025,
+        0.025,
+        0.021
+      ],
+      "template_ids": [
+        "delivery",
+        "new_order",
+        "order_status",
+        "payment",
+        "stock_level"
+      ]
+    },
+    "top_movers": [
+      {
+        "baseline_frequency": 0.44,
+        "delta_percentage_points": 45.6,
+        "drifted_frequency": 0.896,
+        "template_id": "new_order"
+      },
+      {
+        "baseline_frequency": 0.437,
+        "delta_percentage_points": -41.199999999999996,
+        "drifted_frequency": 0.025,
+        "template_id": "payment"
+      },
+      {
+        "baseline_frequency": 0.048,
+        "delta_percentage_points": -2.3,
+        "drifted_frequency": 0.025,
+        "template_id": "order_status"
+      },
+      {
+        "baseline_frequency": 0.039,
+        "delta_percentage_points": -1.7999999999999998,
+        "drifted_frequency": 0.021,
+        "template_id": "stock_level"
+      },
+      {
+        "baseline_frequency": 0.036,
+        "delta_percentage_points": -0.2999999999999996,
+        "drifted_frequency": 0.033,
+        "template_id": "delivery"
+      }
+    ],
+    "top_templates": [
+      {
+        "baseline_frequency": 0.44,
+        "delta_percentage_points": 45.6,
+        "drifted_frequency": 0.896,
+        "template_id": "new_order"
+      },
+      {
+        "baseline_frequency": 0.437,
+        "delta_percentage_points": -41.199999999999996,
+        "drifted_frequency": 0.025,
+        "template_id": "payment"
+      },
+      {
+        "baseline_frequency": 0.048,
+        "delta_percentage_points": -2.3,
+        "drifted_frequency": 0.025,
+        "template_id": "order_status"
+      },
+      {
+        "baseline_frequency": 0.039,
+        "delta_percentage_points": -1.7999999999999998,
+        "drifted_frequency": 0.021,
+        "template_id": "stock_level"
+      },
+      {
+        "baseline_frequency": 0.036,
+        "delta_percentage_points": -0.2999999999999996,
+        "drifted_frequency": 0.033,
+        "template_id": "delivery"
+      }
+    ],
+    "unsupported": [
+      {
+        "metric": "predicate/selectivity distribution",
+        "reason": "No target database is executed in this phase.",
+        "status": "unsupported"
+      },
+      {
+        "metric": "arrival-rate/inter-arrival distribution",
+        "reason": "The adapter does not materialize observed timestamps.",
+        "status": "unsupported"
+      }
+    ]
+  }
+}

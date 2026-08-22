@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-ycsb-query-read-only-profile
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: ycsb, kind: query, scenario: read_only_profile}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: ycsb}
+variables:
+  template_ids: [DeleteRecord, InsertRecord, ReadModifyWriteRecord, ReadRecord, ScanRecord, UpdateRecord]
+  baseline: {weights: {DeleteRecord: 0, InsertRecord: 0, ReadModifyWriteRecord: 0, ReadRecord: 0.50, ScanRecord: 0, UpdateRecord: 0.50}}
+  target: {weights: {DeleteRecord: 0, InsertRecord: 0, ReadModifyWriteRecord: 0, ReadRecord: 1.0, ScanRecord: 0, UpdateRecord: 0}}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

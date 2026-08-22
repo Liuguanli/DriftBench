@@ -1,0 +1,192 @@
+schema_version: 3
+
+# This registry owns stable ordering, presentation rationale, and the
+# scenario-specific comparison/operation allowlist. DriftSpec files remain the
+# sole authority for seeds, samples, and operation parameters.
+data:
+  tpch:
+    price_outliers:
+      spec: specs/data/tpch/price_outliers.yaml
+      rationale: Inject a visible high-price tail while preserving the original lineitem population.
+      target: {table: lineitem, column: l_extendedprice}
+      operation: outlier_injection
+    price_skew:
+      spec: specs/data/tpch/price_skew.yaml
+      rationale: Reweight most extended prices toward a strongly right-skewed distribution.
+      target: {table: lineitem, column: l_extendedprice}
+      operation: value_skew
+    lineitem_cardinality_reduction:
+      spec: specs/data/tpch/lineitem_cardinality_reduction.yaml
+      rationale: Reduce the lineitem population by 45% so input-scale drift is unmistakable.
+      target: {table: lineitem, column: l_extendedprice}
+      operation: vary_cardinality
+  tpcds:
+    item_cardinality_reduction:
+      spec: specs/data/tpcds/item_cardinality_reduction.yaml
+      rationale: Reduce the item population to expose a clear input-scale change.
+      target: {table: item, column: i_current_price}
+      operation: vary_cardinality
+    price_skew:
+      spec: specs/data/tpcds/price_skew.yaml
+      rationale: Shift the current-price distribution without changing row count.
+      target: {table: item, column: i_current_price}
+      operation: value_skew
+    price_outliers:
+      spec: specs/data/tpcds/price_outliers.yaml
+      rationale: Inject a 10% high-price population with a pronounced upper tail.
+      target: {table: item, column: i_current_price}
+      operation: outlier_injection
+  tpcc:
+    discount_skew:
+      spec: specs/data/tpcc/discount_skew.yaml
+      rationale: Concentrate customer discounts into a visibly skewed operating regime.
+      target: {table: customer, column: c_discount}
+      operation: value_skew
+    customer_cardinality_reduction:
+      spec: specs/data/tpcc/customer_cardinality_reduction.yaml
+      rationale: Reduce the customer population while retaining adapter-shaped records.
+      target: {table: customer, column: c_discount}
+      operation: vary_cardinality
+    order_amount_outliers:
+      spec: specs/data/tpcc/order_amount_outliers.yaml
+      rationale: Inject a 10% high-value tail into order-line amounts.
+      target: {table: order_line, column: ol_amount}
+      operation: outlier_injection
+  tpcc_skew:
+    stock_quantity_skew:
+      spec: specs/data/tpcc_skew/stock_quantity_skew.yaml
+      rationale: Add a second strong stock-quantity skew on top of the benchmark's native access skew.
+      target: {table: stock, column: s_quantity}
+      operation: value_skew
+    stock_quantity_outliers:
+      spec: specs/data/tpcc_skew/stock_quantity_outliers.yaml
+      rationale: Inject a distinct high-quantity tail into the stock table.
+      target: {table: stock, column: s_quantity}
+      operation: outlier_injection
+    stock_cardinality_reduction:
+      spec: specs/data/tpcc_skew/stock_cardinality_reduction.yaml
+      rationale: Reduce the stock population by 45% while retaining the skew benchmark's input shape.
+      target: {table: stock, column: s_quantity}
+      operation: vary_cardinality
+  job:
+    pre_1980_title_deletion:
+      spec: specs/data/job/pre_1980_title_deletion.yaml
+      rationale: Delete a seeded share of pre-1980 titles and propagate keys across dependent tables.
+      target: {table: title, column: production_year}
+      operation: delete_keys
+    production_year_skew:
+      spec: specs/data/job/production_year_skew.yaml
+      rationale: Shift the title production-year distribution without fabricating query execution.
+      target: {table: title, column: production_year}
+      operation: value_skew
+    post_2000_title_deletion:
+      spec: specs/data/job/post_2000_title_deletion.yaml
+      rationale: Delete a seeded share of titles after 2000 and propagate every affected foreign key.
+      target: {table: title, column: production_year}
+      operation: delete_keys
+  ycsb:
+    field0_hot_value_skew:
+      spec: specs/data/ycsb/field0_hot_value_skew.yaml
+      rationale: Turn a near-unique string field into a pronounced hot-value distribution.
+      target: {table: usertable, column: FIELD0}
+      operation: value_skew
+    record_cardinality_reduction:
+      spec: specs/data/ycsb/record_cardinality_reduction.yaml
+      rationale: Reduce the record population while preserving the adapter's field schema.
+      target: {table: usertable, column: FIELD0}
+      operation: vary_cardinality
+    record_cardinality_growth:
+      spec: specs/data/ycsb/record_cardinality_growth.yaml
+      rationale: Grow adapter-shaped records by 50%; this is a volume drift and makes no key-integrity claim.
+      target: {table: usertable, column: FIELD0}
+      operation: vary_cardinality
+  dsb:
+    revenue_outliers:
+      spec: specs/data/dsb/revenue_outliers.yaml
+      rationale: Add a measurable high-revenue tail to lineorder.
+      target: {table: lineorder, column: revenue}
+      operation: outlier_injection
+    revenue_skew:
+      spec: specs/data/dsb/revenue_skew.yaml
+      rationale: Shift most revenue values toward a right-skewed regime.
+      target: {table: lineorder, column: revenue}
+      operation: value_skew
+    lineorder_cardinality_reduction:
+      spec: specs/data/dsb/lineorder_cardinality_reduction.yaml
+      rationale: Reduce the lineorder population by 45% to expose a strong fact-table volume drift.
+      target: {table: lineorder, column: revenue}
+      operation: vary_cardinality
+  pgbench:
+    balance_skew:
+      spec: specs/data/pgbench/balance_skew.yaml
+      rationale: Reweight account balances into a visibly skewed distribution.
+      target: {table: pgbench_accounts, column: abalance}
+      operation: value_skew
+    balance_outliers:
+      spec: specs/data/pgbench/balance_outliers.yaml
+      rationale: Inject a high-balance tail while retaining all baseline accounts.
+      target: {table: pgbench_accounts, column: abalance}
+      operation: outlier_injection
+    account_cardinality_reduction:
+      spec: specs/data/pgbench/account_cardinality_reduction.yaml
+      rationale: Reduce the account population by 45% so volume drift is immediately visible.
+      target: {table: pgbench_accounts, column: abalance}
+      operation: vary_cardinality
+
+query:
+  tpch:
+    hotset_concentration:
+      spec: specs/query/tpch/hotset_concentration.yaml
+      rationale: Concentrate the workload on Q1, Q9, and Q18.
+    complexity_mix_shift:
+      spec: specs/query/tpch/complexity_mix_shift.yaml
+      rationale: Reweight toward lexically more involved Q19, Q2, and Q21 templates.
+  tpcds:
+    early_id_hotset:
+      spec: specs/query/tpcds/early_id_hotset.yaml
+      rationale: Concentrate identifier-only workload artifacts on query01-query03.
+    late_id_hotset:
+      spec: specs/query/tpcds/late_id_hotset.yaml
+      rationale: Shift the identifier-only hotset to query97-query99.
+  tpcc:
+    new_order_hotset:
+      spec: specs/query/tpcc/new_order_hotset.yaml
+      rationale: Move the native transaction mix decisively toward New-Order.
+    complexity_mix_shift:
+      spec: specs/query/tpcc/complexity_mix_shift.yaml
+      rationale: Reweight the transaction mix toward Delivery's SQL template.
+  tpcc_skew:
+    new_order_hotset:
+      spec: specs/query/tpcc_skew/new_order_hotset.yaml
+      rationale: Combine skewed access with a strongly New-Order-heavy transaction mix.
+    complexity_mix_shift:
+      spec: specs/query/tpcc_skew/complexity_mix_shift.yaml
+      rationale: Reweight the skewed benchmark toward Delivery's SQL template.
+  job:
+    hotset_concentration:
+      spec: specs/query/job/hotset_concentration.yaml
+      rationale: Concentrate the JOB mix on two selective low-index families.
+    complexity_mix_shift:
+      spec: specs/query/job/complexity_mix_shift.yaml
+      rationale: Reweight JOB toward the ten-table and eight-table join families.
+  ycsb:
+    scan_heavy_profile:
+      spec: specs/query/ycsb/scan_heavy_profile.yaml
+      rationale: Shift public workload profile A to scan-heavy profile E.
+    read_only_profile:
+      spec: specs/query/ycsb/read_only_profile.yaml
+      rationale: Shift public workload profile A to read-only profile C.
+  dsb:
+    region_hotset:
+      spec: specs/query/dsb/region_hotset.yaml
+      rationale: Concentrate DSB queries on regional revenue analysis.
+    margin_hotset:
+      spec: specs/query/dsb/margin_hotset.yaml
+      rationale: Move the DSB hotset to margin-trend analysis.
+  pgbench:
+    select_only_hotset:
+      spec: specs/query/pgbench/select_only_hotset.yaml
+      rationale: Concentrate the mix on read-only point lookups.
+    complexity_mix_shift:
+      spec: specs/query/pgbench/complexity_mix_shift.yaml
+      rationale: Shift the mix toward the full TPC-B transaction script.

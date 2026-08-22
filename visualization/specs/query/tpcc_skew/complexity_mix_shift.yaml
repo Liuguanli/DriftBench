@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-tpcc-skew-query-complexity-mix-shift
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: tpcc_skew, kind: query, scenario: complexity_mix_shift}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: tpcc_skew}
+variables:
+  template_ids: [new_order, payment, order_status, delivery, stock_level]
+  baseline: {weights: {new_order: 0.45, payment: 0.43, order_status: 0.04, delivery: 0.04, stock_level: 0.04}}
+  target: {weights: {new_order: 0.075, payment: 0.075, order_status: 0.075, delivery: 0.70, stock_level: 0.075}}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

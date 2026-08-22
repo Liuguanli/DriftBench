@@ -79,3 +79,9 @@ agents/
 skills/
 
 test_artifacts/
+
+# Visualization keeps only code, configs, manifests, Gallery, and final figures.
+visualization/data/**
+!visualization/data/.gitkeep
+visualization/cache/**
+!visualization/cache/.gitkeep

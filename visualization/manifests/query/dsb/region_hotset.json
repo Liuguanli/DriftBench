@@ -1,0 +1,488 @@
+{
+  "adapter": "DSBData / DSBQueries",
+  "analysis": {
+    "basis": "observed_sample",
+    "config": {
+      "categorical_movers": 15,
+      "categorical_top_k": 10,
+      "concentration_max_points": 256,
+      "ecdf_max_points": 512,
+      "effective_count_entropy_base": 2,
+      "jsd_log_base": 2,
+      "numeric_bins": 24,
+      "quantile_levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "quantile_method": "linear",
+      "query_movers": 15,
+      "query_top_n": 15,
+      "tail_threshold_quantile": 0.99
+    },
+    "config_sha256": "690e5bfd43d316c77506edf04092e650c653a0c1df9b0ba5e80e4efbdf5b0e06",
+    "schema": "driftbench.visualization-analysis/v3"
+  },
+  "benchmark": "dsb",
+  "cache": {
+    "fingerprint": "7f02ccfdc329d44ee5c460cc30433737d1f48f8f0f5d866c6aab742bcca1ae39",
+    "schema": "driftbench.visualization-cache/v4"
+  },
+  "capabilities": {
+    "lexical_sql_metrics": "supported",
+    "predicate_selectivity": "unsupported",
+    "template_frequency": "supported",
+    "temporal": "unsupported"
+  },
+  "comparison_metrics": {
+    "basis": "observed_sample",
+    "effective_count": {
+      "baseline": 2.99984428000715,
+      "drifted": 1.5004939894178293
+    },
+    "entropy_bits": {
+      "baseline": 1.5848876132904104,
+      "drifted": 0.5854375398929103
+    },
+    "jensen_shannon_divergence_bits": 0.2629397779836756,
+    "max_mover": {
+      "baseline_frequency": 0.332,
+      "delta_percentage_points": 56.400000000000006,
+      "drifted_frequency": 0.896,
+      "template_id": "q2_revenue_by_region"
+    },
+    "reason": null,
+    "status": "supported",
+    "top3_share": {
+      "baseline": 1.0,
+      "drifted": 1.0
+    },
+    "total_variation_distance": 0.5640000000000001
+  },
+  "config_sha256": "e5a0b2232ff69412930db1619c4155b1679280e7896ea078390b49eae52d4aa5",
+  "drift_parameters": {
+    "baseline_weights": {
+      "q1_revenue_by_year": 0.3333333333333333,
+      "q2_revenue_by_region": 0.3333333333333333,
+      "q3_margin_trend": 0.3333333333333333
+    },
+    "sample_size": 1000,
+    "target_weights": {
+      "q1_revenue_by_year": 0.05,
+      "q2_revenue_by_region": 0.9,
+      "q3_margin_trend": 0.05
+    }
+  },
+  "drift_spec": {
+    "bytes": 793,
+    "path": "specs/query/dsb/region_hotset.yaml",
+    "resolved_semantic_sha256": "879d130982454e250974c52ff64a2bbb5c5e10bd679db5cb62d1c448cc797213",
+    "semantic_sha256": "c90c6bfc51209de684d9872f6939c4f69d3630ded2ed5993e5067e657695a2cd",
+    "sha256": "e3edfa38c30cf7ef21e7e5a4ab03ce0632ef010c0ca37568a0808f2521d2a47d",
+    "type": {
+      "category": "drift",
+      "family": "workload",
+      "subtype": "template_mix"
+    }
+  },
+  "driftbench_version": "0.1.0b10",
+  "effect": {
+    "assertions": [
+      {
+        "metric": "jensen_shannon_divergence_bits",
+        "observed": 0.2629397779836756,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.2
+      },
+      {
+        "metric": "total_variation_distance",
+        "observed": 0.5640000000000001,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.3
+      },
+      {
+        "metric": "max_mover_absolute_pp",
+        "observed": 56.400000000000006,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 15.0
+      }
+    ],
+    "basis": "observed_seeded_sample_and_full_frame_counts",
+    "mode": "all",
+    "passed": true,
+    "status": "supported",
+    "verdict": "PASS"
+  },
+  "execution": {
+    "algorithm": "driftbench.query-workload-mix/v1",
+    "engine": "driftbench.api.run_spec",
+    "engine_version": "driftbench.spec-executor/v3",
+    "output_sha256": "230f2fb7f26434854a5e7eeaf0562d368e54d7c38fbbb910735bcf58950a1b24",
+    "semantic_sha256": "61111a319ea589edb0c0f8d3b5db5347c8a6c1e9a9553b3edbbe4011adedf5be",
+    "status": "supported"
+  },
+  "figure": {
+    "bytes": 141721,
+    "path": "figures/query/dsb/region_hotset.png",
+    "sha256": "c546a6577a0046cb4f74714458215d3bf6d109519ed6e236b222193fe210741f"
+  },
+  "generated_at": "2026-08-19T12:17:24Z",
+  "input_files": [
+    {
+      "bytes": 154,
+      "path": "cache/adapters/query/dsb/dsb/queries/q1_revenue_by_year.sql",
+      "sha256": "77ef2e213a879d8fedf15d8d548f985c4d6da8edf706c1149169b71d859c8433"
+    },
+    {
+      "bytes": 172,
+      "path": "cache/adapters/query/dsb/dsb/queries/q2_revenue_by_region.sql",
+      "sha256": "f5af94dae7713d74cfada96dc2c1fdf8cca30cdcc3f3cd84857edc28c6cf2041"
+    },
+    {
+      "bytes": 164,
+      "path": "cache/adapters/query/dsb/dsb/queries/q3_margin_trend.sql",
+      "sha256": "cbbe7899e83905c5d21a5091a0792c51227d7e22859b09ad435b979076a224c4"
+    }
+  ],
+  "kind": "query",
+  "limitations": "SQL metrics are lexical and no database selectivity or observed arrival timestamps are measured.",
+  "rationale": "Concentrate DSB queries on regional revenue analysis.",
+  "render": {
+    "background": "#FFFFFF",
+    "dpi": 100,
+    "font_family": "DejaVu Sans",
+    "matplotlib_version": "3.11.1",
+    "numpy_version": "2.5.1",
+    "palette": {
+      "accent": "#009E73",
+      "baseline": "#0072B2",
+      "drifted": "#D55E00",
+      "negative": "#0072B2",
+      "neutral": "#5B6573",
+      "positive": "#D55E00"
+    },
+    "pixel_size": [
+      1600,
+      1000
+    ],
+    "plot_config": {
+      "accent_color": "#009E73",
+      "background": "#FFFFFF",
+      "baseline_color": "#0072B2",
+      "categorical_label_max_chars": 18,
+      "categorical_shift_labels": "rank",
+      "data_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.28,
+        0.38
+      ],
+      "dpi": 100,
+      "drifted_color": "#D55E00",
+      "font_family": "DejaVu Sans",
+      "grid_color": "#D9DEE7",
+      "height_inches": 10,
+      "muted_color": "#5B6573",
+      "negative_color": "#0072B2",
+      "neutral_color": "#5B6573",
+      "positive_color": "#D55E00",
+      "query_label_max_chars": 18,
+      "query_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.3,
+        0.38
+      ],
+      "style_revision": 1,
+      "text_color": "#17202A",
+      "width_inches": 16
+    },
+    "plot_config_sha256": "672975bf07e2a75550d5c9c4c427a9e2375baf18428a471d43c990e2d12d4620",
+    "schema": "driftbench.visualization-renderer/v3",
+    "size_inches": [
+      16,
+      10
+    ]
+  },
+  "reproduce": "python -m visualization.cli generate --benchmark dsb --kind query --scenario region_hotset --seed 42 --sample-size 1000 --offline",
+  "sample_size": 1000,
+  "scale": {
+    "scale_factor": 1
+  },
+  "scenario": "region_hotset",
+  "schema_version": 4,
+  "seed": 42,
+  "semantic_sha256": "02f8aeffd69d443861cffa61f56d57c3849e44c8357768cfe4c23eef14ae369f",
+  "statistics": {
+    "analysis": {
+      "query_movers": 15,
+      "query_top_n": 15,
+      "schema": "driftbench.visualization-analysis/v3"
+    },
+    "basis": "observed_sample",
+    "comparison_metrics": {
+      "basis": "observed_sample",
+      "effective_count": {
+        "baseline": 2.99984428000715,
+        "drifted": 1.5004939894178293
+      },
+      "entropy_bits": {
+        "baseline": 1.5848876132904104,
+        "drifted": 0.5854375398929103
+      },
+      "jensen_shannon_divergence_bits": 0.2629397779836756,
+      "max_mover": {
+        "baseline_frequency": 0.332,
+        "delta_percentage_points": 56.400000000000006,
+        "drifted_frequency": 0.896,
+        "template_id": "q2_revenue_by_region"
+      },
+      "reason": null,
+      "status": "supported",
+      "top3_share": {
+        "baseline": 1.0,
+        "drifted": 1.0
+      },
+      "total_variation_distance": 0.5640000000000001
+    },
+    "concentration_curve": {
+      "baseline_cumulative": [
+        0.338,
+        0.67,
+        1.0
+      ],
+      "drifted_cumulative": [
+        0.896,
+        0.9500000000000001,
+        1.0
+      ],
+      "rank": [
+        1,
+        2,
+        3
+      ]
+    },
+    "lexical_metrics": {
+      "baseline": {
+        "comparison_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        },
+        "explicit_join_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        },
+        "statement_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        }
+      },
+      "basis": "observed_sample",
+      "drifted": {
+        "comparison_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        },
+        "explicit_join_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        },
+        "statement_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        }
+      },
+      "labels": {
+        "comparison_count": "Comparison operator count (lexical)",
+        "explicit_join_count": "Explicit JOIN keyword count (lexical)",
+        "statement_count": "SQL statement count (lexical)"
+      },
+      "plot_ready": {
+        "comparison_count": {
+          "baseline_frequency": [
+            1.0
+          ],
+          "drifted_frequency": [
+            1.0
+          ],
+          "values": [
+            1
+          ]
+        },
+        "explicit_join_count": {
+          "baseline_frequency": [
+            1.0
+          ],
+          "drifted_frequency": [
+            1.0
+          ],
+          "values": [
+            1
+          ]
+        },
+        "statement_count": {
+          "baseline_frequency": [
+            1.0
+          ],
+          "drifted_frequency": [
+            1.0
+          ],
+          "values": [
+            1
+          ]
+        }
+      },
+      "status": "supported"
+    },
+    "requested_sample_size": 1000,
+    "sample_count": {
+      "baseline": 1000,
+      "drifted": 1000
+    },
+    "status": "supported",
+    "template_display_frequency": {
+      "baseline": [
+        0.332,
+        0.338,
+        0.33,
+        0.0
+      ],
+      "drifted": [
+        0.896,
+        0.054,
+        0.05,
+        0.0
+      ],
+      "is_aggregate": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "labels": [
+        "q2_revenue_by_region",
+        "q3_margin_trend",
+        "q1_revenue_by_year",
+        "Other"
+      ],
+      "other": {
+        "baseline_frequency": 0.0,
+        "delta_percentage_points": 0.0,
+        "drifted_frequency": 0.0,
+        "is_aggregate": true,
+        "label": "Other"
+      }
+    },
+    "template_frequency": {
+      "baseline_count": [
+        330,
+        332,
+        338
+      ],
+      "baseline_frequency": [
+        0.33,
+        0.332,
+        0.338
+      ],
+      "delta_percentage_points": [
+        -28.000000000000004,
+        56.400000000000006,
+        -28.400000000000002
+      ],
+      "drifted_count": [
+        50,
+        896,
+        54
+      ],
+      "drifted_frequency": [
+        0.05,
+        0.896,
+        0.054
+      ],
+      "template_ids": [
+        "q1_revenue_by_year",
+        "q2_revenue_by_region",
+        "q3_margin_trend"
+      ]
+    },
+    "top_movers": [
+      {
+        "baseline_frequency": 0.332,
+        "delta_percentage_points": 56.400000000000006,
+        "drifted_frequency": 0.896,
+        "template_id": "q2_revenue_by_region"
+      },
+      {
+        "baseline_frequency": 0.338,
+        "delta_percentage_points": -28.400000000000002,
+        "drifted_frequency": 0.054,
+        "template_id": "q3_margin_trend"
+      },
+      {
+        "baseline_frequency": 0.33,
+        "delta_percentage_points": -28.000000000000004,
+        "drifted_frequency": 0.05,
+        "template_id": "q1_revenue_by_year"
+      }
+    ],
+    "top_templates": [
+      {
+        "baseline_frequency": 0.332,
+        "delta_percentage_points": 56.400000000000006,
+        "drifted_frequency": 0.896,
+        "template_id": "q2_revenue_by_region"
+      },
+      {
+        "baseline_frequency": 0.338,
+        "delta_percentage_points": -28.400000000000002,
+        "drifted_frequency": 0.054,
+        "template_id": "q3_margin_trend"
+      },
+      {
+        "baseline_frequency": 0.33,
+        "delta_percentage_points": -28.000000000000004,
+        "drifted_frequency": 0.05,
+        "template_id": "q1_revenue_by_year"
+      }
+    ],
+    "unsupported": [
+      {
+        "metric": "predicate/selectivity distribution",
+        "reason": "No target database is executed in this phase.",
+        "status": "unsupported"
+      },
+      {
+        "metric": "arrival-rate/inter-arrival distribution",
+        "reason": "The adapter does not materialize observed timestamps.",
+        "status": "unsupported"
+      }
+    ]
+  }
+}

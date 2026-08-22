@@ -1,0 +1,32 @@
+# 1. Scientific question: How does concentrated TPC-H pricing differ from baseline?
+# 2. Comparison: Baseline is the input; drifted skews lineitem.l_extendedprice.
+# 3. Strength: Portion 0.80 and skewness 5 create a visible, bounded shift.
+# 4. Reproduce: Bind the three declared paths and call driftbench.api.run_spec.
+# 5. Scope: This supports input-distribution claims, not performance or causality.
+spec_version: 1
+pattern_id: visualization-tpch-price-skew
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata:
+  benchmark: tpch
+  kind: data
+  scenario: price_skew
+  comparison: {table: lineitem, column: l_extendedprice}
+effect_policy:
+  mode: any
+  assertions:
+    - {metric: ks_distance, operator: gte, threshold: 0.20}
+    - {metric: normalized_wasserstein_p95_p05, operator: gte, threshold: 0.12}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: lineitem
+  drifts:
+    - name: price_skew
+      drift_type: value_skew
+      output_path: ${DRIFTBENCH_OUTPUT}
+      columns: [l_extendedprice]
+      portion: 0.80
+      skewness: 5

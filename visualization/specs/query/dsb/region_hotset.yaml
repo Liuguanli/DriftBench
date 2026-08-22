@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-dsb-query-region-hotset
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: dsb, kind: query, scenario: region_hotset}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: dsb}
+variables:
+  template_ids: [q1_revenue_by_year, q2_revenue_by_region, q3_margin_trend]
+  baseline: {mode: uniform}
+  target: {weights: {q1_revenue_by_year: 0.05, q2_revenue_by_region: 0.90, q3_margin_trend: 0.05}}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

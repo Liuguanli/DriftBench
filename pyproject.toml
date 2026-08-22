@@ -47,6 +47,10 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "jsonschema>=4.20",
+    "hatchling>=1.24",
+]
+visualization = [
+    "matplotlib>=3.7,<4",
 ]
 
 [project.urls]
@@ -81,6 +85,10 @@ exclude = [
     "driftbench/config",
     "driftbench/config/**",
     "driftbench/main.py",
+    "visualization/data",
+    "visualization/data/**",
+    "visualization/cache",
+    "visualization/cache/**",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -88,6 +96,7 @@ packages = [
     "driftbench",
     "driftbench_service",
     "driftbench_mcp",
+    "visualization",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -95,6 +104,7 @@ include = [
     "/driftbench",
     "/driftbench_service",
     "/driftbench_mcp",
+    "/visualization",
     "/driftspec/examples",
     "/scripts",
     "/requirements",

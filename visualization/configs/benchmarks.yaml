@@ -1,0 +1,84 @@
+schema_version: 1
+order:
+  - tpch
+  - tpcds
+  - tpcc
+  - tpcc_skew
+  - job
+  - ycsb
+  - dsb
+  - pgbench
+
+benchmarks:
+  tpch:
+    title: TPC-H
+    description: Decision-support workload with 22 parameterized analytical query templates.
+    adapter_module: driftbench.data.tpch
+    adapter: TPCHData / TPCHQueries
+    scale: {scale_factor: 0.01, source: DRIFTBENCH_TPCH_SOURCE_DIR}
+    data: {table: lineitem, column: l_extendedprice}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: supported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: Real predicate selectivity and observed query arrival times are not available without database execution.
+  tpcds:
+    title: TPC-DS
+    description: Synthetic small-scale TPC-DS data with the public 99-query identifier workload.
+    adapter_module: driftbench.data.tpcds
+    adapter: TPCDSData / TPCDSQueries
+    scale: {scale_factor: 1}
+    data: {table: item, column: i_current_price}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: unsupported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: The adapter exposes query IDs and XML only; SQL complexity, predicate selectivity, and temporal observations are unsupported.
+  tpcc:
+    title: TPC-C
+    description: Synthetic one-warehouse transactional data with five public SQL transaction templates.
+    adapter_module: driftbench.data.tpcc
+    adapter: TPCCData / TPCCQueries
+    scale: {scale_factor: 1}
+    data: {table: customer, column: c_discount}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: supported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: SQL metrics are lexical; no database selectivity or observed arrival timestamps are measured.
+  tpcc_skew:
+    title: TPC-C Skew
+    description: TPC-C data and transactions annotated with a skewed warehouse-access profile.
+    adapter_module: driftbench.data.tpcc_skew
+    adapter: TPCCSkewData / TPCCSkewQueries
+    scale: {scale_factor: 1, hot_warehouse_fraction: 0.2, skew_factor: 0.99}
+    data: {table: stock, column: s_quantity}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: supported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: SQL metrics are lexical; configured warehouse weights are not observed arrival timestamps.
+  job:
+    title: JOB
+    description: Synthetic 11-table IMDB subset with 20 representative join-order query templates.
+    adapter_module: driftbench.data.job
+    adapter: JOBData / JOBQueries
+    scale: {scale_factor: 1}
+    data: {table: title, column: production_year}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: supported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: The adapter contains 20 representative templates rather than the complete 113-query JOB corpus; selectivity is unsupported.
+  ycsb:
+    title: YCSB
+    description: Synthetic key-value records and public YCSB operation-mix profiles.
+    adapter_module: driftbench.data.ycsb
+    adapter: YCSBData / YCSBQueries
+    scale: {record_count: 1000}
+    data: {table: usertable, column: FIELD0}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: unsupported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: YCSB exposes operation weights rather than SQL; SQL complexity, selectivity, and observed temporal metrics are unsupported.
+  dsb:
+    title: DSB
+    description: Synthetic star-schema benchmark with three analytical SQL templates.
+    adapter_module: driftbench.data.dsb
+    adapter: DSBData / DSBQueries
+    scale: {scale_factor: 1}
+    data: {table: lineorder, column: revenue}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: supported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: SQL metrics are lexical and no database selectivity or observed arrival timestamps are measured.
+  pgbench:
+    title: pgbench
+    description: Synthetic TPC-B-like input data and three public pgbench workload scripts.
+    adapter_module: driftbench.data.pgbench
+    adapter: PgBenchData / PgBenchQueries
+    scale: {scale_factor: 1}
+    data: {table: pgbench_accounts, column: abalance}
+    query_capabilities: {template_frequency: supported, lexical_sql_metrics: supported, predicate_selectivity: unsupported, temporal: unsupported}
+    limitations: No PostgreSQL server is executed; SQL metrics are lexical and configured rates are not observed arrivals.

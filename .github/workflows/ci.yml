@@ -38,7 +38,7 @@ jobs:
       - name: Install package (editable)
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[test]"
+          pip install -e ".[test,visualization]"
 
       - name: Smoke check console scripts
         run: |
@@ -48,7 +48,9 @@ jobs:
           python -c "import driftbench; print(driftbench.__version__)"
 
       - name: Run unittest suite
-        run: python -m unittest discover -s test -p 'test_*.py' -v
+        run: |
+          python -m unittest discover -s test -p 'test_*.py' -v
+          python -m unittest discover -s visualization/tests -p 'test_*.py' -v
 
   windows-cp1252-adapters:
     name: Windows CP1252 benchmark adapters
@@ -110,6 +112,20 @@ jobs:
           /tmp/wheel-check/bin/pip install dist/*.whl
           /tmp/wheel-check/bin/driftbench --help
           /tmp/wheel-check/bin/python -c "import driftbench; print(driftbench.__version__)"
+          /tmp/wheel-check/bin/python - <<'PY'
+          from pathlib import Path
+          import visualization
+
+          root = Path(visualization.__file__).resolve().parent
+          assert (root / "GALLERY.md").is_file()
+          assert (root / "configs" / "benchmarks.yaml").is_file()
+          assert (root / "configs" / "drift_scenarios.yaml").is_file()
+          assert len(tuple((root / "figures").rglob("*.png"))) == 40
+          assert len(tuple((root / "manifests").rglob("*.json"))) == 40
+          assert len(tuple((root / "specs").rglob("*.yaml"))) == 40
+          assert not (root / "data").exists()
+          assert not (root / "cache").exists()
+          PY
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4

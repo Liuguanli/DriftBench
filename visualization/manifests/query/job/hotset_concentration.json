@@ -1,0 +1,987 @@
+{
+  "adapter": "JOBData / JOBQueries",
+  "analysis": {
+    "basis": "observed_sample",
+    "config": {
+      "categorical_movers": 15,
+      "categorical_top_k": 10,
+      "concentration_max_points": 256,
+      "ecdf_max_points": 512,
+      "effective_count_entropy_base": 2,
+      "jsd_log_base": 2,
+      "numeric_bins": 24,
+      "quantile_levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "quantile_method": "linear",
+      "query_movers": 15,
+      "query_top_n": 15,
+      "tail_threshold_quantile": 0.99
+    },
+    "config_sha256": "690e5bfd43d316c77506edf04092e650c653a0c1df9b0ba5e80e4efbdf5b0e06",
+    "schema": "driftbench.visualization-analysis/v3"
+  },
+  "benchmark": "job",
+  "cache": {
+    "fingerprint": "2eb219ef0932a3dc6394dca3453fcf5d5d0d0d7c71cad0d9dcd8ff05cc863c7b",
+    "schema": "driftbench.visualization-cache/v4"
+  },
+  "capabilities": {
+    "lexical_sql_metrics": "supported",
+    "predicate_selectivity": "unsupported",
+    "template_frequency": "supported",
+    "temporal": "unsupported"
+  },
+  "comparison_metrics": {
+    "basis": "observed_sample",
+    "effective_count": {
+      "baseline": 19.833520571424327,
+      "drifted": 4.939784892853151
+    },
+    "entropy_bits": {
+      "baseline": 4.3098688823947,
+      "drifted": 2.3044482197915723
+    },
+    "jensen_shannon_divergence_bits": 0.4078025229211406,
+    "max_mover": {
+      "baseline_frequency": 0.04999999999999999,
+      "delta_percentage_points": 35.699999999999996,
+      "drifted_frequency": 0.407,
+      "template_id": "1a_keyword_filter"
+    },
+    "reason": null,
+    "status": "supported",
+    "top3_share": {
+      "baseline": 0.18099999999999997,
+      "drifted": 0.823
+    },
+    "total_variation_distance": 0.7070000000000001
+  },
+  "config_sha256": "dfc0848565f93e6f3b955a89ffacb0ac07b4d58766e79c7e15f2a24746cc7fdb",
+  "drift_parameters": {
+    "baseline_weights": {
+      "10a_full_join": 0.05,
+      "11a_company_keyword_year": 0.05,
+      "12a_cast_info_selective": 0.05,
+      "13a_movie_info_aggregate": 0.05,
+      "14a_company_info_cast": 0.05,
+      "15a_keyword_year_range": 0.05,
+      "16a_actor_company": 0.05,
+      "17a_selective_cast_keyword": 0.05,
+      "18a_movie_info_keyword": 0.05,
+      "19a_company_output_volume": 0.05,
+      "1a_keyword_filter": 0.05,
+      "20a_full_eight_table": 0.05,
+      "2a_company_movies": 0.05,
+      "3a_movie_info_filter": 0.05,
+      "4a_cast_keyword": 0.05,
+      "5a_company_country_cast": 0.05,
+      "6a_info_company": 0.05,
+      "7a_keyword_count": 0.05,
+      "8a_actor_productivity": 0.05,
+      "9a_multi_keyword_movie": 0.05
+    },
+    "sample_size": 1000,
+    "target_weights": {
+      "10a_full_join": 0.011111111111111112,
+      "11a_company_keyword_year": 0.011111111111111112,
+      "12a_cast_info_selective": 0.011111111111111112,
+      "13a_movie_info_aggregate": 0.011111111111111112,
+      "14a_company_info_cast": 0.011111111111111112,
+      "15a_keyword_year_range": 0.011111111111111112,
+      "16a_actor_company": 0.011111111111111112,
+      "17a_selective_cast_keyword": 0.011111111111111112,
+      "18a_movie_info_keyword": 0.011111111111111112,
+      "19a_company_output_volume": 0.011111111111111112,
+      "1a_keyword_filter": 0.4,
+      "20a_full_eight_table": 0.011111111111111112,
+      "2a_company_movies": 0.4,
+      "3a_movie_info_filter": 0.011111111111111112,
+      "4a_cast_keyword": 0.011111111111111112,
+      "5a_company_country_cast": 0.011111111111111112,
+      "6a_info_company": 0.011111111111111112,
+      "7a_keyword_count": 0.011111111111111112,
+      "8a_actor_productivity": 0.011111111111111112,
+      "9a_multi_keyword_movie": 0.011111111111111112
+    }
+  },
+  "drift_spec": {
+    "bytes": 1185,
+    "path": "specs/query/job/hotset_concentration.yaml",
+    "resolved_semantic_sha256": "458a1751d7c71e4b8be02c403bdcfa94e93e3143958b666dd77d11399e321632",
+    "semantic_sha256": "9c2c1903334fb3f3a6a261c0c53c631d75bd3949e4ade9ece9cd66b9e98a7c51",
+    "sha256": "97bb07918e8bda0d1c59c8f10db40352f2aa84e2ae0916caa774ecee7d8e83cb",
+    "type": {
+      "category": "drift",
+      "family": "workload",
+      "subtype": "template_mix"
+    }
+  },
+  "driftbench_version": "0.1.0b10",
+  "effect": {
+    "assertions": [
+      {
+        "metric": "jensen_shannon_divergence_bits",
+        "observed": 0.4078025229211406,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.2
+      },
+      {
+        "metric": "total_variation_distance",
+        "observed": 0.7070000000000001,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.3
+      },
+      {
+        "metric": "max_mover_absolute_pp",
+        "observed": 35.699999999999996,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 15.0
+      }
+    ],
+    "basis": "observed_seeded_sample_and_full_frame_counts",
+    "mode": "all",
+    "passed": true,
+    "status": "supported",
+    "verdict": "PASS"
+  },
+  "execution": {
+    "algorithm": "driftbench.query-workload-mix/v1",
+    "engine": "driftbench.api.run_spec",
+    "engine_version": "driftbench.spec-executor/v3",
+    "output_sha256": "f62094ce496666856d1cba9dd4054c1abf2f2015ae9e3e69754395791dd953ec",
+    "semantic_sha256": "34c44062f532ff2007a79122439938897d4efb253bd8f685e5277f2561c05a06",
+    "status": "supported"
+  },
+  "figure": {
+    "bytes": 200867,
+    "path": "figures/query/job/hotset_concentration.png",
+    "sha256": "72df6dba88b909488d2eab9c682350f43a2dd385cdf697bbb76a94a65901cfe6"
+  },
+  "generated_at": "2026-08-19T12:17:02Z",
+  "input_files": [
+    {
+      "bytes": 656,
+      "path": "cache/adapters/query/job/job/queries/10a_full_join.sql",
+      "sha256": "5029f5bd298e2e52c271fb13a69d553551d8e676c7b7a826fe8179f2f2cba36b"
+    },
+    {
+      "bytes": 424,
+      "path": "cache/adapters/query/job/job/queries/11a_company_keyword_year.sql",
+      "sha256": "07a41c4be9369a9f5bae8f679933bbf51069869e1ef7295ed8d84addb12866fd"
+    },
+    {
+      "bytes": 254,
+      "path": "cache/adapters/query/job/job/queries/12a_cast_info_selective.sql",
+      "sha256": "c750f444fbad10ef10437f3d78c37b6bac4d6edbff81ef1f3a8b5123a3f40992"
+    },
+    {
+      "bytes": 347,
+      "path": "cache/adapters/query/job/job/queries/13a_movie_info_aggregate.sql",
+      "sha256": "cb93845b3f309407b6d0d95473ff2fd31caf022255251db95babee81da7fcab5"
+    },
+    {
+      "bytes": 480,
+      "path": "cache/adapters/query/job/job/queries/14a_company_info_cast.sql",
+      "sha256": "0abbdd534790dc5b4b3e1492f8469b5b48680bda10b22ab0978506ebb9df5f3c"
+    },
+    {
+      "bytes": 349,
+      "path": "cache/adapters/query/job/job/queries/15a_keyword_year_range.sql",
+      "sha256": "a349ddda88a5443947cbb97514e855410938c99c16f508818231eeabc40c4f48"
+    },
+    {
+      "bytes": 395,
+      "path": "cache/adapters/query/job/job/queries/16a_actor_company.sql",
+      "sha256": "23a88c782f574cd18669004c195682511e9be58500ac46246bde9a0760a65f48"
+    },
+    {
+      "bytes": 473,
+      "path": "cache/adapters/query/job/job/queries/17a_selective_cast_keyword.sql",
+      "sha256": "b226d228504b7eb77744745ee5eb2ec3571281bdd56d264b62d4d40beb7291c5"
+    },
+    {
+      "bytes": 405,
+      "path": "cache/adapters/query/job/job/queries/18a_movie_info_keyword.sql",
+      "sha256": "10b0d569f97513e5fee343f76e371be5b9e808dc5d74d6295fb3942bf62efac7"
+    },
+    {
+      "bytes": 345,
+      "path": "cache/adapters/query/job/job/queries/19a_company_output_volume.sql",
+      "sha256": "6dabd2190c2e574137757e4995ac84ab098dd83d9ee3bb8c94637c9c20155bdc"
+    },
+    {
+      "bytes": 271,
+      "path": "cache/adapters/query/job/job/queries/1a_keyword_filter.sql",
+      "sha256": "fb66916893ba775d262ee00efe6c4d6c00ef2310fda72e9b99dc318afc2f5c13"
+    },
+    {
+      "bytes": 779,
+      "path": "cache/adapters/query/job/job/queries/20a_full_eight_table.sql",
+      "sha256": "2f0a07d7989428888b291d24f08ff6c49cae508dd81406e868c34be7ffd2ec1c"
+    },
+    {
+      "bytes": 306,
+      "path": "cache/adapters/query/job/job/queries/2a_company_movies.sql",
+      "sha256": "1f448846a25b954c6e9269e2127febdba41bef84803543a1b9a045231788dbb7"
+    },
+    {
+      "bytes": 222,
+      "path": "cache/adapters/query/job/job/queries/3a_movie_info_filter.sql",
+      "sha256": "ea0a333585460347d84a66ba4effe6e0a0855ced7ab03e171d6fe54d5988bc7f"
+    },
+    {
+      "bytes": 345,
+      "path": "cache/adapters/query/job/job/queries/4a_cast_keyword.sql",
+      "sha256": "8cf5147b7895a44a9414d288613b52f58dd5609d8e888e886e590222e0507257"
+    },
+    {
+      "bytes": 435,
+      "path": "cache/adapters/query/job/job/queries/5a_company_country_cast.sql",
+      "sha256": "12404a44e98919d6d1da338749a4c6eec87bb4ef5764d2b3bacb67184ed0b851"
+    },
+    {
+      "bytes": 408,
+      "path": "cache/adapters/query/job/job/queries/6a_info_company.sql",
+      "sha256": "c213fe3ca7e793ace6e56bcc1e1caac8a38c35b569cad4da4dbad56f3b57e937"
+    },
+    {
+      "bytes": 267,
+      "path": "cache/adapters/query/job/job/queries/7a_keyword_count.sql",
+      "sha256": "57fdbac887e5bcb3291f020a778d063024912db01a60b32a15c0deebbe9439f2"
+    },
+    {
+      "bytes": 330,
+      "path": "cache/adapters/query/job/job/queries/8a_actor_productivity.sql",
+      "sha256": "450338cd23775c2e2c593a2af447985b56de0e6d893fb1e63dd30558b8f2505b"
+    },
+    {
+      "bytes": 406,
+      "path": "cache/adapters/query/job/job/queries/9a_multi_keyword_movie.sql",
+      "sha256": "d6431c2e266ee4bacb15cc60992dd7a24c115e9ef80ef9848add34d0937577a9"
+    },
+    {
+      "bytes": 6933,
+      "path": "cache/adapters/query/job/job/queries/job_queries_manifest.json",
+      "sha256": "d457812bb8521911931ffa0af7e0cff40d228a1a6355172da5322385940a0d52"
+    }
+  ],
+  "kind": "query",
+  "limitations": "The adapter contains 20 representative templates rather than the complete 113-query JOB corpus; selectivity is unsupported.",
+  "rationale": "Concentrate the JOB mix on two selective low-index families.",
+  "render": {
+    "background": "#FFFFFF",
+    "dpi": 100,
+    "font_family": "DejaVu Sans",
+    "matplotlib_version": "3.11.1",
+    "numpy_version": "2.5.1",
+    "palette": {
+      "accent": "#009E73",
+      "baseline": "#0072B2",
+      "drifted": "#D55E00",
+      "negative": "#0072B2",
+      "neutral": "#5B6573",
+      "positive": "#D55E00"
+    },
+    "pixel_size": [
+      1600,
+      1000
+    ],
+    "plot_config": {
+      "accent_color": "#009E73",
+      "background": "#FFFFFF",
+      "baseline_color": "#0072B2",
+      "categorical_label_max_chars": 18,
+      "categorical_shift_labels": "rank",
+      "data_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.28,
+        0.38
+      ],
+      "dpi": 100,
+      "drifted_color": "#D55E00",
+      "font_family": "DejaVu Sans",
+      "grid_color": "#D9DEE7",
+      "height_inches": 10,
+      "muted_color": "#5B6573",
+      "negative_color": "#0072B2",
+      "neutral_color": "#5B6573",
+      "positive_color": "#D55E00",
+      "query_label_max_chars": 18,
+      "query_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.3,
+        0.38
+      ],
+      "style_revision": 1,
+      "text_color": "#17202A",
+      "width_inches": 16
+    },
+    "plot_config_sha256": "672975bf07e2a75550d5c9c4c427a9e2375baf18428a471d43c990e2d12d4620",
+    "schema": "driftbench.visualization-renderer/v3",
+    "size_inches": [
+      16,
+      10
+    ]
+  },
+  "reproduce": "python -m visualization.cli generate --benchmark job --kind query --scenario hotset_concentration --seed 42 --sample-size 1000 --offline",
+  "sample_size": 1000,
+  "scale": {
+    "scale_factor": 1
+  },
+  "scenario": "hotset_concentration",
+  "schema_version": 4,
+  "seed": 42,
+  "semantic_sha256": "4e82c3d19ccec9eca3ff7810c2d411dfb90c0ed752a6d5d2ec247cebcebb7cbb",
+  "statistics": {
+    "analysis": {
+      "query_movers": 15,
+      "query_top_n": 15,
+      "schema": "driftbench.visualization-analysis/v3"
+    },
+    "basis": "observed_sample",
+    "comparison_metrics": {
+      "basis": "observed_sample",
+      "effective_count": {
+        "baseline": 19.833520571424327,
+        "drifted": 4.939784892853151
+      },
+      "entropy_bits": {
+        "baseline": 4.3098688823947,
+        "drifted": 2.3044482197915723
+      },
+      "jensen_shannon_divergence_bits": 0.4078025229211406,
+      "max_mover": {
+        "baseline_frequency": 0.04999999999999999,
+        "delta_percentage_points": 35.699999999999996,
+        "drifted_frequency": 0.407,
+        "template_id": "1a_keyword_filter"
+      },
+      "reason": null,
+      "status": "supported",
+      "top3_share": {
+        "baseline": 0.18099999999999997,
+        "drifted": 0.823
+      },
+      "total_variation_distance": 0.7070000000000001
+    },
+    "concentration_curve": {
+      "baseline_cumulative": [
+        0.062,
+        0.124,
+        0.181,
+        0.237,
+        0.293,
+        0.347,
+        0.39999999999999997,
+        0.45299999999999996,
+        0.505,
+        0.555,
+        0.6030000000000001,
+        0.6500000000000001,
+        0.6970000000000002,
+        0.7440000000000002,
+        0.7900000000000003,
+        0.8350000000000003,
+        0.8790000000000003,
+        0.9200000000000004,
+        0.9610000000000004,
+        1.0000000000000004
+      ],
+      "drifted_cumulative": [
+        0.407,
+        0.8089999999999999,
+        0.823,
+        0.836,
+        0.848,
+        0.86,
+        0.872,
+        0.884,
+        0.896,
+        0.907,
+        0.918,
+        0.929,
+        0.9390000000000001,
+        0.9490000000000001,
+        0.9590000000000001,
+        0.9690000000000001,
+        0.9780000000000001,
+        0.9860000000000001,
+        0.9930000000000001,
+        1.0
+      ],
+      "rank": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ]
+    },
+    "lexical_metrics": {
+      "baseline": {
+        "comparison_count": {
+          "max": 13,
+          "mean": 6.026,
+          "median": 5.0,
+          "min": 3,
+          "p95": 13.0
+        },
+        "explicit_join_count": {
+          "max": 8,
+          "mean": 3.734,
+          "median": 4.0,
+          "min": 2,
+          "p95": 8.0
+        },
+        "statement_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        }
+      },
+      "basis": "observed_sample",
+      "drifted": {
+        "comparison_count": {
+          "max": 13,
+          "mean": 4.443,
+          "median": 4.0,
+          "min": 3,
+          "p95": 8.0
+        },
+        "explicit_join_count": {
+          "max": 8,
+          "mean": 2.388,
+          "median": 2.0,
+          "min": 2,
+          "p95": 6.0
+        },
+        "statement_count": {
+          "max": 1,
+          "mean": 1.0,
+          "median": 1.0,
+          "min": 1,
+          "p95": 1.0
+        }
+      },
+      "labels": {
+        "comparison_count": "Comparison operator count (lexical)",
+        "explicit_join_count": "Explicit JOIN keyword count (lexical)",
+        "statement_count": "SQL statement count (lexical)"
+      },
+      "plot_ready": {
+        "comparison_count": {
+          "baseline_frequency": [
+            0.156,
+            0.341,
+            0.062,
+            0.082,
+            0.109,
+            0.096,
+            0.047,
+            0.107
+          ],
+          "drifted_frequency": [
+            0.032,
+            0.858,
+            0.012,
+            0.019,
+            0.02,
+            0.026,
+            0.012,
+            0.021
+          ],
+          "values": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            10,
+            13
+          ]
+        },
+        "explicit_join_count": {
+          "baseline_frequency": [
+            0.49,
+            0.26,
+            0.143,
+            0.107
+          ],
+          "drifted_frequency": [
+            0.886,
+            0.055,
+            0.038,
+            0.021
+          ],
+          "values": [
+            2,
+            4,
+            6,
+            8
+          ]
+        },
+        "statement_count": {
+          "baseline_frequency": [
+            1.0
+          ],
+          "drifted_frequency": [
+            1.0
+          ],
+          "values": [
+            1
+          ]
+        }
+      },
+      "status": "supported"
+    },
+    "requested_sample_size": 1000,
+    "sample_count": {
+      "baseline": 1000,
+      "drifted": 1000
+    },
+    "status": "supported",
+    "template_display_frequency": {
+      "baseline": [
+        0.05,
+        0.052,
+        0.062,
+        0.062,
+        0.057,
+        0.056,
+        0.056,
+        0.054,
+        0.053,
+        0.053,
+        0.048,
+        0.047,
+        0.047,
+        0.047,
+        0.046,
+        0.20999999999999996
+      ],
+      "drifted": [
+        0.407,
+        0.402,
+        0.01,
+        0.012,
+        0.012,
+        0.012,
+        0.01,
+        0.01,
+        0.009,
+        0.008,
+        0.011,
+        0.011,
+        0.013,
+        0.012,
+        0.01,
+        0.051000000000000045
+      ],
+      "is_aggregate": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "labels": [
+        "1a_keyword_filter",
+        "2a_company_movies",
+        "10a_full_join",
+        "16a_actor_company",
+        "5a_company_country_cast",
+        "18a_movie_info_keyword",
+        "7a_keyword_count",
+        "15a_keyword_year_range",
+        "19a_company_output_volume",
+        "6a_info_company",
+        "11a_company_keyword_year",
+        "12a_cast_info_selective",
+        "13a_movie_info_aggregate",
+        "14a_company_info_cast",
+        "8a_actor_productivity",
+        "Other"
+      ],
+      "other": {
+        "baseline_frequency": 0.20999999999999996,
+        "delta_percentage_points": -15.899999999999991,
+        "drifted_frequency": 0.051000000000000045,
+        "is_aggregate": true,
+        "label": "Other"
+      }
+    },
+    "template_frequency": {
+      "baseline_count": [
+        62,
+        48,
+        47,
+        47,
+        47,
+        54,
+        62,
+        39,
+        56,
+        53,
+        50,
+        45,
+        52,
+        44,
+        41,
+        57,
+        53,
+        56,
+        46,
+        41
+      ],
+      "baseline_frequency": [
+        0.062,
+        0.048,
+        0.047,
+        0.047,
+        0.047,
+        0.054,
+        0.062,
+        0.039,
+        0.056,
+        0.053,
+        0.05,
+        0.045,
+        0.052,
+        0.044,
+        0.041,
+        0.057,
+        0.053,
+        0.056,
+        0.046,
+        0.041
+      ],
+      "delta_percentage_points": [
+        -5.2,
+        -3.7000000000000006,
+        -3.6000000000000005,
+        -3.4000000000000004,
+        -3.5000000000000004,
+        -4.3999999999999995,
+        -5.0,
+        -2.5,
+        -4.3999999999999995,
+        -4.3999999999999995,
+        35.699999999999996,
+        -3.4000000000000004,
+        35.0,
+        -3.6999999999999997,
+        -2.9000000000000004,
+        -4.5,
+        -4.5,
+        -4.6,
+        -3.5999999999999996,
+        -3.4000000000000004
+      ],
+      "drifted_count": [
+        10,
+        11,
+        11,
+        13,
+        12,
+        10,
+        12,
+        14,
+        12,
+        9,
+        407,
+        11,
+        402,
+        7,
+        12,
+        12,
+        8,
+        10,
+        10,
+        7
+      ],
+      "drifted_frequency": [
+        0.01,
+        0.011,
+        0.011,
+        0.013,
+        0.012,
+        0.01,
+        0.012,
+        0.014,
+        0.012,
+        0.009,
+        0.407,
+        0.011,
+        0.402,
+        0.007,
+        0.012,
+        0.012,
+        0.008,
+        0.01,
+        0.01,
+        0.007
+      ],
+      "template_ids": [
+        "10a_full_join",
+        "11a_company_keyword_year",
+        "12a_cast_info_selective",
+        "13a_movie_info_aggregate",
+        "14a_company_info_cast",
+        "15a_keyword_year_range",
+        "16a_actor_company",
+        "17a_selective_cast_keyword",
+        "18a_movie_info_keyword",
+        "19a_company_output_volume",
+        "1a_keyword_filter",
+        "20a_full_eight_table",
+        "2a_company_movies",
+        "3a_movie_info_filter",
+        "4a_cast_keyword",
+        "5a_company_country_cast",
+        "6a_info_company",
+        "7a_keyword_count",
+        "8a_actor_productivity",
+        "9a_multi_keyword_movie"
+      ]
+    },
+    "top_movers": [
+      {
+        "baseline_frequency": 0.05,
+        "delta_percentage_points": 35.699999999999996,
+        "drifted_frequency": 0.407,
+        "template_id": "1a_keyword_filter"
+      },
+      {
+        "baseline_frequency": 0.052,
+        "delta_percentage_points": 35.0,
+        "drifted_frequency": 0.402,
+        "template_id": "2a_company_movies"
+      },
+      {
+        "baseline_frequency": 0.062,
+        "delta_percentage_points": -5.2,
+        "drifted_frequency": 0.01,
+        "template_id": "10a_full_join"
+      },
+      {
+        "baseline_frequency": 0.062,
+        "delta_percentage_points": -5.0,
+        "drifted_frequency": 0.012,
+        "template_id": "16a_actor_company"
+      },
+      {
+        "baseline_frequency": 0.056,
+        "delta_percentage_points": -4.6,
+        "drifted_frequency": 0.01,
+        "template_id": "7a_keyword_count"
+      },
+      {
+        "baseline_frequency": 0.057,
+        "delta_percentage_points": -4.5,
+        "drifted_frequency": 0.012,
+        "template_id": "5a_company_country_cast"
+      },
+      {
+        "baseline_frequency": 0.053,
+        "delta_percentage_points": -4.5,
+        "drifted_frequency": 0.008,
+        "template_id": "6a_info_company"
+      },
+      {
+        "baseline_frequency": 0.054,
+        "delta_percentage_points": -4.3999999999999995,
+        "drifted_frequency": 0.01,
+        "template_id": "15a_keyword_year_range"
+      },
+      {
+        "baseline_frequency": 0.056,
+        "delta_percentage_points": -4.3999999999999995,
+        "drifted_frequency": 0.012,
+        "template_id": "18a_movie_info_keyword"
+      },
+      {
+        "baseline_frequency": 0.053,
+        "delta_percentage_points": -4.3999999999999995,
+        "drifted_frequency": 0.009,
+        "template_id": "19a_company_output_volume"
+      },
+      {
+        "baseline_frequency": 0.048,
+        "delta_percentage_points": -3.7000000000000006,
+        "drifted_frequency": 0.011,
+        "template_id": "11a_company_keyword_year"
+      },
+      {
+        "baseline_frequency": 0.044,
+        "delta_percentage_points": -3.6999999999999997,
+        "drifted_frequency": 0.007,
+        "template_id": "3a_movie_info_filter"
+      },
+      {
+        "baseline_frequency": 0.047,
+        "delta_percentage_points": -3.6000000000000005,
+        "drifted_frequency": 0.011,
+        "template_id": "12a_cast_info_selective"
+      },
+      {
+        "baseline_frequency": 0.046,
+        "delta_percentage_points": -3.5999999999999996,
+        "drifted_frequency": 0.01,
+        "template_id": "8a_actor_productivity"
+      },
+      {
+        "baseline_frequency": 0.047,
+        "delta_percentage_points": -3.5000000000000004,
+        "drifted_frequency": 0.012,
+        "template_id": "14a_company_info_cast"
+      }
+    ],
+    "top_templates": [
+      {
+        "baseline_frequency": 0.05,
+        "delta_percentage_points": 35.699999999999996,
+        "drifted_frequency": 0.407,
+        "template_id": "1a_keyword_filter"
+      },
+      {
+        "baseline_frequency": 0.052,
+        "delta_percentage_points": 35.0,
+        "drifted_frequency": 0.402,
+        "template_id": "2a_company_movies"
+      },
+      {
+        "baseline_frequency": 0.062,
+        "delta_percentage_points": -5.2,
+        "drifted_frequency": 0.01,
+        "template_id": "10a_full_join"
+      },
+      {
+        "baseline_frequency": 0.062,
+        "delta_percentage_points": -5.0,
+        "drifted_frequency": 0.012,
+        "template_id": "16a_actor_company"
+      },
+      {
+        "baseline_frequency": 0.057,
+        "delta_percentage_points": -4.5,
+        "drifted_frequency": 0.012,
+        "template_id": "5a_company_country_cast"
+      },
+      {
+        "baseline_frequency": 0.056,
+        "delta_percentage_points": -4.3999999999999995,
+        "drifted_frequency": 0.012,
+        "template_id": "18a_movie_info_keyword"
+      },
+      {
+        "baseline_frequency": 0.056,
+        "delta_percentage_points": -4.6,
+        "drifted_frequency": 0.01,
+        "template_id": "7a_keyword_count"
+      },
+      {
+        "baseline_frequency": 0.054,
+        "delta_percentage_points": -4.3999999999999995,
+        "drifted_frequency": 0.01,
+        "template_id": "15a_keyword_year_range"
+      },
+      {
+        "baseline_frequency": 0.053,
+        "delta_percentage_points": -4.3999999999999995,
+        "drifted_frequency": 0.009,
+        "template_id": "19a_company_output_volume"
+      },
+      {
+        "baseline_frequency": 0.053,
+        "delta_percentage_points": -4.5,
+        "drifted_frequency": 0.008,
+        "template_id": "6a_info_company"
+      },
+      {
+        "baseline_frequency": 0.048,
+        "delta_percentage_points": -3.7000000000000006,
+        "drifted_frequency": 0.011,
+        "template_id": "11a_company_keyword_year"
+      },
+      {
+        "baseline_frequency": 0.047,
+        "delta_percentage_points": -3.6000000000000005,
+        "drifted_frequency": 0.011,
+        "template_id": "12a_cast_info_selective"
+      },
+      {
+        "baseline_frequency": 0.047,
+        "delta_percentage_points": -3.4000000000000004,
+        "drifted_frequency": 0.013,
+        "template_id": "13a_movie_info_aggregate"
+      },
+      {
+        "baseline_frequency": 0.047,
+        "delta_percentage_points": -3.5000000000000004,
+        "drifted_frequency": 0.012,
+        "template_id": "14a_company_info_cast"
+      },
+      {
+        "baseline_frequency": 0.046,
+        "delta_percentage_points": -3.5999999999999996,
+        "drifted_frequency": 0.01,
+        "template_id": "8a_actor_productivity"
+      }
+    ],
+    "unsupported": [
+      {
+        "metric": "predicate/selectivity distribution",
+        "reason": "No target database is executed in this phase.",
+        "status": "unsupported"
+      },
+      {
+        "metric": "arrival-rate/inter-arrival distribution",
+        "reason": "The adapter does not materialize observed timestamps.",
+        "status": "unsupported"
+      }
+    ]
+  }
+}

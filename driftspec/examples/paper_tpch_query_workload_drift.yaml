@@ -1,0 +1,33 @@
+# 1. Scientific question: How does a multi-axis TPC-H query workload shift between two synthetic schedule phases?
+# 2. Phases: Day 1 uses Q1/Q3/Q6/Q11/Q14 at scale 0.01; Day 2 uses Q2/Q5/Q8/Q11/Q21 at scale 1.0.
+# 3. Rationale: Distinct template sets, qgen parameters, temporal patterns, and nominal rates form one traceable shift.
+# 4. Seed/reproduce: Seed 42 and fixed qgen inputs support byte-stable reruns in the same supported environment.
+# 5. Limits: Schedules are synthetic; no duration, selectivity, database execution, performance, or causal claim is made.
+spec_version: 1
+pattern_id: paper-tpch-query-workload-multi-axis-drift
+seed: 42
+type: {family: workload, category: sql_templates, subtype: tpch}
+metadata: {benchmark: tpch, kind: query, scenario: template_parameter_and_schedule_shift}
+data_source: {kind: sql_templates, uri: '${DRIFTBENCH_TPCH_TEMPLATE_DIR}'}
+variables:
+  template_dir: ${DRIFTBENCH_TPCH_TEMPLATE_DIR}
+  qgen_dist_file: ${DRIFTBENCH_TPCH_DISTS_FILE}
+  defaults: {param_mode: qgen, queries_per_template: 20, shuffle: false}
+  query_runs:
+    # Baseline phase (Day 1): five templates at scale 0.01 with a uniform 60 queries/minute schedule.
+    - name: baseline_day1_uniform
+      query_ids: ['1', '3', '6', '11', '14']
+      qgen_scale: 0.01
+      outputs:
+        - type: temporal
+          path: ${DRIFTBENCH_BASELINE_OUTPUT}
+          timestamp: {start_time: '2025-07-01T00:00:00', pattern: uniform, queries_per_minute: 60}
+
+    # Drifted phase (Day 2): a different five-template set at scale 1.0 and nominal 180 queries/minute.
+    - name: drifted_day2_periodic
+      query_ids: ['2', '5', '8', '11', '21']
+      qgen_scale: 1.0
+      outputs:
+        - type: temporal
+          path: ${DRIFTBENCH_DRIFTED_OUTPUT}
+          timestamp: {start_time: '2025-07-02T00:00:00', pattern: periodic, queries_per_minute: 180}

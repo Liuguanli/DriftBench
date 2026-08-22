@@ -1,0 +1,57 @@
+# 1. Scientific question: Can post-2000 JOB titles be removed without FK orphans?
+# 2. Comparison: Baseline has 11 tables; drifted drops selected titles and dependents.
+# 3. Strength: Fraction 0.40 exposes the stratum shift while retaining other titles.
+# 4. Reproduce: Bind every declared JOB input/output path and call run_spec.
+# 5. Scope: Zero orphans is in scope; performance and causal claims are not.
+spec_version: 1
+pattern_id: visualization-job-post-2000-title-deletion
+seed: 42
+type: {family: data, category: drift, subtype: multi_table}
+metadata:
+  benchmark: job
+  kind: data
+  scenario: post_2000_title_deletion
+  comparison:
+    table: title
+    column: production_year
+    stratum: {column: production_year, min: 2001}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: row_reduction_rate, operator: gte, threshold: 0.10}
+    - {metric: target_stratum_share_reduction_pp, operator: gte, threshold: 10.0}
+    - {metric: orphan_count, operator: eq, threshold: 0}
+data_source: {kind: multi_table}
+variables:
+  validate_integrity: true
+  tables:
+    - {name: cast_info, path: '${DRIFTBENCH_INPUT_CAST_INFO}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_CAST_INFO}'}
+    - {name: company_name, path: '${DRIFTBENCH_INPUT_COMPANY_NAME}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_COMPANY_NAME}'}
+    - {name: company_type, path: '${DRIFTBENCH_INPUT_COMPANY_TYPE}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_COMPANY_TYPE}'}
+    - {name: info_type, path: '${DRIFTBENCH_INPUT_INFO_TYPE}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_INFO_TYPE}'}
+    - {name: keyword, path: '${DRIFTBENCH_INPUT_KEYWORD}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_KEYWORD}'}
+    - {name: kind_type, path: '${DRIFTBENCH_INPUT_KIND_TYPE}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_KIND_TYPE}'}
+    - {name: movie_companies, path: '${DRIFTBENCH_INPUT_MOVIE_COMPANIES}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_MOVIE_COMPANIES}'}
+    - {name: movie_info, path: '${DRIFTBENCH_INPUT_MOVIE_INFO}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_MOVIE_INFO}'}
+    - {name: movie_keyword, path: '${DRIFTBENCH_INPUT_MOVIE_KEYWORD}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_MOVIE_KEYWORD}'}
+    - {name: name, path: '${DRIFTBENCH_INPUT_NAME}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_NAME}'}
+    - {name: title, path: '${DRIFTBENCH_INPUT_TITLE}', format: csv, output_path: '${DRIFTBENCH_OUTPUT_TITLE}', key_column: id}
+  relationships:
+    - {name: cast_info_title, fact: cast_info, fk: movie_id, dim: title, pk: id}
+    - {name: movie_info_title, fact: movie_info, fk: movie_id, dim: title, pk: id}
+    - {name: movie_companies_title, fact: movie_companies, fk: movie_id, dim: title, pk: id}
+    - {name: movie_keyword_title, fact: movie_keyword, fk: movie_id, dim: title, pk: id}
+    - {name: cast_info_name, fact: cast_info, fk: person_id, dim: name, pk: id}
+    - {name: movie_companies_co, fact: movie_companies, fk: company_id, dim: company_name, pk: id}
+    - {name: movie_keyword_kw, fact: movie_keyword, fk: keyword_id, dim: keyword, pk: id}
+  drift_steps:
+    - op: delete_keys
+      target: title
+      key_column: id
+      filter: {column: production_year, min: 2001}
+      fraction: 0.40
+      propagate:
+        - {relationship: cast_info_title, policy: drop}
+        - {relationship: movie_info_title, policy: drop}
+        - {relationship: movie_companies_title, policy: drop}
+        - {relationship: movie_keyword_title, policy: drop}

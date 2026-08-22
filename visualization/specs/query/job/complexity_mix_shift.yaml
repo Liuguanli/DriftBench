@@ -1,0 +1,18 @@
+spec_version: 1
+pattern_id: visualization-job-query-complexity-mix-shift
+seed: 42
+type: {family: workload, category: drift, subtype: template_mix}
+metadata: {benchmark: job, kind: query, scenario: complexity_mix_shift}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: jensen_shannon_divergence_bits, operator: gte, threshold: 0.20}
+    - {metric: total_variation_distance, operator: gte, threshold: 0.30}
+    - {metric: max_mover_absolute_pp, operator: gte, threshold: 15.0}
+data_source: {kind: benchmark_adapter, benchmark: job}
+variables:
+  template_ids: [1a_keyword_filter, 2a_company_movies, 3a_movie_info_filter, 4a_cast_keyword, 5a_company_country_cast, 6a_info_company, 7a_keyword_count, 8a_actor_productivity, 9a_multi_keyword_movie, 10a_full_join, 11a_company_keyword_year, 12a_cast_info_selective, 13a_movie_info_aggregate, 14a_company_info_cast, 15a_keyword_year_range, 16a_actor_company, 17a_selective_cast_keyword, 18a_movie_info_keyword, 19a_company_output_volume, 20a_full_eight_table]
+  baseline: {mode: uniform}
+  target: {focus: {10a_full_join: 0.40, 20a_full_eight_table: 0.40}, remaining_total: 0.20}
+  sample_size: 1000
+  output_path: ${DRIFTBENCH_OUTPUT}

@@ -1,0 +1,30 @@
+spec_version: 1
+pattern_id: visualization-tpcc-order-amount-outliers
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata:
+  benchmark: tpcc
+  kind: data
+  scenario: order_amount_outliers
+  comparison: {table: order_line, column: ol_amount}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: row_growth_rate, operator: gte, threshold: 0.095}
+    - {metric: row_growth_rate, operator: lte, threshold: 0.105}
+    - {metric: tail_gain_over_baseline_p99, operator: gte, threshold: 0.08}
+    - {metric: normalized_wasserstein_p95_p05, operator: gte, threshold: 0.08}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: order_line
+  drifts:
+    - name: order_amount_outliers
+      drift_type: outlier_injection
+      output_path: ${DRIFTBENCH_OUTPUT}
+      column: ol_amount
+      n_ratio: 0.10
+      extreme_direction: high
+      extreme_scale: 5

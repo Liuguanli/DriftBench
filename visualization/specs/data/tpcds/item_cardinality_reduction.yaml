@@ -1,0 +1,24 @@
+spec_version: 1
+pattern_id: visualization-tpcds-item-cardinality-reduction
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata:
+  benchmark: tpcds
+  kind: data
+  scenario: item_cardinality_reduction
+  comparison: {table: item, column: i_current_price}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: absolute_row_rate, operator: gte, threshold: 0.25}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: item
+  drifts:
+    - name: item_cardinality_reduction
+      drift_type: vary_cardinality
+      output_path: ${DRIFTBENCH_OUTPUT}
+      scale: 0.60

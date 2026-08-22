@@ -1,0 +1,29 @@
+# 1. Scientific question: How does 50% YCSB cardinality growth change its input?
+# 2. Comparison: Baseline is the input; drifted synthesizes 1.50 times as many rows.
+# 3. Strength: Scale 1.50 is large enough to measure while retaining a small fixture.
+# 4. Reproduce: Bind the three declared paths and call driftbench.api.run_spec.
+# 5. Scope: This does not claim database loadability, key integrity, or performance.
+spec_version: 1
+pattern_id: visualization-ycsb-record-cardinality-growth
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata:
+  benchmark: ycsb
+  kind: data
+  scenario: record_cardinality_growth
+  comparison: {table: usertable, column: FIELD0}
+effect_policy:
+  mode: all
+  assertions:
+    - {metric: row_growth_rate, operator: gte, threshold: 0.45}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: usertable
+  drifts:
+    - name: record_cardinality_growth
+      drift_type: vary_cardinality
+      output_path: ${DRIFTBENCH_OUTPUT}
+      scale: 1.50

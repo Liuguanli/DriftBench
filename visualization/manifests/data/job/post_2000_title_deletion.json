@@ -1,0 +1,839 @@
+{
+  "adapter": "JOBData / JOBQueries",
+  "analysis": {
+    "basis": "observed_sample",
+    "config": {
+      "categorical_movers": 15,
+      "categorical_top_k": 10,
+      "concentration_max_points": 256,
+      "ecdf_max_points": 512,
+      "effective_count_entropy_base": 2,
+      "jsd_log_base": 2,
+      "numeric_bins": 24,
+      "quantile_levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "quantile_method": "linear",
+      "query_movers": 15,
+      "query_top_n": 15,
+      "tail_threshold_quantile": 0.99
+    },
+    "config_sha256": "690e5bfd43d316c77506edf04092e650c653a0c1df9b0ba5e80e4efbdf5b0e06",
+    "schema": "driftbench.visualization-analysis/v3"
+  },
+  "benchmark": "job",
+  "cache": {
+    "fingerprint": "1a43c1a7e98f61b9e9a528010818c4435856a4ea9c6f1e8206e540e54866bdcd",
+    "schema": "driftbench.visualization-cache/v4"
+  },
+  "capabilities": {
+    "distribution_comparison": "supported",
+    "integrity": {
+      "added_key_count": 0,
+      "baseline_title_rows": 500,
+      "deleted_key_count": 66,
+      "drifted_title_rows": 434,
+      "eligible_key_count": 166,
+      "expected_deleted_key_count": 66,
+      "orphan_count": 0,
+      "orphan_counts": {
+        "cast_info.movie_id": 0,
+        "cast_info.person_id": 0,
+        "movie_companies.company_id": 0,
+        "movie_companies.movie_id": 0,
+        "movie_info.movie_id": 0,
+        "movie_keyword.keyword_id": 0,
+        "movie_keyword.movie_id": 0
+      },
+      "out_of_stratum_deleted_key_count": 0,
+      "propagation": {
+        "cast_info_title": {
+          "baseline_rows": 5000,
+          "drifted_rows": 4306,
+          "dropped_rows": 694
+        },
+        "movie_companies_title": {
+          "baseline_rows": 1000,
+          "drifted_rows": 868,
+          "dropped_rows": 132
+        },
+        "movie_info_title": {
+          "baseline_rows": 3000,
+          "drifted_rows": 2650,
+          "dropped_rows": 350
+        },
+        "movie_keyword_title": {
+          "baseline_rows": 2000,
+          "drifted_rows": 1744,
+          "dropped_rows": 256
+        }
+      },
+      "relationships_checked": 7,
+      "status": "passed",
+      "target_stratum": {
+        "column": "production_year",
+        "min": 2001
+      },
+      "target_stratum_share": {
+        "baseline": 0.332,
+        "drifted": 0.2304147465437788
+      },
+      "target_stratum_share_reduction_pp": 10.158525345622122,
+      "target_stratum_share_shift_pp": 10.158525345622122
+    },
+    "row_count": "supported"
+  },
+  "comparison_metrics": {
+    "baseline_p99": 2022.01,
+    "baseline_tail_rate": 0.01,
+    "basis": "observed_sample",
+    "drifted_tail_rate": 0.0069124423963133645,
+    "ks_distance": 0.10158525345622116,
+    "normalized_wasserstein_p95_p05": 0.057521690767519465,
+    "normalized_wasserstein_p95_p05_status": {
+      "reason": null,
+      "status": "supported"
+    },
+    "normalized_wasserstein_range": 0.052956477214541726,
+    "pooled_p95_p05_span": 58.0,
+    "pooled_range": 63.0,
+    "row_count": {
+      "baseline": 500,
+      "change_rate": -0.132,
+      "change_rate_status": {
+        "reason": null,
+        "status": "supported"
+      },
+      "delta": -66,
+      "drifted": 434
+    },
+    "row_delta": -66,
+    "row_rate": -0.132,
+    "row_rate_status": {
+      "reason": null,
+      "status": "supported"
+    },
+    "status": "supported",
+    "tail_gain_over_baseline_p99": -0.0030875576036866357,
+    "wasserstein_distance": 3.336258064516129,
+    "wasserstein_unit": "comparison column units"
+  },
+  "config_sha256": "32ad160fd5124230e38bc9132bf95b8195c677854626d7a7150caa71ff7d3e25",
+  "drift_parameters": {
+    "column": "production_year",
+    "drift_steps": [
+      {
+        "filter": {
+          "column": "production_year",
+          "min": 2001
+        },
+        "fraction": 0.4,
+        "key_column": "id",
+        "op": "delete_keys",
+        "propagate": [
+          {
+            "policy": "drop",
+            "relationship": "cast_info_title"
+          },
+          {
+            "policy": "drop",
+            "relationship": "movie_info_title"
+          },
+          {
+            "policy": "drop",
+            "relationship": "movie_companies_title"
+          },
+          {
+            "policy": "drop",
+            "relationship": "movie_keyword_title"
+          }
+        ],
+        "target": "title"
+      }
+    ],
+    "table": "title",
+    "validate_integrity": true
+  },
+  "drift_spec": {
+    "bytes": 3075,
+    "path": "specs/data/job/post_2000_title_deletion.yaml",
+    "resolved_semantic_sha256": "acc8f7b9d6edec5b41c5f575aebe9ea1f5b3c72118eebf305a32e68853b60bc9",
+    "semantic_sha256": "293f229f6a80d09af8f65ecd77fc975728ec539afde0a7f24f5ac7c6de4b329a",
+    "sha256": "740c6750bee881b06d07901ae5e2996edf8f4503d668e0211658b4be1bf8a113",
+    "type": {
+      "category": "drift",
+      "family": "data",
+      "subtype": "multi_table"
+    }
+  },
+  "driftbench_version": "0.1.0b10",
+  "effect": {
+    "assertions": [
+      {
+        "metric": "row_reduction_rate",
+        "observed": 0.132,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 0.1
+      },
+      {
+        "metric": "target_stratum_share_reduction_pp",
+        "observed": 10.158525345622122,
+        "operator": "gte",
+        "passed": true,
+        "threshold": 10.0
+      },
+      {
+        "metric": "orphan_count",
+        "observed": 0,
+        "operator": "eq",
+        "passed": true,
+        "threshold": 0.0
+      }
+    ],
+    "basis": "observed_seeded_sample_and_full_frame_counts",
+    "mode": "all",
+    "passed": true,
+    "status": "supported",
+    "verdict": "PASS"
+  },
+  "execution": {
+    "algorithm": "driftbench.data-drift-spec/v1:delete_keys",
+    "engine": "driftbench.api.run_spec",
+    "engine_version": "driftbench.spec-executor/v3",
+    "output_sha256": "d361607d8e19054f1c2eef42136a97ff209a6942f142fc9728b5813723eb8277",
+    "semantic_sha256": "46233f8fe043ec7e295d4c019387bbd6d29373d653204e468c20325186669c67",
+    "status": "supported"
+  },
+  "figure": {
+    "bytes": 123562,
+    "path": "figures/data/job/post_2000_title_deletion.png",
+    "sha256": "0f847c4bcef530b4fb9ccff4c2d0e83db60f31443167f56fe980e7fa6a94995e"
+  },
+  "generated_at": "2026-08-19T12:16:57Z",
+  "input_files": [
+    {
+      "bytes": 133883,
+      "path": "data/adapters/job/data/cast_info.csv",
+      "sha256": "590a80bcbc11b93794ea794adbd4cf203146f331e0960d5c47a35506171c6fea"
+    },
+    {
+      "bytes": 2349,
+      "path": "data/adapters/job/data/company_name.csv",
+      "sha256": "c9546d18d3a7849201257004901f5ef08d61878033edb40c8bac397999fbaac0"
+    },
+    {
+      "bytes": 105,
+      "path": "data/adapters/job/data/company_type.csv",
+      "sha256": "8348c08d53228ae95c9a1a79445edb74816df2118252f3e80c4dc4f83e0f6a5f"
+    },
+    {
+      "bytes": 136,
+      "path": "data/adapters/job/data/info_type.csv",
+      "sha256": "6d01f67a7f60db2a20618c28c7ceb632a56a56d03c9714e1a139d598f729face"
+    },
+    {
+      "bytes": 3462,
+      "path": "data/adapters/job/data/keyword.csv",
+      "sha256": "5052434c2d60e69c9881f433fa547ab8ce096e0f173c37847bed50b7c0622ea3"
+    },
+    {
+      "bytes": 101,
+      "path": "data/adapters/job/data/kind_type.csv",
+      "sha256": "e579b514e2c0412602072d6bb7a60a5090621e178b7443a3161897bde09c0c37"
+    },
+    {
+      "bytes": 14631,
+      "path": "data/adapters/job/data/movie_companies.csv",
+      "sha256": "146392340b90735fe1b83683d42fac524e53c04c867dd3b899b95516bded7c36"
+    },
+    {
+      "bytes": 59025,
+      "path": "data/adapters/job/data/movie_info.csv",
+      "sha256": "3a3042d4accd7c3d6e42bb7d8379fb2c90f62564f0e5b1afa4bf0e75dcf83645"
+    },
+    {
+      "bytes": 25451,
+      "path": "data/adapters/job/data/movie_keyword.csv",
+      "sha256": "ebe6a0353413700a3406e82d74e475f19c5f630d3b6b24037e73aebeb293efa0"
+    },
+    {
+      "bytes": 28526,
+      "path": "data/adapters/job/data/name.csv",
+      "sha256": "062de6c6b5da118575391fdc4431e7af0eed983a04580f11a812f3c4edf24048"
+    },
+    {
+      "bytes": 17906,
+      "path": "data/adapters/job/data/title.csv",
+      "sha256": "14dd800b5f7e326c0037e9be6e26da59967b24c8ed20245dd127262f80543f6c"
+    }
+  ],
+  "kind": "data",
+  "limitations": "The adapter contains 20 representative templates rather than the complete 113-query JOB corpus; selectivity is unsupported.",
+  "rationale": "Delete a seeded share of titles after 2000 and propagate every affected foreign key.",
+  "render": {
+    "background": "#FFFFFF",
+    "dpi": 100,
+    "font_family": "DejaVu Sans",
+    "matplotlib_version": "3.11.1",
+    "numpy_version": "2.5.1",
+    "palette": {
+      "accent": "#009E73",
+      "baseline": "#0072B2",
+      "drifted": "#D55E00",
+      "negative": "#0072B2",
+      "neutral": "#5B6573",
+      "positive": "#D55E00"
+    },
+    "pixel_size": [
+      1600,
+      1000
+    ],
+    "plot_config": {
+      "accent_color": "#009E73",
+      "background": "#FFFFFF",
+      "baseline_color": "#0072B2",
+      "categorical_label_max_chars": 18,
+      "categorical_shift_labels": "rank",
+      "data_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.28,
+        0.38
+      ],
+      "dpi": 100,
+      "drifted_color": "#D55E00",
+      "font_family": "DejaVu Sans",
+      "grid_color": "#D9DEE7",
+      "height_inches": 10,
+      "muted_color": "#5B6573",
+      "negative_color": "#0072B2",
+      "neutral_color": "#5B6573",
+      "positive_color": "#D55E00",
+      "query_label_max_chars": 18,
+      "query_layout": [
+        0.115,
+        0.965,
+        0.865,
+        0.105,
+        0.3,
+        0.38
+      ],
+      "style_revision": 1,
+      "text_color": "#17202A",
+      "width_inches": 16
+    },
+    "plot_config_sha256": "672975bf07e2a75550d5c9c4c427a9e2375baf18428a471d43c990e2d12d4620",
+    "schema": "driftbench.visualization-renderer/v3",
+    "size_inches": [
+      16,
+      10
+    ]
+  },
+  "reproduce": "python -m visualization.cli generate --benchmark job --kind data --scenario post_2000_title_deletion --seed 42 --sample-size 1000 --offline",
+  "sample_size": 1000,
+  "scale": {
+    "scale_factor": 1
+  },
+  "scenario": "post_2000_title_deletion",
+  "schema_version": 4,
+  "seed": 42,
+  "semantic_sha256": "55fb8e9d5014b89b5d8e074cfa7060d57339b25f63300fc74b3bf68a3627b2b4",
+  "statistics": {
+    "analysis": {
+      "bins": 24,
+      "quantile_method": "linear",
+      "schema": "driftbench.visualization-analysis/v3",
+      "top_k": 10
+    },
+    "axis_range": [
+      1960.0,
+      2023.0
+    ],
+    "baseline_histogram": [
+      0.05,
+      0.052,
+      0.034,
+      0.05,
+      0.046,
+      0.032,
+      0.028,
+      0.038,
+      0.032,
+      0.046,
+      0.04,
+      0.062,
+      0.052,
+      0.038,
+      0.048,
+      0.034,
+      0.036,
+      0.024,
+      0.022,
+      0.04,
+      0.066,
+      0.03,
+      0.054,
+      0.046
+    ],
+    "baseline_summary": {
+      "max": 2023.0,
+      "mean": 1991.304,
+      "median": 1991.0,
+      "min": 1960.0,
+      "p05": 1962.95,
+      "p25": 1974.75,
+      "p50": 1991.0,
+      "p75": 2008.0,
+      "p95": 2020.0,
+      "stddev": 18.72846987877013
+    },
+    "basis": "observed_sample",
+    "bin_edges": [
+      1960.0,
+      1962.625,
+      1965.25,
+      1967.875,
+      1970.5,
+      1973.125,
+      1975.75,
+      1978.375,
+      1981.0,
+      1983.625,
+      1986.25,
+      1988.875,
+      1991.5,
+      1994.125,
+      1996.75,
+      1999.375,
+      2002.0,
+      2004.625,
+      2007.25,
+      2009.875,
+      2012.5,
+      2015.125,
+      2017.75,
+      2020.375,
+      2023.0
+    ],
+    "column": "production_year",
+    "comparison_metrics": {
+      "baseline_p99": 2022.01,
+      "baseline_tail_rate": 0.01,
+      "basis": "observed_sample",
+      "drifted_tail_rate": 0.0069124423963133645,
+      "ks_distance": 0.10158525345622116,
+      "normalized_wasserstein_p95_p05": 0.057521690767519465,
+      "normalized_wasserstein_p95_p05_status": {
+        "reason": null,
+        "status": "supported"
+      },
+      "normalized_wasserstein_range": 0.052956477214541726,
+      "pooled_p95_p05_span": 58.0,
+      "pooled_range": 63.0,
+      "row_count": {
+        "baseline": 500,
+        "change_rate": -0.132,
+        "change_rate_status": {
+          "reason": null,
+          "status": "supported"
+        },
+        "delta": -66,
+        "drifted": 434
+      },
+      "row_delta": -66,
+      "row_rate": -0.132,
+      "row_rate_status": {
+        "reason": null,
+        "status": "supported"
+      },
+      "status": "supported",
+      "tail_gain_over_baseline_p99": -0.0030875576036866357,
+      "wasserstein_distance": 3.336258064516129,
+      "wasserstein_unit": "comparison column units"
+    },
+    "distribution_type": "numeric",
+    "drifted_histogram": [
+      0.0576036866359447,
+      0.059907834101382486,
+      0.03917050691244239,
+      0.0576036866359447,
+      0.052995391705069124,
+      0.03686635944700461,
+      0.03225806451612903,
+      0.04377880184331797,
+      0.03686635944700461,
+      0.052995391705069124,
+      0.04608294930875576,
+      0.07142857142857142,
+      0.059907834101382486,
+      0.04377880184331797,
+      0.055299539170506916,
+      0.029953917050691243,
+      0.027649769585253458,
+      0.018433179723502304,
+      0.016129032258064516,
+      0.029953917050691243,
+      0.04377880184331797,
+      0.018433179723502304,
+      0.03686635944700461,
+      0.03225806451612903
+    ],
+    "drifted_summary": {
+      "max": 2023.0,
+      "mean": 1987.967741935484,
+      "median": 1988.0,
+      "min": 1960.0,
+      "p05": 1962.0,
+      "p25": 1973.0,
+      "p50": 1988.0,
+      "p75": 2000.0,
+      "p95": 2019.0,
+      "stddev": 17.703884625862344
+    },
+    "ecdf": {
+      "baseline": {
+        "probability": [
+          0.02,
+          0.036,
+          0.05,
+          0.074,
+          0.084,
+          0.102,
+          0.122,
+          0.136,
+          0.154,
+          0.168,
+          0.186,
+          0.196,
+          0.21,
+          0.232,
+          0.25,
+          0.264,
+          0.284,
+          0.286,
+          0.292,
+          0.31,
+          0.33,
+          0.34,
+          0.356,
+          0.362,
+          0.38,
+          0.398,
+          0.408,
+          0.43,
+          0.448,
+          0.462,
+          0.48,
+          0.51,
+          0.518,
+          0.544,
+          0.562,
+          0.582,
+          0.6,
+          0.612,
+          0.632,
+          0.648,
+          0.668,
+          0.682,
+          0.698,
+          0.712,
+          0.718,
+          0.72,
+          0.728,
+          0.742,
+          0.758,
+          0.764,
+          0.786,
+          0.804,
+          0.822,
+          0.852,
+          0.87,
+          0.888,
+          0.9,
+          0.916,
+          0.936,
+          0.954,
+          0.966,
+          0.99,
+          1.0
+        ],
+        "x": [
+          1960.0,
+          1961.0,
+          1962.0,
+          1963.0,
+          1964.0,
+          1965.0,
+          1966.0,
+          1967.0,
+          1968.0,
+          1969.0,
+          1970.0,
+          1971.0,
+          1972.0,
+          1973.0,
+          1974.0,
+          1975.0,
+          1976.0,
+          1977.0,
+          1978.0,
+          1979.0,
+          1980.0,
+          1981.0,
+          1982.0,
+          1983.0,
+          1984.0,
+          1985.0,
+          1986.0,
+          1987.0,
+          1988.0,
+          1989.0,
+          1990.0,
+          1991.0,
+          1992.0,
+          1993.0,
+          1994.0,
+          1995.0,
+          1996.0,
+          1997.0,
+          1998.0,
+          1999.0,
+          2000.0,
+          2001.0,
+          2002.0,
+          2003.0,
+          2004.0,
+          2005.0,
+          2006.0,
+          2007.0,
+          2008.0,
+          2009.0,
+          2011.0,
+          2012.0,
+          2013.0,
+          2014.0,
+          2015.0,
+          2016.0,
+          2017.0,
+          2018.0,
+          2019.0,
+          2020.0,
+          2021.0,
+          2022.0,
+          2023.0
+        ]
+      },
+      "drifted": {
+        "probability": [
+          0.02304147465437788,
+          0.041474654377880185,
+          0.0576036866359447,
+          0.08525345622119816,
+          0.0967741935483871,
+          0.1175115207373272,
+          0.14055299539170507,
+          0.15668202764976957,
+          0.1774193548387097,
+          0.1935483870967742,
+          0.21428571428571427,
+          0.22580645161290322,
+          0.24193548387096775,
+          0.2672811059907834,
+          0.2880184331797235,
+          0.30414746543778803,
+          0.3271889400921659,
+          0.3294930875576037,
+          0.33640552995391704,
+          0.35714285714285715,
+          0.38018433179723504,
+          0.391705069124424,
+          0.41013824884792627,
+          0.41705069124423966,
+          0.4377880184331797,
+          0.45852534562211983,
+          0.4700460829493088,
+          0.49539170506912444,
+          0.5161290322580645,
+          0.532258064516129,
+          0.5529953917050692,
+          0.5875576036866359,
+          0.5967741935483871,
+          0.6267281105990783,
+          0.6474654377880185,
+          0.6705069124423964,
+          0.6912442396313364,
+          0.7050691244239631,
+          0.728110599078341,
+          0.7465437788018433,
+          0.7695852534562212,
+          0.7764976958525346,
+          0.7880184331797235,
+          0.7972350230414746,
+          0.804147465437788,
+          0.8064516129032258,
+          0.8110599078341014,
+          0.8225806451612904,
+          0.8317972350230415,
+          0.8387096774193549,
+          0.8548387096774194,
+          0.868663594470046,
+          0.8778801843317973,
+          0.9032258064516129,
+          0.9124423963133641,
+          0.923963133640553,
+          0.9308755760368663,
+          0.9423963133640553,
+          0.9516129032258065,
+          0.967741935483871,
+          0.9769585253456221,
+          0.9930875576036866,
+          1.0
+        ],
+        "x": [
+          1960.0,
+          1961.0,
+          1962.0,
+          1963.0,
+          1964.0,
+          1965.0,
+          1966.0,
+          1967.0,
+          1968.0,
+          1969.0,
+          1970.0,
+          1971.0,
+          1972.0,
+          1973.0,
+          1974.0,
+          1975.0,
+          1976.0,
+          1977.0,
+          1978.0,
+          1979.0,
+          1980.0,
+          1981.0,
+          1982.0,
+          1983.0,
+          1984.0,
+          1985.0,
+          1986.0,
+          1987.0,
+          1988.0,
+          1989.0,
+          1990.0,
+          1991.0,
+          1992.0,
+          1993.0,
+          1994.0,
+          1995.0,
+          1996.0,
+          1997.0,
+          1998.0,
+          1999.0,
+          2000.0,
+          2001.0,
+          2002.0,
+          2003.0,
+          2004.0,
+          2005.0,
+          2006.0,
+          2007.0,
+          2008.0,
+          2009.0,
+          2011.0,
+          2012.0,
+          2013.0,
+          2014.0,
+          2015.0,
+          2016.0,
+          2017.0,
+          2018.0,
+          2019.0,
+          2020.0,
+          2021.0,
+          2022.0,
+          2023.0
+        ]
+      }
+    },
+    "finite_count": {
+      "baseline": 500,
+      "drifted": 434
+    },
+    "missing_count": {
+      "baseline": 0,
+      "drifted": 0
+    },
+    "missing_rate": {
+      "baseline": 0.0,
+      "drifted": 0.0
+    },
+    "non_finite_count": {
+      "baseline": 0,
+      "drifted": 0
+    },
+    "non_null_count": {
+      "baseline": 500,
+      "drifted": 434
+    },
+    "observed_range": [
+      1960.0,
+      2023.0
+    ],
+    "quantile_comparison": {
+      "baseline": [
+        1962.95,
+        1974.75,
+        1991.0,
+        2008.0,
+        2020.0
+      ],
+      "drifted": [
+        1962.0,
+        1973.0,
+        1988.0,
+        2000.0,
+        2019.0
+      ],
+      "labels": [
+        "P05",
+        "P25",
+        "P50",
+        "P75",
+        "P95"
+      ],
+      "levels": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "method": "linear",
+      "shift": [
+        -0.9500000000000455,
+        -1.75,
+        -3.0,
+        -8.0,
+        -1.0
+      ]
+    },
+    "requested_sample_size": 1000,
+    "row_count": {
+      "baseline": 500,
+      "drifted": 434
+    },
+    "sample_count": {
+      "baseline": 500,
+      "drifted": 434
+    },
+    "status": "supported"
+  }
+}

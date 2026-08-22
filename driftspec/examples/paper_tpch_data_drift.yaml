@@ -1,0 +1,50 @@
+# 1. Scientific question: How does a joint TPC-H price and synthetic row-schedule shift differ from baseline?
+# 2. Phases: Day 1 is original data at 60 rows/minute; Day 2 is price-skewed data at nominal 180 rows/minute.
+# 3. Rationale: A two-day timeline exposes distribution, temporal-pattern, and nominal-rate changes together.
+# 4. Seed/reproduce: Seed 42 and fixed inputs support byte-stable reruns in the same supported environment.
+# 5. Limits: Scheduling is synthetic; no bounds, duration, ingestion, execution, performance, or causal claim is made.
+spec_version: 1
+pattern_id: paper-tpch-data-multi-axis-drift
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata: {benchmark: tpch, kind: data, scenario: price_and_schedule_shift}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: lineitem
+  drifts:
+    # Baseline phase (Day 1): preserve every input row and add a uniform synthetic schedule.
+    - name: baseline_day1_uniform
+      drift_type: add_timestamp
+      output_path: ${DRIFTBENCH_BASELINE_OUTPUT}
+      timestamp_column: event_timestamp
+      start_time: '2025-07-01T00:00:00'
+      pattern: uniform
+      queries_per_minute: 60
+
+    # Distribution phase: skew 80 percent of extended-price values using the existing data primitive.
+    - name: price_skew_intermediate
+      drift_type: value_skew
+      output_path: ${DRIFTBENCH_SKEW_INTERMEDIATE}
+      columns: [l_extendedprice]
+      portion: 0.80
+      skewness: 5
+
+    # Drifted phase (Day 2): annotate the skewed rows with a periodic nominal 180 rows/minute schedule.
+    - name: drifted_day2_periodic
+      drift_type: add_timestamp
+      source_path: ${DRIFTBENCH_SKEW_INTERMEDIATE}
+      output_path: ${DRIFTBENCH_DRIFTED_OUTPUT}
+      timestamp_column: event_timestamp
+      start_time: '2025-07-02T00:00:00'
+      pattern: periodic
+      queries_per_minute: 180
+
+    # Composition phase: concatenate both materialized phases and sort their synthetic event timeline.
+    - name: combined_two_day_timeline
+      drift_type: concat_csvs
+      input_paths: ['${DRIFTBENCH_BASELINE_OUTPUT}', '${DRIFTBENCH_DRIFTED_OUTPUT}']
+      sort_by: event_timestamp
+      output_path: ${DRIFTBENCH_COMBINED_OUTPUT}

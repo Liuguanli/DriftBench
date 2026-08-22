@@ -1,0 +1,27 @@
+spec_version: 1
+pattern_id: visualization-tpcc-skew-stock-quantity-skew
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+metadata:
+  benchmark: tpcc_skew
+  kind: data
+  scenario: stock_quantity_skew
+  comparison: {table: stock, column: s_quantity}
+effect_policy:
+  mode: any
+  assertions:
+    - {metric: ks_distance, operator: gte, threshold: 0.20}
+    - {metric: normalized_wasserstein_p95_p05, operator: gte, threshold: 0.12}
+data_source:
+  kind: csv
+  path: ${DRIFTBENCH_INPUT}
+  schema_extractor: {source_type: csv, sample_size: 1000, schema_output_path: '${DRIFTBENCH_SCHEMA}'}
+variables:
+  base_table: stock
+  drifts:
+    - name: stock_quantity_skew
+      drift_type: value_skew
+      output_path: ${DRIFTBENCH_OUTPUT}
+      columns: [s_quantity]
+      portion: 0.85
+      skewness: 6

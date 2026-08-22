@@ -10,6 +10,11 @@ Scope and assumptions:
 - RMI supports point and range queries only
 - Learned index predicts `pos = F(key) * N`
 
+> **Conceptual notation only.** The compact `type` triples and fields in the YAML
+> blocks below are experiment-design sketches, not registered DriftSpec handler
+> contracts. Do not pass these blocks directly to `validate-spec` or `run-yaml`.
+> Supported executable examples are linked in [Executable DriftSpecs](#executable-driftspecs).
+
 
 ## Selected drifts and rationale
 - From the index design perspective, a 1D learned index is most sensitive to scale, skew, and outliers because they reshape the CDF and error bounds.
@@ -17,7 +22,7 @@ Scope and assumptions:
 
 ---
 
-## A) Data Drift Specs
+## A) Conceptual Data Drift Sketches
 
 ### A1. Dataset scale (cardinality drift)
 
@@ -151,7 +156,7 @@ What it stresses:
 
 ---
 
-## B) Workload Drift Specs
+## B) Conceptual Workload Drift Sketches
 
 ### B1. Point-query key distribution drift
 
@@ -252,15 +257,23 @@ What it stresses (RMI):
 
 ---
 
-## Run the generators
-Save the data drift YAML and workload drift YAML into files (for example,
-`driftspec/examples/base_data.yaml` and `driftspec/examples/base_workload.yaml`),
-then run:
+## Executable DriftSpecs
 
-```bash
-python -m driftbench.cli run-yaml driftspec/examples/base_data.yaml
-python -m driftbench.cli run-yaml driftspec/examples/base_workload.yaml
-```
+The conceptual triples above, including `data/cardinality/scaling`,
+`data/distribution/column_shift`, and `workload/templates/*`, are not registered
+runtime types. Use these repository examples when an executable, tested contract
+is required:
+
+- [TPC-H data distribution and synthetic schedule drift](../driftspec/examples/paper_tpch_data_drift.yaml)
+- [TPC-H query-template, qgen-parameter, and synthetic schedule drift](../driftspec/examples/paper_tpch_query_workload_drift.yaml)
+- [Bindings and offline reproduction guide](../driftspec/examples/README.md)
+
+Those examples use existing registered handlers and execute through the public
+`driftbench.api.run_spec` API with explicit path bindings. They demonstrate
+supported mechanisms; they are not executable equivalents of the learned-index
+sketches in this guide.
 
 ## Summary
-This guide provides a name-agnostic DriftSpec suite for evaluating 1D learned indexes under scale, skew, outlier, key-distribution, and range-selectivity drift, along with the minimal commands to generate data and workloads.
+This guide provides name-agnostic conceptual sketches for evaluating 1D learned
+indexes under scale, skew, outlier, key-distribution, and range-selectivity drift.
+The linked executable examples show the supported DriftSpec syntax separately.
