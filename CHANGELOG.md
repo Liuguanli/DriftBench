@@ -6,6 +6,26 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [v0.1.0] - 2026-08-23
+
+### Services
+- `Data`: Eight local benchmark-family adapters produce managed synthetic data and query/workload artifacts; BenchBase produces external-driver configuration and launch scripts.
+- `Benchmarking`: Versioned TPS, latency, and error evidence with warmup, paired baseline/candidate rounds, thresholds, and offline bundle verification.
+- `CLI/DriftSpec`: Fail-closed orchestration, deep preflight, deterministic drift execution, and machine-readable results.
+- `Visualization`: Forty reproducible DriftSpec/manifest/PNG evidence triples across eight local adapters.
+- `Packaging/Release`: First PEP 440 final release of the `0.1.0` line, published as `driftbench-db` while retaining the `driftbench` Python import.
+
+### Changed
+- Promoted the tested `0.1.0b10` feature line to `0.1.0`. Apart from the public version identity, no product, API, CLI, or benchmark-generator behavior is intentionally changed. The project keeps the `Development Status :: 4 - Beta` classifier; a final version identifier does not assert production maturity or official benchmark conformance.
+- Normal package resolution can now select the stable line without `--pre`. Upgrade with `python -m pip install -U driftbench-db`; existing imports remain `import driftbench`.
+- Canonical Visualization artifacts are promoted unchanged from the verified beta candidate. Their embedded `0.1.0b10` producer value is retained as historical provenance rather than rewritten after generation.
+
+### Supported scope and limitations
+- Unless explicitly stated otherwise, adapter output is a DriftBench synthetic fixture or workload artifact, not an official, audited, or benchmark-spec-compliant TPC, YCSB, JOB, DSB, or BenchBase result.
+- TPC-H automatic data generation may clone and build an unpinned revision of `electrum/tpch-dbgen`; query `mode="qgen"` is Python qgen-style parameterization and does not execute the native or official qgen binary.
+- BenchBase is an external driver/configuration generator. It does not generate a local DriftBench dataset or provide a live-database regression gate by itself.
+- The required real-database regression currently covers PostgreSQL/pgbench 16 `select-only`. Other adapters and database engines have artifact, manifest, handler, and visualization checks, but no equivalent live performance gate.
+
 ## [v0.1.0b10] - 2026-08-22
 
 ### Services

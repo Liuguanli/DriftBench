@@ -13,7 +13,7 @@ class VersionConsistencyTests(unittest.TestCase):
         match = re.search(r'^version\s*=\s*"([^"]+)"', project_section, re.MULTILINE)
         self.assertIsNotNone(match)
         project_version = match.group(1)
-        self.assertEqual(project_version, "0.1.0b10")
+        self.assertEqual(project_version, "0.1.0")
         self.assertEqual(driftbench.__version__, project_version)
 if __name__ == "__main__":
     unittest.main()

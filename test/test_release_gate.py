@@ -81,14 +81,14 @@ class ReleaseMetadataGateTests(unittest.TestCase):
                 changelog_text="",
             )
 
-    def test_b10_repository_metadata_passes_exact_release_gate(self) -> None:
+    def test_v010_repository_metadata_passes_exact_release_gate(self) -> None:
         result = release_gate.validate_release_metadata(
-            expected_tag="v0.1.0b10",
+            expected_tag="v0.1.0",
             pyproject_text=(ROOT / "pyproject.toml").read_text(encoding="utf-8"),
             changelog_text=(ROOT / "CHANGELOG.md").read_text(encoding="utf-8"),
         )
-        self.assertEqual(result["expected_version"], "0.1.0b10")
-        self.assertEqual(result["release_date"], "2026-08-22")
+        self.assertEqual(result["expected_version"], "0.1.0")
+        self.assertEqual(result["release_date"], "2026-08-23")
 
     def test_unreleased_or_undated_heading_cannot_satisfy_release_gate(self) -> None:
         pyproject = '[project]\nname = "fixture"\nversion = "0.1.0b10"\n'

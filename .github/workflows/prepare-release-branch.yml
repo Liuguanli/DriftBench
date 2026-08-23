@@ -6,12 +6,12 @@ on:
       source_dev_branch:
         description: "Source dev branch (must be dev/**)"
         required: true
-        default: "dev/benchmark-reliability-hardening"
+        default: "dev/v0.1.0-stable-release"
         type: string
       release_branch:
         description: "Release branch to create (must be release/v*)"
         required: true
-        default: "release/v0.1.0b10"
+        default: "release/v0.1.0"
         type: string
       dry_run:
         description: "Validate gates only; do not create branch"
