@@ -80,7 +80,7 @@ class TPCCSkewData(TPCCData):
 
         ddl = self._write_text(out_dir / "tpcc_schema.sql", _TPCC_DDL)
 
-        synth_files = self._generate_synth(out_dir)
+        synth_files, table_counts = self._generate_synth(out_dir)
         synth_files.insert(0, ddl)
         wts_file = self._write_warehouse_weights(out_dir, weights, hot_count)
         synth_files.append(wts_file)
@@ -94,6 +94,9 @@ class TPCCSkewData(TPCCData):
                 "hot_warehouse_fraction": self.hot_warehouse_fraction,
                 "hot_warehouse_count": hot_count,
                 "skew_factor": self.skew_factor,
+                "tables": table_counts,
+                "warehouse_access_weights": weights,
+                "warehouse_access_weight_sum": sum(weights),
                 "files": self._paths_relative_to(root, synth_files),
                 "note": (
                     f"Zipf skew (alpha={self.skew_factor}): {hot_count} of {w} warehouses "

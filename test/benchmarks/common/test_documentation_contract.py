@@ -22,14 +22,18 @@ class VersionConsistencyTests(unittest.TestCase):
         adapter_section = readme.split(
             "## Benchmark Adapters (`driftbench.data`)", 1
         )[1].split("### Generate data and queries", 1)[0]
-        adapter_rows = re.findall(r"^\| `[^`]+` \|", adapter_section, re.MULTILINE)
-        self.assertEqual(len(adapter_rows), 9)
+        adapter_rows = re.findall(r"^\| `([^`]+)` \|", adapter_section, re.MULTILINE)
+        self.assertEqual(len(adapter_rows), 12)
+        self.assertEqual(set(adapter_rows), {
+            "tpch", "tpcds", "tpcc", "tpcc_skew", "job", "ycsb", "dsb",
+            "pgbench", "benchbase", "sysbench", "ssb", "ldbc",
+        })
         self.assertIn(
             "| `tpcds` | OLAP / Decision support | `.dat` (pipe-delimited) "
             "| 5 synthetic |",
             readme,
         )
-        self.assertIn("Complete reference for all 9 benchmark adapters", reference)
+        self.assertIn("Reference for all 12 benchmark adapters", reference)
         self.assertIn("| TPC-DS | Medium (5 synthetic; 24 full) |", reference)
         self.assertNotIn("26 full", reference)
 

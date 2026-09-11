@@ -9,6 +9,18 @@ from driftbench.data import GenerationResult
 from driftbench.data.tpch import TPCHData
 from driftbench.data.ycsb import YCSBData
 
+
+_TPCH_TABLES = (
+    "region", "nation", "supplier", "customer", "part", "partsupp",
+    "orders", "lineitem",
+)
+
+
+def _write_tpch_companion_tables(source: Path) -> None:
+    for table in _TPCH_TABLES:
+        if table != "lineitem":
+            (source / f"{table}.tbl").write_text("1|value|\n", encoding="utf-8")
+
 class DriftAPITests(unittest.TestCase):
     """Tests for GenerationResult.drift() and GenerationResult.drift_multi()."""
 
@@ -299,6 +311,7 @@ class CsvHeaderAndDriftFixTests(unittest.TestCase):
         body = "".join(
             self._LINEITEM_TBL.format(ok=i, qty=10 + i) for i in range(1, rows + 1)
         )
+        _write_tpch_companion_tables(source)
         (source / "lineitem.tbl").write_text(body, encoding="utf-8")
         return source
 
@@ -361,6 +374,7 @@ class SpecPythonParityTests(unittest.TestCase):
         body = "".join(
             self._LINEITEM_TBL.format(ok=i, qty=10 + i) for i in range(1, rows + 1)
         )
+        _write_tpch_companion_tables(source)
         (source / "lineitem.tbl").write_text(body, encoding="utf-8")
         out = Path(self._tmpdir) / "out"
         result = TPCHData(scale_factor=1, source_dir=source).generate(output_dir=out)

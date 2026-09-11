@@ -14,6 +14,6 @@ suite = unittest.defaultTestLoader.discover(
 )
 count = suite.countTestCases()
 print(f"adapter tests discovered: {count}")
-assert count == 47, count
+assert count == 111, count
 PY
 python3 -m unittest discover -s test/benchmarks -t . -p 'test_adapter*.py' -v

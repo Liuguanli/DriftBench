@@ -75,6 +75,9 @@ _BENCHMARK_MODULES = {
     "dsb": "driftbench.data.dsb",
     "pgbench": "driftbench.data.pgbench",
     "benchbase": "driftbench.data.benchbase",
+    "sysbench": "driftbench.data.sysbench",
+    "ssb": "driftbench.data.ssb",
+    "ldbc": "driftbench.data.ldbc",
 }
 
 
@@ -1587,6 +1590,14 @@ def _validate_benchmark(ctx: _Context, spec: Mapping[str, Any]) -> None:
                             if benchmark == "benchbase"
                             else "Verify pgbench and PostgreSQL connectivity before execution."
                         ),
+                        severity="warning",
+                    )
+                if benchmark in {"sysbench", "ssb", "ldbc"}:
+                    ctx.issue(
+                        "external_not_checked",
+                        "data_source.benchmark",
+                        "This adapter prepares configuration or imports supplied local inputs; external data/tool readiness was not checked.",
+                        "Generate/import baseline artifacts separately, then bind the files to a DriftSpec. Database execution and graph/FK integrity are not established by preflight.",
                         severity="warning",
                     )
     if kind == "postgres" or (

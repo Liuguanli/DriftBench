@@ -55,10 +55,12 @@ python -c "from driftbench.data.ycsb import data; print(data(record_count=10).ge
 
 ## Benchmark Adapters (`driftbench.data`)
 
-Nine adapters generate local benchmark artifacts. Most synthetic generators need no
+Twelve adapters prepare local benchmark artifacts. Most synthetic generators need no
 external tool; TPC-H `mode="generate"` may auto-build an unpinned upstream `dbgen`,
 pgbench regression runs need PostgreSQL/pgbench, and BenchBase generates configuration
-rather than a local dataset.
+rather than a local dataset. sysbench exports native preparation/run plans; SSB and
+LDBC import supplied local inputs. These three additions are local development
+capabilities and are not yet part of a published package release.
 
 | Adapter | Workload type | Data format | Tables | Queries |
 |---------|--------------|-------------|--------|---------|
@@ -71,6 +73,9 @@ rather than a local dataset.
 | `dsb` | Decision support | `.csv` | 3 star-schema | 3 SQL templates |
 | `pgbench` | TPC-B (OLTP) | `.csv` | 4 | 3 workloads |
 | `benchbase` | Multi-benchmark | XML + shell script | via live DB | 10 benchmarks |
+| `sysbench` | OLTP | Native config + command plan | native prepare phase | 4 stock Lua workload choices |
+| `ssb` | OLAP / star schema | Imported `.tbl` → headered CSV + SQL schema | 5 supplied tables | 13 SSB SQL queries |
+| `ldbc` | Graph / SNB Interactive v1 | Imported CSV + native driver handoff | 20 CSV families | 14 supplied parameter files; read-only or mixed handoff |
 
 Related benchmark docs: [complete adapter reference](docs/benchmark_reference.md),
 [target orchestration contract](docs/benchmark_target_contract.md), and
@@ -141,6 +146,9 @@ artifacts/
   dsb/data/                dsb/queries/
   pgbench/data/            pgbench/queries/
   benchbase/tpcc/data/     benchbase/tpcc/queries/
+  sysbench/data/           sysbench/queries/
+  ssb/data/                ssb/queries/
+  ldbc/data/               ldbc/queries/
 ```
 
 Each folder contains a `*_manifest.json` listing the generated files.
@@ -168,8 +176,9 @@ result.summary()
 
 A second call reuses files only when its normalized generation parameters match the
 manifest and every managed file has the recorded path, byte count, and SHA-256. Older
-manifests rebuild once. Pass `force=True` to regenerate unconditionally; if an external
-`source_dir` changes in place, use `force=True` because source contents are not checksummed.
+manifests rebuild once. SSB and LDBC include supplied source-file hashes in their cache
+identity, so changed inputs invalidate reuse. For other adapters whose external inputs
+are not recorded by content hash, pass `force=True` after changing a `source_dir` in place.
 
 ### Only real-database regression gate: pgbench
 

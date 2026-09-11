@@ -83,7 +83,7 @@ _TBL_SCHEMAS: Dict[tuple[str, str], List[str]] = {
 _DRIFT_RESERVED_PARAMS = ("table", "drift_type", "seed", "output_path")
 
 _CACHE_SCHEMA = "driftbench.benchmark-cache"
-_CACHE_VERSION = 2
+_CACHE_VERSION = 3
 _CACHE_REDACTED = "<redacted>"
 _CACHE_HASH_CHUNK_BYTES = 1024 * 1024
 
@@ -122,6 +122,10 @@ class GenerationResult:
     output_dir: Path
     files: list[Path]
     metadata: Path
+    # True only when BenchmarkArtifact._load_existing returned a fully
+    # verified local cache entry.  The default preserves compatibility for
+    # third-party/custom GenerationResult construction.
+    reused_local: bool = False
 
     def summary(self) -> dict[str, Any]:
         """Return a lightweight, JSON-serializable summary of this result.
@@ -347,7 +351,7 @@ class GenerationResult:
         payload: Dict[str, Any] = {
             "benchmark": self.benchmark,
             "artifact_type": self.artifact_type,
-            "files": [str(path.resolve().relative_to(output_dir.resolve())) for path in files],
+            "files": [path.resolve().relative_to(output_dir.resolve()).as_posix() for path in files],
         }
         if extra:
             payload.update(extra)
@@ -550,6 +554,7 @@ class BenchmarkArtifact:
                 output_dir=root,
                 files=files,
                 metadata=manifest_path,
+                reused_local=True,
             )
         except Exception:
             pass
@@ -674,7 +679,7 @@ class BenchmarkArtifact:
 
     def _paths_relative_to(self, base: Path, paths: list[Path]) -> list[str]:
         base_resolved = base.resolve()
-        return [str(path.resolve().relative_to(base_resolved)) for path in paths]
+        return [path.resolve().relative_to(base_resolved).as_posix() for path in paths]
 
     def _result(
         self,

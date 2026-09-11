@@ -15,13 +15,13 @@ from ..helpers import (
 
 
 def _case_parameter_cache_is_strict_and_force_bypasses(tmp_path: Path) -> None:
-    first = YCSBData(scale_factor=1, record_count=2).generate(output_dir=tmp_path)
+    first = YCSBData(record_count=2).generate(output_dir=tmp_path)
     manifest = _read_json(first.metadata)
     cache = manifest["cache"]
     assert cache["schema"] == "driftbench.benchmark-cache"
-    assert cache["version"] == 2
+    assert cache["version"] == 3
     assert cache["generator"].endswith("YCSBData/data")
-    assert cache["parameters"] == {"record_count": 2, "scale_factor": 1}
+    assert cache["parameters"] == {"record_count": 2, "scale_factor": None}
     assert len(cache["fingerprint"]) == 64
     int(cache["fingerprint"], 16)
 
@@ -41,21 +41,21 @@ def _case_parameter_cache_is_strict_and_force_bypasses(tmp_path: Path) -> None:
         "_generate_synth",
         side_effect=AssertionError("intact cache should be reused"),
     ):
-        reused = YCSBData(scale_factor=1.0, record_count=2).generate(
+        reused = YCSBData(record_count=2).generate(
             output_dir=tmp_path
         )
     assert reused.files == first.files
 
     # A size mismatch must invalidate the cache.
     data_file.write_bytes(original_bytes + b"x")
-    repaired = YCSBData(scale_factor=1, record_count=2).generate(output_dir=tmp_path)
+    repaired = YCSBData(record_count=2).generate(output_dir=tmp_path)
     assert repaired.files[0].read_bytes() == original_bytes
 
     # A same-size content/hash mismatch must also invalidate the cache.
     same_size_corruption = bytearray(original_bytes)
     same_size_corruption[0] ^= 0xFF
     data_file.write_bytes(same_size_corruption)
-    repaired = YCSBData(scale_factor=1, record_count=2).generate(output_dir=tmp_path)
+    repaired = YCSBData(record_count=2).generate(output_dir=tmp_path)
     assert repaired.files[0].read_bytes() == original_bytes
 
     # Simulate an interrupted writer partially overwriting the middle of a file.
@@ -66,10 +66,10 @@ def _case_parameter_cache_is_strict_and_force_bypasses(tmp_path: Path) -> None:
         byte ^ 0xFF for byte in partial_overwrite[start:end]
     )
     data_file.write_bytes(partial_overwrite)
-    repaired = YCSBData(scale_factor=1, record_count=2).generate(output_dir=tmp_path)
+    repaired = YCSBData(record_count=2).generate(output_dir=tmp_path)
     assert repaired.files[0].read_bytes() == original_bytes
 
-    changed = YCSBData(scale_factor=1, record_count=3).generate(output_dir=tmp_path)
+    changed = YCSBData(record_count=3).generate(output_dir=tmp_path)
     assert _csv_data_rows(changed.files[0]) == 3
     assert _read_json(changed.metadata)["cache"]["fingerprint"] != cache["fingerprint"]
 
@@ -110,17 +110,17 @@ def _case_parameter_cache_is_strict_and_force_bypasses(tmp_path: Path) -> None:
         else:  # missing
             changed.files[0].unlink()
 
-        changed = YCSBData(scale_factor=1, record_count=3).generate(output_dir=tmp_path)
+        changed = YCSBData(record_count=3).generate(output_dir=tmp_path)
         assert _csv_data_rows(changed.files[0]) == 3
 
     changed.files[0].write_text("sentinel\n", encoding="utf-8")
-    forced = YCSBData(scale_factor=1, record_count=3).generate(
+    forced = YCSBData(record_count=3).generate(
         output_dir=tmp_path, force=True
     )
     assert _csv_data_rows(forced.files[0]) == 3
 
     contained_root = tmp_path / "contained"
-    contained = YCSBData(scale_factor=1, record_count=2).generate(
+    contained = YCSBData(record_count=2).generate(
         output_dir=contained_root
     )
     outside = tmp_path / "outside-sentinel.csv"
@@ -137,7 +137,7 @@ def _case_parameter_cache_is_strict_and_force_bypasses(tmp_path: Path) -> None:
         ]
         contained.metadata.write_text(json.dumps(payload), encoding="utf-8")
 
-        contained = YCSBData(scale_factor=1, record_count=2).generate(
+        contained = YCSBData(record_count=2).generate(
             output_dir=contained_root
         )
         assert _csv_data_rows(contained.files[0]) == 2

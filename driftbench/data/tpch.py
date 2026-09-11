@@ -16,6 +16,10 @@ from driftbench.core.workload.tpch_sql_generator import (
 from driftbench.console import console_print
 
 from .base import BenchmarkArtifact, GenerationResult
+from .tpch_param_specs import (
+    TPCHParamSpecsIdentityError,
+    canonicalize_tpch_param_specs,
+)
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +36,17 @@ _REPO_REF_DATA_DIR = _REPO_TPCH_DIR / "ref_data"
 _DBGEN_CACHE_DIR = Path.home() / ".driftbench" / "cache" / "tpch-dbgen"
 _DBGEN_CACHE_BINARY = _DBGEN_CACHE_DIR / "dbgen"
 
+_TPCH_TABLE_NAMES = (
+    "region",
+    "nation",
+    "supplier",
+    "customer",
+    "part",
+    "partsupp",
+    "orders",
+    "lineitem",
+)
+
 
 @dataclass
 class TPCHData(BenchmarkArtifact):
@@ -46,11 +61,21 @@ class TPCHData(BenchmarkArtifact):
     artifact_type: str = "data"
 
     def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
+        source_dir: Path | None = None
+        source_tables: list[Path] | None = None
+        if self.mode == "copy":
+            # Validate the complete canonical source before creating or changing
+            # anything under the requested output directory.  force=True never
+            # weakens this provenance boundary.
+            source_dir = self._resolve_source_dir()
+            source_tables = self._validate_canonical_tables(source_dir)
+        elif self.mode != "generate":
+            raise ValueError("TPCH data mode must be 'copy' or 'generate'")
+
         root = self._require_output_dir(output_dir)
         out_dir = root / "tpch" / "data" / f"sf_{self._scale_key()}"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        source_dir: Path | None = None
         cache_parameters: dict[str, Any] = {
             "scale_factor": self._scale_key(),
             "mode": self.mode,
@@ -62,7 +87,7 @@ class TPCHData(BenchmarkArtifact):
                 else None
             )
         else:
-            source_dir = self._resolve_source_dir()
+            assert source_dir is not None
             cache_parameters["source_dir"] = source_dir
 
         if not force:
@@ -95,18 +120,12 @@ class TPCHData(BenchmarkArtifact):
             )
             return self._result(root, tbls, metadata)
 
-        assert source_dir is not None
+        assert source_dir is not None and source_tables is not None
         copied: list[Path] = []
-        for path in sorted(source_dir.glob("*.tbl")):
+        for path in source_tables:
             target = out_dir / path.name
             shutil.copy2(path, target)
             copied.append(target)
-
-        if not copied:
-            raise FileNotFoundError(
-                f"No .tbl files found in source_dir={source_dir}. "
-                "Provide a TPC-H data directory that contains table .tbl files."
-            )
 
         metadata = self._write_manifest(
             out_dir / "tpch_data_manifest.json",
@@ -205,20 +224,62 @@ class TPCHData(BenchmarkArtifact):
             check=True,
         )
 
-        tbls = sorted(tables_dir.glob("*.tbl"))
-        if not tbls:
+        try:
+            tbls = self._validate_canonical_tables(tables_dir, exact=True)
+        except FileNotFoundError as exc:
             raise RuntimeError(
-                f"dbgen ran successfully but no .tbl files were found in {tables_dir}. "
-                "Check dbgen output above for errors."
-            )
+                f"dbgen output is incomplete or invalid in {tables_dir}: {exc}"
+            ) from exc
         console_print(f"[driftbench] dbgen complete - {len(tbls)} tables in {tables_dir}")
         return tbls
+
+    def _validate_canonical_tables(
+        self,
+        source_dir: Path,
+        *,
+        exact: bool = False,
+    ) -> list[Path]:
+        invalid: list[str] = []
+        tables: list[Path] = []
+        for table_name in _TPCH_TABLE_NAMES:
+            table = source_dir / f"{table_name}.tbl"
+            try:
+                if table.is_symlink() or not table.is_file() or table.stat().st_size < 1:
+                    invalid.append(table.name)
+                    continue
+                with table.open("rb") as stream:
+                    if not stream.read(1):
+                        invalid.append(table.name)
+                        continue
+            except OSError:
+                invalid.append(table.name)
+                continue
+            tables.append(table)
+
+        extras: list[str] = []
+        if exact and source_dir.is_dir():
+            expected = {f"{name}.tbl" for name in _TPCH_TABLE_NAMES}
+            extras = sorted(
+                path.name for path in source_dir.glob("*.tbl") if path.name not in expected
+            )
+
+        if invalid or extras:
+            details: list[str] = []
+            if invalid:
+                details.append("missing, empty, unreadable, or non-regular: " + ", ".join(invalid))
+            if extras:
+                details.append("unexpected .tbl files: " + ", ".join(extras))
+            raise FileNotFoundError(
+                "TPC-H requires the eight canonical non-empty readable .tbl files; "
+                + "; ".join(details)
+            )
+        return tables
 
     def _resolve_source_dir(self) -> Path:
         if self.source_dir is not None:
             path = Path(self.source_dir).expanduser().resolve()
-            if not path.exists():
-                raise FileNotFoundError(f"TPCH source_dir does not exist: {path}")
+            if not path.exists() or not path.is_dir():
+                raise FileNotFoundError(f"TPCH source_dir is not a directory: {path}")
             return path
 
         path = (_REPO_REF_DATA_DIR / self._scale_key()).resolve()
@@ -258,7 +319,10 @@ class TPCHQueries(BenchmarkArtifact):
         query_ids = self._resolve_query_ids(template_dir)
         cache_parameters: dict[str, Any] = {
             "query_ids": query_ids,
-            "template_dir": template_dir,
+            # Packaged defaults are a logical producer resource, not a
+            # checkout-specific absolute path. Explicit paths remain
+            # path-sensitive for local caching and are remote-cache denied.
+            "template_dir": template_dir if self.template_dir is not None else None,
             "mode": self.mode,
             "queries_per_template": self.queries_per_template,
             "seed": self.seed,
@@ -269,12 +333,24 @@ class TPCHQueries(BenchmarkArtifact):
             dist_file = self._resolve_dist_file()
             cache_parameters.update(
                 {
-                    "qgen_dist_file": dist_file,
+                    "qgen_dist_file": (
+                        dist_file if self.qgen_dist_file is not None else None
+                    ),
                     "scale": self.scale,
                 }
             )
         elif self.mode == "custom":
-            cache_parameters["param_specs"] = self.param_specs or {}
+            raw_param_specs = self.param_specs or {}
+            try:
+                cache_parameters["param_specs"] = canonicalize_tpch_param_specs(
+                    raw_param_specs,
+                    require_remote_safe=False,
+                )
+            except TPCHParamSpecsIdentityError:
+                # Preserve the historical local-only behavior for unusual
+                # Python objects. Remote caching validates and rejects these
+                # before backend construction or generation.
+                cache_parameters["param_specs"] = raw_param_specs
         else:
             raise ValueError("mode must be one of: 'qgen', 'custom'")
 

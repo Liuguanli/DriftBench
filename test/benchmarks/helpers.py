@@ -46,7 +46,7 @@ class BenchmarkAdapterTestMixin:
                 self.assertFalse(str(rel).startswith("/"))
         if "cache" in payload:
             cache = payload["cache"]
-            self.assertEqual(cache["version"], 2)
+            self.assertEqual(cache["version"], 3)
             self.assertEqual(
                 [artifact["path"] for artifact in cache["artifacts"]],
                 payload["files"],

@@ -1,5 +1,7 @@
+import csv
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 from driftbench.data.tpcc import TPCCData, TPCCQueries
@@ -48,6 +50,64 @@ class TPCCAdapterTests(BenchmarkAdapterTestMixin, unittest.TestCase):
             # customer: 3000 per warehouse
             self.assertEqual(row_count(r1, "customer"), 3000)
             self.assertEqual(row_count(r2, "customer"), 6000)
+
+            for result in (r1, r2):
+                manifest = json.loads(result.metadata.read_text(encoding="utf-8"))
+                observed = {
+                    path.stem: row_count(result, path.stem)
+                    for path in result.files
+                    if path.suffix == ".csv"
+                }
+                self.assertEqual(manifest["tables"], observed)
+
+            self.assertEqual(row_count(r1, "orders"), 3000)
+            self.assertEqual(row_count(r2, "orders"), 6000)
+            self.assertEqual(row_count(r1, "new_order"), 900)
+            self.assertEqual(row_count(r2, "new_order"), 1800)
+
+    def test_tpcc_orders_lines_and_new_order_relationships_are_consistent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = TPCCData(scale_factor=1).generate(output_dir=Path(tmp) / "out")
+            paths = {path.stem: path for path in result.files if path.suffix == ".csv"}
+
+            with paths["orders"].open(encoding="utf-8", newline="") as stream:
+                orders = {
+                    (row["o_w_id"], row["o_d_id"], row["o_id"]): row
+                    for row in csv.DictReader(stream)
+                }
+            with paths["new_order"].open(encoding="utf-8", newline="") as stream:
+                new_orders = {
+                    (row["no_w_id"], row["no_d_id"], row["no_o_id"])
+                    for row in csv.DictReader(stream)
+                }
+
+            line_counts: dict[tuple[str, str, str], int] = {}
+            delivery_values: dict[tuple[str, str, str], set[str]] = {}
+            with paths["order_line"].open(encoding="utf-8", newline="") as stream:
+                for row in csv.DictReader(stream):
+                    key = (row["ol_w_id"], row["ol_d_id"], row["ol_o_id"])
+                    line_counts[key] = line_counts.get(key, 0) + 1
+                    delivery_values.setdefault(key, set()).add(row["ol_delivery_d"])
+
+            expected_new_orders = {
+                key for key, row in orders.items() if row["o_carrier_id"] == ""
+            }
+            self.assertEqual(new_orders, expected_new_orders)
+            self.assertEqual(len(new_orders), len(orders) * 3 // 10)
+            self.assertEqual(
+                sum(int(row["o_ol_cnt"]) for row in orders.values()),
+                sum(line_counts.values()),
+            )
+            for key, row in orders.items():
+                self.assertEqual(line_counts[key], int(row["o_ol_cnt"]))
+                if key in new_orders:
+                    self.assertEqual(delivery_values[key], {""})
+                else:
+                    self.assertNotIn("", delivery_values[key])
+
+            manifest = json.loads(result.metadata.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["tables"]["order_line"], sum(line_counts.values()))
+            self.assertEqual(manifest["tables"]["new_order"], len(new_orders))
 
     def test_tpcc_queries_generate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

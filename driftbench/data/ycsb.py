@@ -20,24 +20,68 @@ _YCSB_WORKLOAD_WEIGHTS: dict[str, tuple[int, int, int, int, int, int]] = {
 }
 
 
+def _effective_record_count(
+    scale_factor: int | float | None,
+    record_count: int | None,
+) -> tuple[int | None, int]:
+    """Resolve YCSB scale/count inputs without allowing contradictory artifacts."""
+
+    normalized_scale: int | None = None
+    if scale_factor is not None:
+        if isinstance(scale_factor, bool):
+            raise ValueError("YCSB scale_factor must be a positive integer")
+        try:
+            numeric_scale = float(scale_factor)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("YCSB scale_factor must be a positive integer") from exc
+        if not numeric_scale.is_integer() or numeric_scale < 1:
+            raise ValueError("YCSB scale_factor must be a positive integer")
+        normalized_scale = int(numeric_scale)
+
+    if record_count is not None and (
+        isinstance(record_count, bool)
+        or not isinstance(record_count, int)
+        or record_count < 1
+    ):
+        raise ValueError("YCSB record_count must be a positive integer")
+
+    if normalized_scale is None and record_count is None:
+        return 1, 1000
+    if normalized_scale is None:
+        assert record_count is not None
+        return None, record_count
+
+    scaled_count = normalized_scale * 1000
+    if record_count is not None and record_count != scaled_count:
+        raise ValueError(
+            "YCSB scale_factor and record_count conflict: "
+            f"scale_factor={normalized_scale} requires record_count={scaled_count}, "
+            f"got {record_count}"
+        )
+    return normalized_scale, scaled_count
+
+
 @dataclass
 class YCSBData(BenchmarkArtifact):
     """Generate YCSB data/load artifacts."""
 
-    scale_factor: int = 1
+    scale_factor: int | float | None = None
     record_count: int | None = None
 
     benchmark: str = "ycsb"
     artifact_type: str = "data"
 
     def generate(self, output_dir: str | Path | None = None, force: bool = False) -> GenerationResult:
+        scale_factor, records = _effective_record_count(
+            self.scale_factor, self.record_count
+        )
+
         root = self._require_output_dir(output_dir)
         out_dir = root / "ycsb" / "data"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        records = self.record_count if self.record_count is not None else self.scale_factor * 1000
         cache_parameters = {
-            "scale_factor": self.scale_factor,
+            "scale_factor": scale_factor,
             "record_count": records,
         }
 
@@ -48,7 +92,10 @@ class YCSBData(BenchmarkArtifact):
             if existing is not None:
                 console_print(f"[driftbench] YCSB data already exists at {out_dir}. Reusing.")
                 return existing
-        console_print(f"[driftbench] Generating YCSB data (sf={self.scale_factor}) -> {out_dir}")
+        console_print(
+            f"[driftbench] Generating YCSB data "
+            f"(sf={scale_factor}, records={records}) -> {out_dir}"
+        )
 
         files = self._generate_synth(out_dir, records)
         metadata = self._write_manifest(
@@ -56,7 +103,7 @@ class YCSBData(BenchmarkArtifact):
             {
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
-                "scale_factor": self.scale_factor,
+                "scale_factor": scale_factor,
                 "record_count": records,
                 "tables": {"usertable": records},
                 "files": self._paths_relative_to(root, files),
@@ -88,6 +135,8 @@ class YCSBQueries(BenchmarkArtifact):
     workload: str = "A"
     run_seconds: int = 60
     target_rate: int = 10000
+    scale_factor: int | float | None = None
+    record_count: int | None = None
 
     benchmark: str = "ycsb"
     artifact_type: str = "queries"
@@ -98,6 +147,10 @@ class YCSBQueries(BenchmarkArtifact):
             valid = ", ".join(sorted(_YCSB_WORKLOAD_WEIGHTS.keys()))
             raise ValueError(f"Unsupported YCSB workload '{self.workload}'. Use one of: {valid}")
 
+        scale_factor, records = _effective_record_count(
+            self.scale_factor, self.record_count
+        )
+
         root = self._require_output_dir(output_dir)
         out_dir = root / "ycsb" / "queries"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -106,6 +159,8 @@ class YCSBQueries(BenchmarkArtifact):
             "workload": profile,
             "run_seconds": self.run_seconds,
             "target_rate": self.target_rate,
+            "scale_factor": scale_factor,
+            "record_count": records,
         }
 
         if not force:
@@ -120,7 +175,10 @@ class YCSBQueries(BenchmarkArtifact):
         console_print(f"[driftbench] Generating YCSB queries (workload={profile}) -> {out_dir}")
 
         weights = _YCSB_WORKLOAD_WEIGHTS[profile]
-        props = self._write_text(out_dir / f"workload_{profile.lower()}.properties", self._properties_body())
+        props = self._write_text(
+            out_dir / f"workload_{profile.lower()}.properties",
+            self._properties_body(records),
+        )
         benchbase_cfg = self._write_text(
             out_dir / "sample_ycsb_config.xml",
             self._benchbase_template(weights),
@@ -134,6 +192,8 @@ class YCSBQueries(BenchmarkArtifact):
                 "workload": profile,
                 "run_seconds": self.run_seconds,
                 "target_rate": self.target_rate,
+                "scale_factor": scale_factor,
+                "record_count": records,
                 "weights": {
                     "ReadRecord": weights[0],
                     "InsertRecord": weights[1],
@@ -149,10 +209,10 @@ class YCSBQueries(BenchmarkArtifact):
         )
         return self._result(root, [props, benchbase_cfg], metadata)
 
-    def _properties_body(self) -> str:
+    def _properties_body(self, records: int) -> str:
         return (
             "operationcount=100000\n"
-            "recordcount=1000\n"
+            f"recordcount={records}\n"
             "requestdistribution=zipfian\n"
             f"maxexecutiontime={self.run_seconds}\n"
             f"target={self.target_rate}\n"
@@ -188,9 +248,24 @@ class YCSBQueries(BenchmarkArtifact):
         )
 
 
-def data(scale_factor: int = 1, record_count: int | None = None) -> YCSBData:
+def data(
+    scale_factor: int | float | None = None,
+    record_count: int | None = None,
+) -> YCSBData:
     return YCSBData(scale_factor=scale_factor, record_count=record_count)
 
 
-def queries(workload: str = "A", run_seconds: int = 60, target_rate: int = 10000) -> YCSBQueries:
-    return YCSBQueries(workload=workload, run_seconds=run_seconds, target_rate=target_rate)
+def queries(
+    workload: str = "A",
+    run_seconds: int = 60,
+    target_rate: int = 10000,
+    scale_factor: int | float | None = None,
+    record_count: int | None = None,
+) -> YCSBQueries:
+    return YCSBQueries(
+        workload=workload,
+        run_seconds=run_seconds,
+        target_rate=target_rate,
+        scale_factor=scale_factor,
+        record_count=record_count,
+    )

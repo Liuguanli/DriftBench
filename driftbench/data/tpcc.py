@@ -347,7 +347,7 @@ class TPCCData(BenchmarkArtifact):
 
         ddl = self._write_text(out_dir / "tpcc_schema.sql", _TPCC_DDL)
 
-        files = self._generate_synth(out_dir)
+        files, table_counts = self._generate_synth(out_dir)
         files.insert(0, ddl)
         metadata = self._write_manifest(
             out_dir / "tpcc_data_manifest.json",
@@ -355,17 +355,7 @@ class TPCCData(BenchmarkArtifact):
                 "benchmark": self.benchmark,
                 "artifact_type": self.artifact_type,
                 "scale_factor": self._w(),
-                "tables": {
-                    "warehouse": self._w(),
-                    "district": 10 * self._w(),
-                    "customer": 3000 * self._w(),
-                    "item": min(100000, 10000 * self._w()),
-                    "stock": min(100000, 10000 * self._w()),
-                    "orders": 3000 * self._w(),
-                    "new_order": 900 * self._w(),
-                    "order_line": 30000 * self._w(),
-                    "history": 3000 * self._w(),
-                },
+                "tables": table_counts,
                 "files": self._paths_relative_to(root, files),
                 "note": (
                     "Synthetic TPC-C data for onboarding and API testing. "
@@ -380,7 +370,7 @@ class TPCCData(BenchmarkArtifact):
     def _w(self) -> int:
         return max(1, int(round(float(self.scale_factor))))
 
-    def _generate_synth(self, out_dir: Path) -> list[Path]:
+    def _generate_synth(self, out_dir: Path) -> tuple[list[Path], dict[str, int]]:
         w = self._w()
         rng = random.Random(42)
         start = date(2020, 1, 1)
@@ -450,13 +440,13 @@ class TPCCData(BenchmarkArtifact):
                     ol_cnt = rng.randint(5, 15)
                     orders_rows.append([oid, did, wid, rng.randint(1, 300),
                                         (start + timedelta(days=oid % 365)).isoformat(),
-                                        None if oid > 270 else rng.randint(1, 10),
+                                        None if oid > 210 else rng.randint(1, 10),
                                         ol_cnt, 1])
-                    if oid > 270:  # last 30 are new orders
+                    if oid > 210:  # last 90 per district are new orders
                         new_order_rows.append([oid, did, wid])
                     for lno in range(1, ol_cnt + 1):
                         ol_rows.append([oid, did, wid, lno, rng.randint(1, item_count),
-                                        wid, None if oid > 270 else (start + timedelta(days=(oid + lno) % 365)).isoformat(),
+                                        wid, None if oid > 210 else (start + timedelta(days=(oid + lno) % 365)).isoformat(),
                                         rng.randint(1, 10), f"{rng.uniform(0.01, 99.99):.2f}",
                                         f"dist_{lno:04d}"])
 
@@ -478,7 +468,17 @@ class TPCCData(BenchmarkArtifact):
              "h_date", "h_amount", "h_data"],
             history_rows))
 
-        return files
+        return files, {
+            "warehouse": w,
+            "district": 10 * w,
+            "customer": len(cust_rows),
+            "item": item_count,
+            "stock": len(stock_rows),
+            "orders": len(orders_rows),
+            "new_order": len(new_order_rows),
+            "order_line": len(ol_rows),
+            "history": len(history_rows),
+        }
 
     def _write_csv(self, path: Path, header: list[str], rows: list[list]) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)

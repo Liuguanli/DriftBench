@@ -1,6 +1,6 @@
 # DriftBench Benchmark Reference
 
-Complete reference for all 9 benchmark adapters, including generated artifacts, query characteristics, and selection guidance.
+Reference for all 12 benchmark adapters, including generated/imported artifacts, query characteristics, and selection guidance.
 
 Related docs: [README and quickstart](../README.md),
 [target orchestration contract](benchmark_target_contract.md), and
@@ -113,6 +113,34 @@ not a local dataset or a DriftBench-run live-database gate.
 | Decision support with complex schemas | DSB |
 | PostgreSQL throughput/regression gating | pgbench |
 | Generate configs for an external Java benchmark driver | BenchBase |
+| Prepare native MySQL/PostgreSQL OLTP pressure-test configurations | sysbench |
+| Star-schema analytical queries over supplied dbgen tables | SSB |
+| Stage supplied social-graph data and SNB Interactive v1 driver inputs | LDBC SNB Interactive v1 |
+
+## sysbench, SSB and LDBC SNB Interactive v1
+
+These three local development adapters prepare useful offline artifacts; they are
+not yet published in a package release. Their complete contracts, input layouts,
+examples and source pins are in [benchmark_extensions.md](benchmark_extensions.md).
+
+- `driftbench.data.sysbench.data()` exports a native **prepare plan**, not database
+  rows. `queries()` exports native configuration for one of four stock OLTP Lua
+  workloads. Running sysbench and connecting to a database are separate steps.
+- `driftbench.data.ssb.data(source_dir=...)` imports five existing SSB dbgen `.tbl`
+  tables as headered CSV with a PostgreSQL-compatible schema. `queries()` writes
+  all 13 SSB SQL definitions or a validated selection. No dbgen is downloaded or run.
+- `driftbench.data.ldbc.data(source_dir=...)` stages the 20 `csv_merge_foreign`
+  families from Hadoop Datagen v1.0.0. `queries(parameters_dir=..., driver_config=...)`
+  packages 14 real substitution-parameter files and a supplied database-specific
+  SNB Interactive v1.2.0 driver configuration. It supports a read-only handoff or
+  explicit mixed mode with supplied update streams. BI, Graphalytics and SNB v2
+  are outside this adapter's contract.
+
+The adapters reuse the local manifest/cache API. They are deliberately **not in
+the remote-cache allowlist**. Imported data and private driver configurations are
+never uploaded by these adapters. No new Drift handler or graph/FK-integrity
+guarantee is introduced; optional transformations still require appropriate input
+formats and explicit relationship modeling.
 
 ---
 
