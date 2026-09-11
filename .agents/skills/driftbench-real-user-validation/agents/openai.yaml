@@ -1,0 +1,4 @@
+interface:
+  display_name: "DriftBench Real-User Validation"
+  short_description: "Audit eight benchmarks from real user perspectives"
+  default_prompt: "Use $driftbench-real-user-validation to audit all eight benchmark artifact generators from the assigned persona."
