@@ -114,10 +114,13 @@ class LDBCAdapterTests(BenchmarkAdapterTestMixin, unittest.TestCase):
             self.assertEqual(list((work / "empty-updates").glob("updateStream*")), [])
             command = read_json(work / "command.json")
             self.assertFalse(command["executed"])
-            self.assertEqual(command["cwd"], str(config.parent))
+            self.assertTrue(Path(command["cwd"]).samefile(config.parent))
             argv = command["argv"]
             self.assertEqual(argv[:2], ["java", "-cp"])
-            self.assertEqual([argv[index + 1] for index, value in enumerate(argv[:-1]) if value == "-P"], [str(work / "overrides.properties"), str(work / "user.properties")])
+            property_paths = [argv[index + 1] for index, value in enumerate(argv[:-1]) if value == "-P"]
+            self.assertEqual(len(property_paths), 2)
+            for actual, expected in zip(property_paths, (work / "overrides.properties", work / "user.properties")):
+                self.assertTrue(Path(actual).samefile(expected))
 
     def test_mixed_plan_preserves_operation_flags_and_paired_update_stream_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -233,7 +236,7 @@ class LDBCAdapterTests(BenchmarkAdapterTestMixin, unittest.TestCase):
 
             def replace_after_validation(path, *args, **kwargs):
                 result = real_rows(path, *args, **kwargs)
-                if Path(path) == person:
+                if Path(path).samefile(person):
                     person.write_bytes(b"invalid|header\ninvalid|row\n")
                 return result
 
@@ -258,7 +261,7 @@ class LDBCAdapterTests(BenchmarkAdapterTestMixin, unittest.TestCase):
 
             def replace_after_validation(path, *args, **kwargs):
                 result = real_rows(path, *args, **kwargs)
-                if Path(path) == parameter:
+                if Path(path).samefile(parameter):
                     parameter.write_bytes(b"person1Id|person2Id\ninvalid|invalid\n")
                 return result
 
@@ -305,7 +308,8 @@ class LDBCAdapterTests(BenchmarkAdapterTestMixin, unittest.TestCase):
             self.assertFalse(moved.reused_local)
             self.assertNotEqual(read_json(moved.metadata)["cache"]["fingerprint"], key)
             command = read_json(moved_root / "ldbc/queries/command.json")
-            self.assertIn(str(moved_root / "ldbc/queries/overrides.properties"), command["argv"])
+            override = command["argv"][command["argv"].index("-P") + 1]
+            self.assertTrue(Path(override).samefile(moved_root / "ldbc/queries/overrides.properties"))
 
     def test_java_properties_escapes_and_continuations_preserve_native_config(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -313,12 +317,13 @@ class LDBCAdapterTests(BenchmarkAdapterTestMixin, unittest.TestCase):
             adapter, _, config = fixture_queries(parent)
             raw = config.read_bytes().replace(b"db=", b"d\\u0062=").replace(b"thread_count=2", b"thread_count=\\\r\n  2")
             config.write_bytes(raw)
-            root = parent / "output space-数据"
+            unicode_suffix = "\u6570\u636e"
+            root = parent / f"output space-{unicode_suffix}"
             result = adapter.generate(root)
             self.assertEqual((root / "ldbc/queries/user.properties").read_bytes(), raw)
             overrides = (root / "ldbc/queries/overrides.properties").read_text()
             self.assertIn(r"output\ space-\u6570\u636e", overrides)
-            self.assertNotIn("数据", overrides)
+            self.assertNotIn(unicode_suffix, overrides)
             self.assertNotIn(PRIVATE_DUMMY, result.metadata.read_text())
 
     def test_native_properties_comments_do_not_continue_but_continued_values_keep_markers(self):
