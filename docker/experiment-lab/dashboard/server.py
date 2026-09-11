@@ -23,6 +23,7 @@ MAX_EVENTS = 50
 MAX_ARTIFACTS = 200
 MAX_EVENT_BYTES = 256 * 1024
 MAX_JSON_BYTES = 256 * 1024
+MAX_JSON_NESTING = 100
 MAX_RUNS = 200
 MAX_DIRECTORY_ENTRIES = 2_000
 MAX_ARTIFACT_DEPTH = 12
@@ -75,6 +76,31 @@ def _artifact_parts(relative_path: str) -> tuple[str, ...] | None:
 
 
 def _strict_json_loads(value: str | bytes) -> Any:
+    quote = 34 if isinstance(value, bytes) else '"'
+    backslash = 92 if isinstance(value, bytes) else "\\"
+    openers = {91, 123} if isinstance(value, bytes) else {"[", "{"}
+    closers = {93, 125} if isinstance(value, bytes) else {"]", "}"}
+    depth = 0
+    in_string = False
+    escaped = False
+    for token in value:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif token == backslash:
+                escaped = True
+            elif token == quote:
+                in_string = False
+            continue
+        if token == quote:
+            in_string = True
+        elif token in openers:
+            depth += 1
+            if depth > MAX_JSON_NESTING:
+                raise ValueError("JSON nesting exceeds dashboard limit")
+        elif token in closers:
+            depth = max(0, depth - 1)
+
     def parse_int(token: str) -> int:
         if len(token.lstrip("-")) > MAX_INTEGER_DIGITS:
             raise ValueError("integer exceeds dashboard limit")

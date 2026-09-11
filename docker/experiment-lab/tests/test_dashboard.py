@@ -185,6 +185,19 @@ def test_strict_json_rejects_nonfinite_and_huge_numbers(payload: str) -> None:
         dashboard_server._strict_json_loads(payload)
 
 
+def test_strict_json_nesting_limit_is_explicit_and_ignores_string_content() -> None:
+    allowed = "[" * dashboard_server.MAX_JSON_NESTING + "0" + "]" * dashboard_server.MAX_JSON_NESTING
+    assert dashboard_server._strict_json_loads(allowed)
+
+    blocked = "[" * (dashboard_server.MAX_JSON_NESTING + 1) + "0" + "]" * (dashboard_server.MAX_JSON_NESTING + 1)
+    with pytest.raises(ValueError, match="nesting"):
+        dashboard_server._strict_json_loads(blocked)
+
+    punctuation = ('[{\\"' * (dashboard_server.MAX_JSON_NESTING + 1)) + "]}"
+    payload = json.dumps({"message": punctuation})
+    assert dashboard_server._strict_json_loads(payload) == {"message": punctuation}
+
+
 def test_malformed_status_manifest_and_event_streams_are_unavailable(tmp_path: Path) -> None:
     run = _write_run(tmp_path)
     (run / "status.json").write_text('{"completed":NaN}', encoding="utf-8")
