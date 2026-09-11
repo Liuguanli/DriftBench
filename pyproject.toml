@@ -54,6 +54,10 @@ test = [
 visualization = [
     "matplotlib>=3.7,<4",
 ]
+azure = [
+    "azure-identity>=1.24,<2",
+    "azure-storage-file-datalake>=12.16,<13",
+]
 
 [project.urls]
 Homepage = "https://github.com/Liuguanli/DriftBench"
@@ -113,9 +117,13 @@ include = [
     "/docs/p0_*.md",
     "/docs/p0_mcp_examples.sh",
     "/docs/mcp_config_example.json",
+    "/docs/azure_hns_cache.md",
+    "/docs/examples/azure-cache.yaml",
+    "/docs/examples/artifact-request.yaml",
     "/docs/driftbench_product_demo_plan.md",
     "/test",
     "/README.md",
+    "/.env.example",
     "/LICENSE",
     "/pyproject.toml",
 ]

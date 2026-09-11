@@ -21,6 +21,20 @@ from driftbench.benchmarking.policy import (
 )
 from driftbench.benchmarking.verify import BenchmarkBundleError, verify_pgbench_bundle
 from driftbench.bootstrap import BootstrapError, bootstrap_dataset
+from driftbench.cache import (
+    AzureDependencyError,
+    AzureHNSCacheConfig,
+    CacheAuthenticationError,
+    CacheAuthorizationError,
+    CacheConfigurationError,
+    CacheCredentialError,
+    CacheGenerationError,
+    CacheIntegrityError,
+    CacheTransportError,
+    RemoteCacheMode,
+    materialize_artifacts,
+)
+from driftbench.cache.requests import load_artifact_request, load_azure_cache_config
 from driftbench.console import console_print
 from driftbench.orchestrate import TargetConfigError, orchestrate_targets
 import driftbench.spec.types  # ensure handlers registered
@@ -437,6 +451,133 @@ def _cmd_benchmark_verify(args: argparse.Namespace) -> int:
     return EXIT_OK if verification.ok else EXIT_REGRESSION_FAILURE
 
 
+def _cache_error_payload(
+    args: argparse.Namespace,
+    *,
+    outcome: str,
+    message: str,
+) -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "outcome": outcome,
+        "command": "cache materialize",
+        "cache_mode": str(args.cache_mode),
+        "cache_outcome": "failed",
+        "materialization_source": None,
+        "remote_entry_status": "failed",
+        "remote_cache_populated": False,
+        "warnings": [],
+        "error": message,
+    }
+
+
+def _cmd_cache_materialize(args: argparse.Namespace) -> int:
+    capture_stdout = io.StringIO()
+    capture_stderr = io.StringIO()
+    try:
+        with contextlib.ExitStack() as stack:
+            if args.json:
+                stack.enter_context(contextlib.redirect_stdout(capture_stdout))
+                stack.enter_context(contextlib.redirect_stderr(capture_stderr))
+            request = load_artifact_request(args.request)
+            mode = RemoteCacheMode.parse(args.cache_mode)
+            if mode is RemoteCacheMode.OFF:
+                # Deliberately do not open or validate Azure config/credentials.
+                cache_config = AzureHNSCacheConfig(mode=mode)
+            else:
+                if not args.azure_cache_config:
+                    raise CacheConfigurationError(
+                        "--azure-cache-config is required when cache mode is enabled"
+                    )
+                cache_config = load_azure_cache_config(
+                    args.azure_cache_config,
+                    mode=mode,
+                    credential_env_file=args.credential_env_file,
+                )
+            result = materialize_artifacts(
+                adapter=request.adapter,
+                output_dir=args.output_dir,
+                remote_cache=cache_config,
+                force=request.force,
+            )
+        populated = result.remote_entry_status in {
+            "hit",
+            "uploaded",
+            "concurrent_identical",
+        }
+        payload = {
+            "ok": True,
+            "outcome": "success",
+            "command": "cache materialize",
+            "benchmark": result.benchmark,
+            "artifact_type": result.artifact_type,
+            "cache_mode": result.cache_mode.value,
+            "cache_outcome": result.cache_outcome,
+            "materialization_source": result.materialization_source,
+            "remote_entry_status": result.remote_entry_status,
+            "force": result.force,
+            "output_dir": str(result.output_dir),
+            "files": [str(path) for path in result.files],
+            "metadata": str(result.metadata),
+            "remote_path": result.remote_path,
+            "remote_cache_populated": populated,
+            "warnings": list(result.warnings),
+        }
+        _emit(payload, as_json=args.json)
+        return EXIT_OK
+    except (
+        CacheConfigurationError,
+        AzureDependencyError,
+        CacheCredentialError,
+    ) as exc:
+        payload = _cache_error_payload(
+            args, outcome="configuration_error", message=str(exc)
+        )
+        if args.json:
+            _emit(payload, as_json=True)
+        else:
+            console_print(f"[VALIDATION ERROR] {exc}", file=sys.stderr)
+        return EXIT_VALIDATION_ERROR
+    except CacheAuthenticationError as exc:
+        payload = _cache_error_payload(
+            args, outcome="authentication_error", message=str(exc)
+        )
+        if args.json:
+            _emit(payload, as_json=True)
+        else:
+            console_print(f"[ERROR] {exc}", file=sys.stderr)
+        return EXIT_RUNTIME_ERROR
+    except CacheAuthorizationError as exc:
+        payload = _cache_error_payload(
+            args, outcome="authorization_error", message=str(exc)
+        )
+        if args.json:
+            _emit(payload, as_json=True)
+        else:
+            console_print(f"[ERROR] {exc}", file=sys.stderr)
+        return EXIT_RUNTIME_ERROR
+    except (CacheTransportError, CacheIntegrityError, CacheGenerationError) as exc:
+        payload = _cache_error_payload(
+            args, outcome="runtime_error", message=str(exc)
+        )
+        if args.json:
+            _emit(payload, as_json=True)
+        else:
+            console_print(f"[ERROR] {exc}", file=sys.stderr)
+        return EXIT_RUNTIME_ERROR
+    except Exception:
+        payload = _cache_error_payload(
+            args,
+            outcome="internal_error",
+            message="Cache materialization could not be completed.",
+        )
+        if args.json:
+            _emit(payload, as_json=True)
+        else:
+            console_print("[ERROR] Cache materialization could not be completed.", file=sys.stderr)
+        return EXIT_RUNTIME_ERROR
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("driftbench-db")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -612,6 +753,40 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--json", action="store_true", help="Emit one JSON document")
     verify.set_defaults(func=_cmd_benchmark_verify)
 
+    cache = sub.add_parser(
+        "cache",
+        help="Materialize benchmark artifacts through an optional immutable cache",
+    )
+    cache_sub = cache.add_subparsers(dest="cache_cmd", required=True)
+    cache_materialize = cache_sub.add_parser(
+        "materialize",
+        help="Resolve one strict artifact request locally or through ADLS Gen2 HNS",
+    )
+    cache_materialize.add_argument(
+        "--request", required=True, help="Path to driftbench.artifact-request/v1 YAML"
+    )
+    cache_materialize.add_argument(
+        "--output-dir", required=True, help="Managed local artifact output root"
+    )
+    cache_materialize.add_argument(
+        "--cache-mode",
+        choices=[mode.value for mode in RemoteCacheMode],
+        default=RemoteCacheMode.OFF.value,
+        help="Remote cache behavior (default: off)",
+    )
+    cache_materialize.add_argument(
+        "--azure-cache-config",
+        help="Non-secret driftbench.azure-hns-cache/v1 YAML (required unless off)",
+    )
+    cache_materialize.add_argument(
+        "--credential-env-file",
+        help="Explicit private service-principal credential env file",
+    )
+    cache_materialize.add_argument(
+        "--json", action="store_true", help="Emit exactly one JSON document"
+    )
+    cache_materialize.set_defaults(func=_cmd_cache_materialize)
+
     return parser
 
 
@@ -718,13 +893,40 @@ def _benchmark_json_requested(arguments: List[str]) -> bool:
     )
 
 
+def _cache_json_requested(arguments: List[str]) -> bool:
+    return arguments[:2] == ["cache", "materialize"] and _option_requested(
+        arguments[2:], "--json"
+    )
+
+
+def _cache_json_error_payload(
+    argv: List[str] | None,
+    *,
+    message: str,
+    outcome: str,
+) -> Dict[str, Any] | None:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if not _cache_json_requested(arguments):
+        return None
+    return {
+        "ok": False,
+        "outcome": outcome,
+        "command": "cache materialize",
+        "cache_outcome": "failed",
+        "remote_cache_populated": False,
+        "error": message,
+    }
+
+
 def main(argv: List[str] | None = None) -> int:
     parser = build_parser()
     arguments = list(sys.argv[1:] if argv is None else argv)
     try:
-        structured_parse_error = _deep_json_requested(
-            arguments
-        ) or _benchmark_json_requested(arguments)
+        structured_parse_error = (
+            _deep_json_requested(arguments)
+            or _benchmark_json_requested(arguments)
+            or _cache_json_requested(arguments)
+        )
         if structured_parse_error:
             # Stock argparse writes usage to stderr before raising SystemExit.
             # Suppress that only for commands that explicitly request a
@@ -740,6 +942,12 @@ def main(argv: List[str] | None = None) -> int:
                     )
                     if payload is None:
                         payload = _benchmark_json_error_payload(
+                            arguments,
+                            message="The command arguments are invalid.",
+                            outcome="configuration_error",
+                        )
+                    if payload is None:
+                        payload = _cache_json_error_payload(
                             arguments,
                             message="The command arguments are invalid.",
                             outcome="configuration_error",
@@ -764,6 +972,10 @@ def main(argv: List[str] | None = None) -> int:
             payload = _benchmark_json_error_payload(
                 argv, message=str(exc), outcome="configuration_error"
             )
+        if payload is None:
+            payload = _cache_json_error_payload(
+                argv, message="Cache configuration is invalid.", outcome="configuration_error"
+            )
         if payload is not None:
             _emit(payload, as_json=True)
             return EXIT_VALIDATION_ERROR
@@ -783,6 +995,12 @@ def main(argv: List[str] | None = None) -> int:
                     else "execution_error"
                 ),
             )
+        if payload is None:
+            payload = _cache_json_error_payload(
+                argv,
+                message="Cache materialization could not be completed.",
+                outcome="runtime_error",
+            )
         if payload is not None:
             _emit(payload, as_json=True)
             return exc.exit_code
@@ -793,6 +1011,12 @@ def main(argv: List[str] | None = None) -> int:
         if payload is None:
             payload = _benchmark_json_error_payload(
                 argv, message=str(exc), outcome="execution_error"
+            )
+        if payload is None:
+            payload = _cache_json_error_payload(
+                argv,
+                message="Cache materialization could not be completed.",
+                outcome="internal_error",
             )
         if payload is not None:
             _emit(payload, as_json=True)

@@ -1,0 +1,6 @@
+schema: driftbench.artifact-request/v1
+benchmark: ycsb
+artifact_type: data
+parameters:
+  scale_factor: 2
+force: false

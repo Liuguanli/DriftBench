@@ -1,0 +1,4 @@
+schema: driftbench.azure-hns-cache/v1
+account_url: https://YOUR_ACCOUNT.dfs.core.windows.net
+file_system: driftbench-cache
+prefix: team-a

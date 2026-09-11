@@ -17,13 +17,23 @@ from driftbench.api import (
     trace_to_spec,
     validate_spec,
 )
+from driftbench.cache import (
+    AzureHNSCacheConfig,
+    MaterializationResult,
+    RemoteCacheMode,
+    materialize_artifacts,
+)
 
 __all__ = [
     "__version__",
+    "AzureHNSCacheConfig",
+    "MaterializationResult",
+    "RemoteCacheMode",
     "get_filter",
     "get_schema_extractor",
     "load_and_validate_spec",
     "load_spec",
+    "materialize_artifacts",
     "register_filter",
     "run_spec",
     "run_spec_and_return_summary",

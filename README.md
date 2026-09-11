@@ -79,7 +79,9 @@ capabilities and are not yet part of a published package release.
 
 Related benchmark docs: [complete adapter reference](docs/benchmark_reference.md),
 [target orchestration contract](docs/benchmark_target_contract.md), and
-[hands-on testing guide](docs/benchmark_testing_guide.html).
+[hands-on testing guide](docs/benchmark_testing_guide.html). To reuse eligible,
+verified artifacts across projects, see the opt-in
+[ADLS Gen2 HNS cache guide](docs/azure_hns_cache.md).
 
 Adapter names describe modeled workload families, not official benchmark conformance.
 Most outputs are DriftBench synthetic fixtures, and the TPC-H auto-build neither pins the
