@@ -1,0 +1,272 @@
+name: driftbench-experiment-lab
+
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+x-labels: &lab-labels
+  com.driftbench.experiment-lab: active
+  com.driftbench.experiment-id: ${LAB_EXPERIMENT_ID:?Set one reviewed experiment ID}
+  com.driftbench.run-id: ${LAB_RUN_ID:?Set one safe run ID}
+
+services:
+  postgres:
+    profiles: [rel-ce-tpch]
+    image: docker.io/library/postgres:16.4-bookworm@sha256:e62fbf9d3e2b49816a32c400ed2dba83e3b361e6833e624024309c35d334b412
+    pull_policy: never
+    restart: "no"
+    init: true
+    stop_grace_period: 30s
+    cpus: 1.25
+    mem_limit: 2560m
+    pids_limit: 256
+    shm_size: 256m
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_DB: driftbench_ce
+      POSTGRES_USER: driftbench
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets: [postgres_password]
+    volumes:
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE:?Set an external state root}/runs/rel-ce-tpch/${LAB_RUN_ID}/results/postgres-data
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U driftbench -d driftbench_ce]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+  ce-runner:
+    profiles: [rel-ce-tpch]
+    image: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    pull_policy: never
+    restart: "no"
+    init: true
+    stop_grace_period: 20s
+    cpus: 0.75
+    mem_limit: 1280m
+    pids_limit: 128
+    read_only: true
+    user: 65532:65532
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        echo 'REVIEW_ONLY: CE runner is intentionally disabled; use scripts/lab.py plan rel-ce-tpch only.' >&2;
+        exit 78
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: driftbench_ce
+      PGUSER: driftbench
+      DRIFTBENCH_RUN_ROOT: /run-artifacts
+      DRIFTBENCH_SEED: "42"
+    secrets: [postgres_password]
+    volumes:
+      - type: bind
+        source: ../../experiments/relational/cardinality_estimation
+        target: /workspace/experiment
+        read_only: true
+      - type: bind
+        source: ../../driftbench
+        target: /workspace/driftbench
+        read_only: true
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/cache/tpch-sf1
+        target: /cache/tpch-sf1
+        read_only: true
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${LAB_RUN_ID}
+        target: /run-artifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+  indexes-runner:
+    profiles: [rel-indexes-sosd]
+    image: docker.io/library/gcc:14.2.0-bookworm@sha256:b99b86a28812b1e6453a231a947dc43d76fe192788a12f344a9b568bf9f5d24c
+    pull_policy: never
+    restart: "no"
+    init: true
+    stop_grace_period: 20s
+    cpus: 2.0
+    mem_limit: 3840m
+    pids_limit: 384
+    read_only: true
+    user: 65532:65532
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        echo 'REVIEW_ONLY: index runner is intentionally disabled; use scripts/lab.py plan rel-indexes-sosd only.' >&2;
+        exit 78
+    environment:
+      DRIFTBENCH_RUN_ROOT: /run-artifacts
+      DRIFTBENCH_SEED: "42"
+      RUN_STRICT: "1"
+    volumes:
+      - type: bind
+        source: ../../experiments/relational/indexes
+        target: /workspace/experiment
+        read_only: true
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/cache/sosd-osm-keys
+        target: /cache/sosd-osm-keys
+        read_only: true
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${LAB_RUN_ID}
+        target: /run-artifacts
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+  pushgateway:
+    profiles: [observability, grafana-review]
+    image: docker.io/prom/pushgateway:v1.9.0@sha256:98a458415f8f5afcfd45622d289a0aa67063563bec0f90d598ebc76783571936
+    pull_policy: never
+    restart: "no"
+    init: true
+    cpus: 0.10
+    mem_limit: 128m
+    pids_limit: 64
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    command: [--persistence.file=/data/pushgateway.db, --persistence.interval=30s]
+    volumes:
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/runs/${LAB_EXPERIMENT_ID}/${LAB_RUN_ID}/metrics/pushgateway
+        target: /data
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+  prometheus:
+    profiles: [observability, grafana-review]
+    image: docker.io/prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
+    pull_policy: never
+    restart: "no"
+    init: true
+    cpus: 0.35
+    mem_limit: 512m
+    pids_limit: 128
+    read_only: true
+    user: 65534:65534
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=1GB
+      - --web.enable-lifecycle=false
+    volumes:
+      - type: bind
+        source: ./observability/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/runs/${LAB_EXPERIMENT_ID}/${LAB_RUN_ID}/metrics/prometheus
+        target: /prometheus
+    depends_on: [pushgateway]
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+  grafana:
+    profiles: [observability, grafana-review]
+    image: docker.io/grafana/grafana-oss:11.2.0@sha256:408afb9726de5122b00a2576763a8a57a3c86d5b0eff5305bc994ceb3eb96c3f
+    pull_policy: never
+    restart: "no"
+    init: true
+    cpus: 0.50
+    mem_limit: 512m
+    pids_limit: 128
+    read_only: true
+    user: 472:472
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    environment:
+      GF_SECURITY_ADMIN_USER: driftbench
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_ADDR: 0.0.0.0
+      GF_RENDERING_SERVER_URL: http://renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_LOG_MODE: console
+    secrets: [grafana_admin_password]
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    ports:
+      - 127.0.0.1:${LAB_GRAFANA_PORT:-3000}:3000
+    volumes:
+      - type: bind
+        source: ./observability/grafana/provisioning
+        target: /etc/grafana/provisioning
+        read_only: true
+      - type: bind
+        source: ./observability/grafana/dashboards
+        target: /var/lib/grafana/dashboards
+        read_only: true
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/runs/${LAB_EXPERIMENT_ID}/${LAB_RUN_ID}/metrics/grafana
+        target: /var/lib/grafana
+      - type: bind
+        source: ${DRIFTBENCH_LAB_STATE}/runs/${LAB_EXPERIMENT_ID}/${LAB_RUN_ID}/figures
+        target: /var/lib/grafana/figures
+    depends_on: [prometheus, renderer]
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+  renderer:
+    profiles: [observability, grafana-review]
+    image: docker.io/grafana/grafana-image-renderer:3.11.6@sha256:c7af27f500676c96f8b957da30b2aae96b9e892366e2999ddaeff58a710b5a61
+    pull_policy: never
+    restart: "no"
+    init: true
+    cpus: 0.75
+    mem_limit: 1024m
+    pids_limit: 256
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    environment:
+      HTTP_HOST: 0.0.0.0
+      HTTP_PORT: "8081"
+      ENABLE_METRICS: "true"
+    networks: [lab-internal]
+    labels: *lab-labels
+    logging: *bounded-logging
+
+networks:
+  lab-internal:
+    internal: true
+
+secrets:
+  postgres_password:
+    file: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${LAB_RUN_ID}/results/secrets/postgres_password.txt
+  grafana_admin_password:
+    file: ${DRIFTBENCH_LAB_STATE}/runs/${LAB_EXPERIMENT_ID}/${LAB_RUN_ID}/results/secrets/grafana_admin_password.txt

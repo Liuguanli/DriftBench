@@ -1,0 +1,74 @@
+schema_version: 1
+id: rel-transactions-tpcc
+review_only: true
+family: relational
+component: transactions
+tracker:
+  path: experiments/relational/transactions/README.md
+  repository_status: Stub
+readiness: plan-only
+target_stack:
+  kind: postgres-runner
+  compose_profile: null
+  planned_containers: 2
+  runtime_verified: false
+  reason: A dedicated PostgreSQL database and one-shot BenchBase JVM isolate transactional side effects.
+sources:
+  - role: BenchBase TPC-C driver
+    repo_url: https://github.com/cmu-db/benchbase
+    commit: 33c00473807ebd49304d114a6d769d2d2b2bbb34
+    archive_url: https://github.com/cmu-db/benchbase/archive/33c00473807ebd49304d114a6d769d2d2b2bbb34.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: NOASSERTION, status: human-review-required, reason: GitHub returned NOASSERTION for the pinned repository license.}
+dataset:
+  name: BenchBase TPC-C lite generated database
+  source: BenchBase load phase with 2 warehouses and deterministic configuration
+  license: {spdx: TPC-EULA-review, status: human-review-required, reason: TPC-C benchmark and publication terms require separate acceptance.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: "No BenchBase archive, build artifact, or database dump was created."}
+  estimated_download_mib: 100
+  prepared_mib: 2048
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/benchbase-tpcc/
+workload:
+  seed: 42
+  scale: 2 warehouses, 4 terminals planning target
+  phases: [baseline_mix, hotspot_warehouse, read_write_mix_shift]
+  duration: 60-second warmup plus 180-second measured phase
+  repetitions: 3 per phase
+  isolation: PostgreSQL read committed candidate; must be fixed in the implementation
+  metrics: [transactions_per_sec, latency_p95_ms, latency_p99_ms, aborts, deadlocks, lock_wait_ms]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify source, build BenchBase offline, load two warehouses, and record configuration hash."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: execute one bounded BenchBase phase at a time against the dedicated database."
+  implementation_status: planned
+  network_policy: No network during build, load, or execution after the explicit future source prepare step.
+  cleanup: Always run Compose down --remove-orphans; preserve evidence and destroy database state only with run-ID confirmation.
+images:
+  - role: PostgreSQL database
+    reference: docker.io/library/postgres:16.4-bookworm@sha256:e62fbf9d3e2b49816a32c400ed2dba83e3b361e6833e624024309c35d334b412
+    platform_digest_status: pending-future-prepare
+  - role: Java runner base
+    reference: docker.io/library/eclipse-temurin:21.0.4_7-jre-jammy@sha256:ce644c2da74d34ca9b9ddd6d3aa72d0f80a4d8f90454270985af8fc986c60dfc
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 512
+  disk_gib: 16
+  services: [postgres, benchbase-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/rel-transactions-tpcc/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/rel-transactions-tpcc/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/rel-transactions-tpcc/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/rel-transactions-tpcc/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/rel-transactions-tpcc/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_transactions_completed_total]
+  result_metrics: [driftbench_tps, driftbench_latency_ms, driftbench_aborts_total, driftbench_lock_wait_ms]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/rel-transactions-tpcc/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub with no BenchBase config, runner, or parser.
+  - BenchBase/TPC licensing, source/build/data hashes, and resolved platform-image digests are pending.
+  - Hotspot and read/write drift support must be verified against the pinned BenchBase version.

@@ -1,0 +1,18 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: DriftBench Prometheus
+    orgId: 1
+
+datasources:
+  - name: DriftBench Prometheus
+    uid: driftbench-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      timeInterval: 5s

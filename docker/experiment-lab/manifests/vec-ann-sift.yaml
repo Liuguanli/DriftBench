@@ -1,0 +1,71 @@
+schema_version: 1
+id: vec-ann-sift
+review_only: true
+family: vector
+component: ann_index
+tracker:
+  path: experiments/vector/ann_index/README.md
+  repository_status: Stub
+readiness: plan-only
+target_stack:
+  kind: runner-only
+  compose_profile: null
+  planned_containers: 1
+  runtime_verified: false
+  reason: ANN-Benchmarks algorithms and exact ground truth are planned in one ephemeral runner container.
+sources:
+  - role: ANN-Benchmarks harness
+    repo_url: https://github.com/erikbern/ann-benchmarks
+    commit: 2e081ad32c1eccab72dcb739ad886c310b90f715
+    archive_url: https://github.com/erikbern/ann-benchmarks/archive/2e081ad32c1eccab72dcb739ad886c310b90f715.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: MIT, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported MIT.}
+dataset:
+  name: SIFT1M deterministic 100K training subset with fixed official queries
+  source: ANN-Benchmarks SIFT Euclidean HDF5 source; exact URL must be locked during prepare
+  license: {spdx: NOASSERTION, status: human-review-required, reason: SIFT/ANN dataset redistribution terms need explicit confirmation.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: No HDF5 source or seed-42 subset was downloaded or produced.}
+  estimated_download_mib: 600
+  prepared_mib: 75
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/sift100k-ann/
+workload:
+  seed: 42
+  scale: 100000 base vectors, fixed query set, K=10
+  baselines: [exact_flat, selected_ann_index]
+  drift: data growth and query-vector distribution shift using supported DriftBench operations
+  warmup: 100 queries
+  repetitions: 5 fixed-order and 5 seeded-shuffle passes
+  metrics: [recall_at_10, latency_p50_ms, latency_p95_ms, qps, build_seconds, index_bytes]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify HDF5, create seed-42 subset, compute exact neighbors, and hash all artifacts."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: build exact and ANN indexes, then run identical fixed queries per drift phase."
+  implementation_status: planned
+  network_policy: No network during subset generation, index build, or query measurement.
+  cleanup: Always run Compose down --remove-orphans; keep dataset cache and selected run evidence.
+images:
+  - role: Python ANN runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 384
+  disk_gib: 10
+  services: [ann-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/vec-ann-sift/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/vec-ann-sift/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/vec-ann-sift/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/vec-ann-sift/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/vec-ann-sift/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_queries_completed_total]
+  result_metrics: [driftbench_recall_at_k, driftbench_query_latency_ms, driftbench_qps]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/vec-ann-sift/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub with no selected ANN algorithm or runner integration.
+  - Dataset license, source/subset/ground-truth hashes, and runner dependencies are pending.
+  - Recall ground truth must be recomputed for every data-drift phase rather than reused incorrectly.

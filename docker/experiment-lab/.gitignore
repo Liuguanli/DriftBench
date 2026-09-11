@@ -1,0 +1,6 @@
+# Fail-safe only. Normal runtime state must live outside the repository via
+# DRIFTBENCH_LAB_STATE.
+review-state/
+.pytest_cache/
+**/__pycache__/
+*.py[cod]

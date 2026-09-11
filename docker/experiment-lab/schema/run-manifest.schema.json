@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://driftbench.local/schema/run-manifest-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "experiment_id", "run_id", "config_sha256",
+    "upstream_commits", "image_digests", "dataset_sha256", "seed",
+    "resource_budget", "started_at", "finished_at", "exit_status",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment_id": {"type": "string", "pattern": "^(?![\\s\\S]*[\\u0000-\\u001F\\u007F])(?!(con|prn|aux|nul|com[1-9]|lpt[1-9])$)[a-z][a-z0-9-]+$"},
+    "run_id": {"type": "string", "pattern": "^(?![\\s\\S]*[\\u0000-\\u001F\\u007F])(?!([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(\\..*)?$)[A-Za-z0-9]([A-Za-z0-9._-]{0,78}[A-Za-z0-9_-])?$"},
+    "config_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "upstream_commits": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{40}$"}},
+    "image_digests": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+    "dataset_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "seed": {"type": "integer"},
+    "resource_budget": {"type": "object"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "finished_at": {"type": ["string", "null"], "format": "date-time"},
+    "exit_status": {"enum": ["running", "succeeded", "failed", "cancelled"]},
+    "artifacts": {
+      "type": "object",
+      "required": ["logs", "results", "metrics", "figures"],
+      "additionalProperties": false,
+      "properties": {
+        "logs": {"allOf": [{"$ref": "#/$defs/artifactPath"}, {"pattern": "^logs/"}]},
+        "results": {"allOf": [{"$ref": "#/$defs/artifactPath"}, {"pattern": "^results/"}]},
+        "metrics": {"allOf": [{"$ref": "#/$defs/artifactPath"}, {"pattern": "^metrics/"}]},
+        "figures": {"allOf": [{"$ref": "#/$defs/artifactPath"}, {"pattern": "^figures/"}]}
+      }
+    }
+  },
+  "$defs": {
+    "artifactPath": {
+      "type": "string",
+      "pattern": "^(?![\\s\\S]*[\\u0000-\\u001F\\u007F])(?!.*(/|^)([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(\\.[A-Za-z0-9._-]+)?(/|$))(logs|results|metrics|figures)/([A-Za-z0-9_]|[A-Za-z0-9_][A-Za-z0-9._-]*[A-Za-z0-9_-])(/([A-Za-z0-9_]|[A-Za-z0-9_][A-Za-z0-9._-]*[A-Za-z0-9_-]))*$"
+    }
+  }
+}

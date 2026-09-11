@@ -1,0 +1,74 @@
+schema_version: 1
+id: rel-execution-tpch
+review_only: true
+family: relational
+component: execution_engine
+tracker:
+  path: experiments/relational/execution_engine/README.md
+  repository_status: Stub
+readiness: plan-only
+target_stack:
+  kind: postgres-runner
+  compose_profile: null
+  planned_containers: 2
+  runtime_verified: false
+  reason: PostgreSQL plus a one-shot TPC-H driver supports operator-level JSON plan capture.
+sources:
+  - role: TPC-H toolkit
+    repo_url: https://github.com/gregrahn/tpch-kit
+    commit: 852ad0a5ee31ebefeed884cea4188781dd9613a3
+    archive_url: https://github.com/gregrahn/tpch-kit/archive/852ad0a5ee31ebefeed884cea4188781dd9613a3.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: NOASSERTION, status: human-review-required, reason: GitHub exposed no SPDX license and TPC materials have separate terms.}
+dataset:
+  name: TPC-H SF0.1 generated data
+  source: dbgen from the pinned tpch-kit candidate, subject to TPC terms
+  license: {spdx: TPC-EULA-review, status: human-review-required, reason: TPC tool/data use and publication terms must be accepted separately.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: dbgen was not built and no SF0.1 output was generated.}
+  estimated_download_mib: 5
+  prepared_mib: 110
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/tpch-sf01/
+workload:
+  seed: 42
+  scale: SF0.1
+  query_ids: [1, 6, 12]
+  drift: cardinality, predicate selectivity, and deterministic template-frequency phases
+  warmup: 2 passes
+  repetitions: 5 measured passes
+  metrics: [operator_latency_ms, rows, loops, buffers_hit, buffers_read, temp_bytes]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: accept TPC terms, verify source, generate SF0.1, hash every table, load and ANALYZE."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: bounded EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) for Q1/Q6/Q12."
+  implementation_status: planned
+  network_policy: No network during generation, load, or measured phases after explicit source preparation.
+  cleanup: Always run Compose down --remove-orphans and preserve the selected run evidence.
+images:
+  - role: PostgreSQL database
+    reference: docker.io/library/postgres:16.4-bookworm@sha256:e62fbf9d3e2b49816a32c400ed2dba83e3b361e6833e624024309c35d334b412
+    platform_digest_status: pending-future-prepare
+  - role: workload runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 3840
+  pids: 384
+  disk_gib: 8
+  services: [postgres, tpch-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/rel-execution-tpch/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/rel-execution-tpch/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/rel-execution-tpch/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/rel-execution-tpch/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/rel-execution-tpch/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_queries_completed_total]
+  result_metrics: [driftbench_operator_latency_ms, driftbench_buffers_read, driftbench_temp_bytes]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/rel-execution-tpch/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub with no bounded operator-profile runner.
+  - TPC license acceptance, source archive hash, generated table hashes, and platform image digests are pending.
+  - Runtime settings for deterministic plans and spill behavior have not been defined.

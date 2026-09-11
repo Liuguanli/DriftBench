@@ -1,0 +1,46 @@
+schema_version: 1
+review_only: true
+authority: docker_plan_only
+tracker: experiments/README.md
+state_root_env: DRIFTBENCH_LAB_STATE
+max_active_stacks: 1
+local_lite_budget:
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 1024
+service_resource_caps:
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 512
+profiles:
+  rel-ce-tpch:
+    owner: rel-ce-tpch
+    services: [postgres, ce-runner]
+    runtime_verified: false
+  rel-indexes-sosd:
+    owner: rel-indexes-sosd
+    services: [indexes-runner]
+    runtime_verified: false
+special_profiles:
+  observability:
+    services: [pushgateway, prometheus, grafana, renderer]
+    default_enabled: false
+    resource_tier: devbox-observed
+    runtime_verified: false
+  grafana-review:
+    services: [pushgateway, prometheus, grafana, renderer]
+    default_enabled: false
+    resource_tier: local-lite
+    runtime_verified: false
+experiments:
+  - {id: rel-ce-tpch, component: cardinality_estimation, manifest: manifests/rel-ce-tpch.yaml, compose_profile: rel-ce-tpch}
+  - {id: rel-optimizer-job, component: optimizer, manifest: manifests/rel-optimizer-job.yaml, compose_profile: null}
+  - {id: rel-indexes-sosd, component: indexes, manifest: manifests/rel-indexes-sosd.yaml, compose_profile: rel-indexes-sosd}
+  - {id: rel-execution-tpch, component: execution_engine, manifest: manifests/rel-execution-tpch.yaml, compose_profile: null}
+  - {id: rel-buffer-sysbench, component: buffer_pool, manifest: manifests/rel-buffer-sysbench.yaml, compose_profile: null}
+  - {id: rel-transactions-tpcc, component: transactions, manifest: manifests/rel-transactions-tpcc.yaml, compose_profile: null}
+  - {id: vec-ann-sift, component: ann_index, manifest: manifests/vec-ann-sift.yaml, compose_profile: null}
+  - {id: vec-quantization-sift, component: quantization, manifest: manifests/vec-quantization-sift.yaml, compose_profile: null}
+  - {id: vec-reranking-scifact, component: reranking, manifest: manifests/vec-reranking-scifact.yaml, compose_profile: null}
+  - {id: vec-ingestion-qdrant, component: ingestion, manifest: manifests/vec-ingestion-qdrant.yaml, compose_profile: null}
+  - {id: vec-partition-qdrant, component: partitioning, manifest: manifests/vec-partition-qdrant.yaml, compose_profile: null}

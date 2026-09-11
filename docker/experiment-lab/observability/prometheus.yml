@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 5s
+  evaluation_interval: 5s
+  external_labels:
+    system: driftbench-experiment-lab
+
+scrape_configs:
+  - job_name: driftbench-pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: [pushgateway:9091]

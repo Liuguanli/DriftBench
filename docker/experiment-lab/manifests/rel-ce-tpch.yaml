@@ -1,0 +1,84 @@
+schema_version: 1
+id: rel-ce-tpch
+review_only: true
+family: relational
+component: cardinality_estimation
+tracker:
+  path: experiments/relational/cardinality_estimation/README.md
+  repository_status: Existing / verification pending
+readiness: existing-verification-pending
+target_stack:
+  kind: postgres-runner
+  compose_profile: rel-ce-tpch
+  planned_containers: 2
+  runtime_verified: false
+  reason: A dedicated PostgreSQL target and offline-first CE runner isolate future TPC-H-derived probes.
+sources:
+  - role: TPC-H toolkit candidate
+    repo_url: https://github.com/gregrahn/tpch-kit
+    commit: 852ad0a5ee31ebefeed884cea4188781dd9613a3
+    archive_url: https://github.com/gregrahn/tpch-kit/archive/852ad0a5ee31ebefeed884cea4188781dd9613a3.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried the immutable revision but downloaded no source archive.}
+    license: {spdx: NOASSERTION, status: human-review-required, reason: GitHub exposes no SPDX license and TPC materials have separate terms.}
+dataset:
+  name: TPC-H-derived SF1 generated data
+  source: dbgen from the pinned tpch-kit candidate, subject to TPC terms; SF0.1 is future smoke only
+  license:
+    spdx: TPC-EULA-review
+    status: human-review-required
+    reason: TPC tool, data, and result-publication terms require explicit human acceptance.
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: dbgen was not built and no SF1 table snapshot was generated.}
+  estimated_download_mib: 5
+  prepared_mib: 2500
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/tpch-sf1/
+workload:
+  seed: 42
+  scale: SF1; SF0.1 is future smoke-only and never substitutes for the study tier
+  plan_contract: experiments/relational/cardinality_estimation/tpch_plan.yaml
+  baseline_registry: experiments/relational/cardinality_estimation/baselines.yaml
+  probe_ids: [q03-spj-01, q03-spj-02, q05-spj-01, q09-spj-01]
+  probe_provenance: Pinned TPC-H Q3/Q5/Q9 pre-aggregation SPJ subplans with deterministic parameter manifests
+  phases: [baseline-static, cardinality-growth, correlation-shift, workload-selectivity-shift]
+  update_policies: [static-frozen, adaptive-updated]
+  warmup: future adapter-specific warmup, reported per estimator
+  repetitions: future deterministic repetitions with ordered probe manifest
+  metrics: [q_error_p50, q_error_p90, q_error_p95, q_error_p99, q_error_max, inference_latency_ms, build_time_s, update_time_s, model_bytes, peak_rss_mib]
+  conformance: TPC-H-derived CE study; never report an official TPC-H score
+  baseline_groups: [runnable-plan-anchor, established-integration-candidate, recent-priority-candidate, emerging-watchlist]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: accept TPC terms, verify source, generate SF1, hash every table, load, and ANALYZE."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: execute the ordered SPJ probe manifest and separately approved estimator adapters."
+  implementation_status: planned
+  network_policy: No network during generation, load, ground-truth collection, or estimator evaluation after explicit preparation.
+  cleanup: Always run Compose down --remove-orphans; preserve the selected run directory and content-addressed cache.
+images:
+  - role: PostgreSQL database and native-statistics anchors
+    reference: docker.io/library/postgres:16.4-bookworm@sha256:e62fbf9d3e2b49816a32c400ed2dba83e3b361e6833e624024309c35d334b412
+    platform_digest_status: pending-future-prepare
+  - role: Offline plan and future adapter runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 3840
+  pids: 384
+  disk_gib: 12
+  services: [postgres, ce-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_probe_index]
+  result_metrics: [driftbench_q_error, driftbench_estimation_latency_ms, driftbench_estimator_update_seconds]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/rel-ce-tpch/${RUN_ID}/figures/
+blockers:
+  - TPC terms, source archive hash, generated SF1 table hashes, and platform-image digests are pending.
+  - No SPJ probe extractor, ground-truth collector, or academic-estimator TPC-H adapter has been verified.
+  - Registry entries are literature candidates, not reproduced paper results or runnable baselines.
+  - Existing Census code is inactive legacy material and cannot produce rel-ce-tpch evidence.

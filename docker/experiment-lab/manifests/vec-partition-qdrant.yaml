@@ -1,0 +1,80 @@
+schema_version: 1
+id: vec-partition-qdrant
+review_only: true
+family: vector
+component: partitioning
+tracker:
+  path: experiments/vector/partitioning/README.md
+  repository_status: Stub
+readiness: devbox-only
+target_stack:
+  kind: qdrant-cluster-runner
+  compose_profile: null
+  planned_containers: 4
+  runtime_verified: false
+  reason: Valid cross-node partition evidence requires at least three Qdrant nodes plus one driver.
+sources:
+  - role: VectorDBBench workload driver
+    repo_url: https://github.com/zilliztech/VectorDBBench
+    commit: 4ea181055b11af7d75161179ef2feff9539c3b33
+    archive_url: https://github.com/zilliztech/VectorDBBench/archive/4ea181055b11af7d75161179ef2feff9539c3b33.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: MIT, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported MIT.}
+  - role: Qdrant cluster target
+    repo_url: https://github.com/qdrant/qdrant
+    commit: 74f3e85b9473c62560006c043e13737ce6b48412
+    archive_url: https://github.com/qdrant/qdrant/archive/74f3e85b9473c62560006c043e13737ce6b48412.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Qdrant source is provenance-only and was not downloaded.}
+    license: {spdx: Apache-2.0, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported Apache-2.0.}
+dataset:
+  name: SIFT vectors with deterministic balanced and Zipf partition keys
+  source: Verified SIFT source plus a future DriftBench-supported partition-key adapter
+  license: {spdx: NOASSERTION, status: human-review-required, reason: SIFT dataset and generated-key redistribution terms need confirmation.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: "No dataset, partition-key stream, or ground truth was generated."}
+  estimated_download_mib: 600
+  prepared_mib: 1000
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/sift-partition-qdrant/
+workload:
+  seed: 42
+  scale: 1000000 vectors planning target on a three-node devbox cluster
+  partition_keys: [balanced_10_keys, zipf_alpha_2_10_keys]
+  phases: [balanced_load, skewed_ingestion, skewed_query_routing]
+  warmup: 10000 queries after cluster health and shard stabilization
+  repetitions: 3 bounded phases
+  metrics: [per_node_vectors, balance_coefficient, cross_shard_requests, latency_p95_ms, recall_at_10]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify sources/data, define three-node topology, generate keys, and record placement."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: execute balanced and skewed phases on an isolated devbox cluster only."
+  implementation_status: planned
+  network_policy: Internal cluster network only during execution; no public ports except optional localhost dashboard.
+  cleanup: Always run Compose down --remove-orphans on every node; preserve evidence and require confirmation before deleting volumes.
+images:
+  - role: Qdrant cluster nodes
+    reference: docker.io/qdrant/qdrant:v1.11.3@sha256:da426bb8aa0ba0a3032b3110e71d0d1516d51a686aa17b39bde4e090ce3b8e7c
+    platform_digest_status: pending-future-prepare
+  - role: VectorDBBench runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: devbox-only
+  cpus: 8.0
+  memory_mib: 16384
+  pids: 1024
+  disk_gib: 80
+  services: [qdrant-node-1, qdrant-node-2, qdrant-node-3, partition-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/vec-partition-qdrant/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/vec-partition-qdrant/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/vec-partition-qdrant/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/vec-partition-qdrant/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/vec-partition-qdrant/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_vectors_ingested_total]
+  result_metrics: [driftbench_partition_balance, driftbench_cross_shard_requests_total, driftbench_query_latency_ms]
+  local_dashboard: 127.0.0.1:8765
+  grafana: devbox-only-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/vec-partition-qdrant/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub and no local-lite single-node result may be labelled partitioning evidence.
+  - VectorDBBench partition-key and placement telemetry support must be verified or scoped again by PM.
+  - Devbox topology, licenses, source/data hashes, failure recovery, and resource budgets are unverified.

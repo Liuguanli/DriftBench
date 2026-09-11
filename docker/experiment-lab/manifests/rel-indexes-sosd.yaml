@@ -1,0 +1,71 @@
+schema_version: 1
+id: rel-indexes-sosd
+review_only: true
+family: relational
+component: indexes
+tracker:
+  path: experiments/relational/indexes/README.md
+  repository_status: Existing / verification pending
+readiness: existing-verification-pending
+target_stack:
+  kind: runner-only
+  compose_profile: rel-indexes-sosd
+  planned_containers: 1
+  runtime_verified: false
+  reason: Learned indexes and PGM/B-tree baselines run in one isolated native toolchain container.
+sources:
+  - role: learned-index benchmark
+    repo_url: https://github.com/rmitbggroup/LearnedIndexDiskExp
+    commit: ce55a871f434c0ffefc9475f8588f69620ed22f8
+    archive_url: https://github.com/rmitbggroup/LearnedIndexDiskExp/archive/ce55a871f434c0ffefc9475f8588f69620ed22f8.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: NOASSERTION, status: human-review-required, reason: GitHub exposed no repository license for the pinned commit.}
+dataset:
+  name: SOSD OSM cell IDs, deterministic 1M-key sample
+  source: SOSD osm_cellids_800M_uint64; retain only the seed-42 sorted sample locally
+  license: {spdx: ODbL-1.0-derived-review, status: human-review-required, reason: OSM-derived dataset and benchmark redistribution terms need confirmation.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Neither the 800M-key source nor the deterministic sample was downloaded.}
+  estimated_download_mib: 6104
+  prepared_mib: 8
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/sosd-osm-keys/
+workload:
+  seed: 42
+  scale: 1000000 sorted uint64 keys; 10000 queries per case
+  point_queries: [uniform, zipf_alpha_2, hotspot_1_percent]
+  range_queries: [range_100, range_1000, range_10000]
+  warmup: one unmeasured pass per index/workload pair
+  repetitions: 5 measured passes
+  metrics: [latency_ns_p50, latency_ns_p95, latency_ns_p99, blocks_p95, build_seconds, index_bytes]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify the raw SHA-256, sample with seed 42, verify sample SHA-256, then generate queries."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: RUN_STRICT=1 with an explicit data/query pair for each index and repetition."
+  implementation_status: existing-unverified
+  network_policy: The run container is offline; the large raw download is a separate explicit future prepare action.
+  cleanup: Always run Compose down --remove-orphans; keep the small sample and delete raw data only after explicit confirmation.
+images:
+  - role: native C++ runner base
+    reference: docker.io/library/gcc:14.2.0-bookworm@sha256:b99b86a28812b1e6453a231a947dc43d76fe192788a12f344a9b568bf9f5d24c
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 3840
+  pids: 384
+  disk_gib: 10
+  services: [indexes-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_cases_completed_total]
+  result_metrics: [driftbench_index_latency_ns, driftbench_index_blocks, driftbench_index_bytes]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/rel-indexes-sosd/${RUN_ID}/figures/
+blockers:
+  - Source and dataset licenses plus archive, raw-data, sample, and platform-image hashes are pending.
+  - Existing orchestration uses RUN_STRICT=0 in places and must propagate every child failure.
+  - The runner currently writes inside experiments and must be redirected to the external run root.

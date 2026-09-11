@@ -1,0 +1,115 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "driftbench-prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-GrYlRd"},
+          "max": 1,
+          "min": 0,
+          "thresholds": {"mode": "absolute", "steps": [{"color": "dark-red", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "green", "value": 0.9}]},
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [
+        {"editorMode": "code", "expr": "max(driftbench_progress_ratio{experiment_id=~\"$experiment_id\",run_id=~\"$run_id\"})", "legendFormat": "progress", "range": true, "refId": "A"}
+      ],
+      "title": "Experiment progress",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "driftbench-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "drawStyle": "line", "fillOpacity": 18, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 4, "showPoints": "never", "spanNulls": false}, "max": 1, "min": 0, "unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 0},
+      "id": 2,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "driftbench_progress_ratio{experiment_id=~\"$experiment_id\",run_id=~\"$run_id\"}", "legendFormat": "{{phase}}", "range": true, "refId": "A"}
+      ],
+      "title": "Progress over time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "driftbench-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false}}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "{__name__=~\"driftbench_.*latency.*\",experiment_id=~\"$experiment_id\",run_id=~\"$run_id\"}", "legendFormat": "{{__name__}} / {{phase}}", "range": true, "refId": "A"}
+      ],
+      "title": "Latency signals",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "driftbench-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "drawStyle": "line", "fillOpacity": 8, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "showPoints": "auto", "spanNulls": false}}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "{__name__=~\"driftbench_.*(_total|_ratio|_at_[0-9]+)$\",experiment_id=~\"$experiment_id\",run_id=~\"$run_id\"}", "legendFormat": "{{__name__}} / {{phase}}", "range": true, "refId": "A"}
+      ],
+      "title": "Quality and completion signals",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["driftbench", "experiment-lab", "runtime-unverified"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {"type": "prometheus", "uid": "driftbench-prometheus"},
+        "definition": "label_values(driftbench_progress_ratio, experiment_id)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Experiment",
+        "multi": false,
+        "name": "experiment_id",
+        "options": [],
+        "query": {"query": "label_values(driftbench_progress_ratio, experiment_id)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {"type": "prometheus", "uid": "driftbench-prometheus"},
+        "definition": "label_values(driftbench_progress_ratio{experiment_id=~\"$experiment_id\"}, run_id)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Run",
+        "multi": false,
+        "name": "run_id",
+        "options": [],
+        "query": {"query": "label_values(driftbench_progress_ratio{experiment_id=~\"$experiment_id\"}, run_id)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DriftBench experiment progress",
+  "uid": "driftbench-experiment",
+  "version": 1,
+  "weekStart": ""
+}

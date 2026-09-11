@@ -1,0 +1,71 @@
+schema_version: 1
+id: vec-quantization-sift
+review_only: true
+family: vector
+component: quantization
+tracker:
+  path: experiments/vector/quantization/README.md
+  repository_status: Stub
+readiness: plan-only
+target_stack:
+  kind: runner-only
+  compose_profile: null
+  planned_containers: 1
+  runtime_verified: false
+  reason: FAISS exact, scalar, and product-quantized indexes can share one controlled CPU runner.
+sources:
+  - role: FAISS benchmark implementation
+    repo_url: https://github.com/facebookresearch/faiss
+    commit: 7059eaf7da7eddda62e71367e684d4bdedd7f94f
+    archive_url: https://github.com/facebookresearch/faiss/archive/7059eaf7da7eddda62e71367e684d4bdedd7f94f.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: MIT, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported MIT.}
+dataset:
+  name: SIFT 100K deterministic subset
+  source: SIFT1M source shared with the ANN plan; subset indices and query set are seed-42 locked
+  license: {spdx: NOASSERTION, status: human-review-required, reason: SIFT dataset redistribution terms need explicit confirmation.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: No SIFT archive or deterministic subset was created.}
+  estimated_download_mib: 600
+  prepared_mib: 75
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/sift100k-quantization/
+workload:
+  seed: 42
+  scale: 100000 vectors, K=10, CPU-only comparison
+  indexes: [IndexFlatL2, scalar_quantizer_8bit, product_quantizer]
+  drift: mean/variance shift and outlier injection, with exact ground truth per phase
+  warmup: 100 queries
+  repetitions: 5 measured passes
+  metrics: [recall_at_10, latency_p95_ms, qps, index_bytes, compression_ratio]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify source/subset, build pinned FAISS CPU environment, and compute per-phase truth."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: train/build Flat, SQ, and PQ using identical phase inputs and query order."
+  implementation_status: planned
+  network_policy: No network during quantizer training, index build, or query measurement.
+  cleanup: Always run Compose down --remove-orphans; preserve trained-index hashes with run evidence.
+images:
+  - role: Python FAISS runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 384
+  disk_gib: 12
+  services: [faiss-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/vec-quantization-sift/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/vec-quantization-sift/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/vec-quantization-sift/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/vec-quantization-sift/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/vec-quantization-sift/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_indexes_completed_total]
+  result_metrics: [driftbench_recall_at_k, driftbench_query_latency_ms, driftbench_index_bytes]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/vec-quantization-sift/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub with no pinned FAISS build or quantization parameters.
+  - Dataset licensing, source/subset/truth hashes, and CPU feature controls are pending.
+  - Product-quantizer training size and codebook settings need a method review.

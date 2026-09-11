@@ -1,0 +1,71 @@
+schema_version: 1
+id: vec-reranking-scifact
+review_only: true
+family: vector
+component: reranking
+tracker:
+  path: experiments/vector/reranking/README.md
+  repository_status: Stub
+readiness: plan-only
+target_stack:
+  kind: runner-only
+  compose_profile: null
+  planned_containers: 1
+  runtime_verified: false
+  reason: BEIR evaluation plus fixed candidate and reranker artifacts are planned in one offline runner.
+sources:
+  - role: BEIR evaluation harness
+    repo_url: https://github.com/beir-cellar/beir
+    commit: ef83d29307061c65d04b035b4f4e7c18bd8374af
+    archive_url: https://github.com/beir-cellar/beir/archive/ef83d29307061c65d04b035b4f4e7c18bd8374af.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: Apache-2.0, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported Apache-2.0.}
+dataset:
+  name: BEIR SciFact corpus, queries, and qrels
+  source: BEIR SciFact release resolved by the pinned harness; exact archive URL must be locked
+  license: {spdx: NOASSERTION, status: human-review-required, reason: "SciFact corpus, annotations, and model licenses need separate confirmation."}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: "No SciFact archive, candidates, embeddings, or model was downloaded."}
+  estimated_download_mib: 100
+  prepared_mib: 1000
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/scifact-reranking/
+workload:
+  seed: 42
+  scale: complete SciFact queries with fixed top-100 candidate lists
+  baselines: [candidate_rank, fixed_reranker]
+  drift: query-template mix and candidate-distribution phases supported by the future adapter
+  warmup: 20 queries
+  repetitions: 3 deterministic passes
+  metrics: [ndcg_at_10, recall_at_100, rerank_latency_p95_ms, end_to_end_latency_p95_ms]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify SciFact/model terms and hashes, then materialize immutable top-100 candidates."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: evaluate unchanged candidates and reranker across explicitly supported drift phases."
+  implementation_status: planned
+  network_policy: No model or dataset download during execution; inference is offline and CPU-bounded.
+  cleanup: Always run Compose down --remove-orphans; keep candidate/model hashes with the run manifest.
+images:
+  - role: Python reranking runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 384
+  disk_gib: 12
+  services: [reranking-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/vec-reranking-scifact/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/vec-reranking-scifact/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/vec-reranking-scifact/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/vec-reranking-scifact/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/vec-reranking-scifact/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_queries_completed_total]
+  result_metrics: [driftbench_ndcg_at_10, driftbench_recall_at_100, driftbench_rerank_latency_ms]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/vec-reranking-scifact/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub and BEIR is an evaluator, not a complete DriftBench reranking runner.
+  - Candidate generator, reranking model, dataset/model licenses, and all hashes are unselected.
+  - The proposed query/candidate drift must be proven supported rather than synthesized outside DriftBench.

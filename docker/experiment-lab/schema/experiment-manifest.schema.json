@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://driftbench.local/schema/experiment-manifest-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "id", "review_only", "family", "component",
+    "tracker", "readiness", "target_stack", "sources", "dataset",
+    "workload", "execution", "images", "resources", "artifacts",
+    "observability", "blockers"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "review_only": {"const": true},
+    "family": {"enum": ["relational", "vector"]},
+    "component": {"type": "string", "minLength": 1},
+    "tracker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "repository_status"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^experiments/.+/README\\.md$"},
+        "repository_status": {"enum": ["Stub", "Existing / verification pending"]}
+      }
+    },
+    "readiness": {"enum": ["plan-only", "existing-verification-pending", "devbox-only"]},
+    "target_stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "compose_profile", "planned_containers", "runtime_verified", "reason"],
+      "properties": {
+        "kind": {"enum": ["postgres-runner", "runner-only", "qdrant-runner", "qdrant-cluster-runner"]},
+        "compose_profile": {"type": ["string", "null"]},
+        "planned_containers": {"type": "integer", "minimum": 1},
+        "runtime_verified": {"const": false},
+        "reason": {"type": "string", "minLength": 12}
+      }
+    },
+    "sources": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["role", "repo_url", "commit", "archive_url", "archive_sha256", "license"],
+        "properties": {
+          "role": {"type": "string", "minLength": 1},
+          "repo_url": {"type": "string", "pattern": "^https://github\\.com/[^/]+/[^/]+$"},
+          "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+          "archive_url": {"type": "string", "pattern": "^https://github\\.com/.+/archive/[0-9a-f]{40}\\.tar\\.gz$"},
+          "archive_sha256": {"$ref": "#/$defs/checksum"},
+          "license": {"$ref": "#/$defs/license"}
+        }
+      }
+    },
+    "dataset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "source", "license", "checksum", "estimated_download_mib", "prepared_mib", "cache_path"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "license": {"$ref": "#/$defs/license"},
+        "checksum": {"$ref": "#/$defs/checksum"},
+        "estimated_download_mib": {"type": ["number", "null"], "minimum": 0},
+        "prepared_mib": {"type": ["number", "null"], "minimum": 0},
+        "cache_path": {"type": "string", "pattern": "^\\$\\{DRIFTBENCH_LAB_STATE\\}/cache/[a-z0-9-]+/$"}
+      }
+    },
+    "workload": {"type": "object", "minProperties": 5},
+    "execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["prepare", "run", "implementation_status", "network_policy", "cleanup"],
+      "properties": {
+        "prepare": {"type": "string", "minLength": 1},
+        "run": {"type": "string", "minLength": 1},
+        "implementation_status": {"enum": ["existing-unverified", "planned"]},
+        "network_policy": {"type": "string", "minLength": 1},
+        "cleanup": {"type": "string", "minLength": 1}
+      }
+    },
+    "images": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["role", "reference", "platform_digest_status"],
+        "properties": {
+          "role": {"type": "string", "minLength": 1},
+          "reference": {"type": "string", "pattern": "^[^@]+:[^@]+@sha256:[0-9a-f]{64}$"},
+          "platform_digest_status": {"enum": ["pending-future-prepare"]}
+        }
+      }
+    },
+    "resources": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tier", "cpus", "memory_mib", "pids", "disk_gib", "services"],
+      "properties": {
+        "tier": {"enum": ["local-lite", "devbox-only"]},
+        "cpus": {"type": "number", "exclusiveMinimum": 0},
+        "memory_mib": {"type": "integer", "minimum": 64},
+        "pids": {"type": "integer", "minimum": 16},
+        "disk_gib": {"type": "number", "exclusiveMinimum": 0},
+        "services": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "artifacts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["logs", "results", "metrics", "figures", "run_manifest"],
+      "properties": {
+        "logs": {"$ref": "#/$defs/runPath"},
+        "results": {"$ref": "#/$defs/runPath"},
+        "metrics": {"$ref": "#/$defs/runPath"},
+        "figures": {"$ref": "#/$defs/runPath"},
+        "run_manifest": {"type": "string", "pattern": "^\\$\\{DRIFTBENCH_LAB_STATE\\}/runs/.+/run-manifest\\.json$"}
+      }
+    },
+    "observability": {
+      "type": "object", "additionalProperties": false,
+      "required": ["progress_metrics", "result_metrics", "local_dashboard", "grafana", "png_export"],
+      "properties": {
+        "progress_metrics": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "result_metrics": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "local_dashboard": {"const": "127.0.0.1:8765"},
+        "grafana": {"enum": ["optional-runtime-unverified", "devbox-only-runtime-unverified"]},
+        "png_export": {"type": "string", "pattern": "^\\$\\{DRIFTBENCH_LAB_STATE\\}/runs/.+/figures/$"}
+      }
+    },
+    "blockers": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 8}}
+  },
+  "$defs": {
+    "checksum": {
+      "type": "object", "additionalProperties": false,
+      "required": ["algorithm", "value", "status", "reason"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "value": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "status": {"enum": ["verified", "pending-not-downloaded"]},
+        "reason": {"type": "string", "minLength": 8}
+      }
+    },
+    "license": {
+      "type": "object", "additionalProperties": false,
+      "required": ["spdx", "status", "reason"],
+      "properties": {
+        "spdx": {"type": "string", "minLength": 2},
+        "status": {"enum": ["metadata-verified", "human-review-required"]},
+        "reason": {"type": "string", "minLength": 8}
+      }
+    },
+    "runPath": {
+      "type": "string",
+      "pattern": "^\\$\\{DRIFTBENCH_LAB_STATE\\}/runs/[a-z0-9-]+/\\$\\{RUN_ID\\}/(logs|results|metrics|figures)/$"
+    }
+  }
+}

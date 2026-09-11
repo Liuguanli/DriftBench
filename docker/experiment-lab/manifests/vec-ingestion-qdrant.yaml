@@ -1,0 +1,80 @@
+schema_version: 1
+id: vec-ingestion-qdrant
+review_only: true
+family: vector
+component: ingestion
+tracker:
+  path: experiments/vector/ingestion/README.md
+  repository_status: Stub
+readiness: plan-only
+target_stack:
+  kind: qdrant-runner
+  compose_profile: null
+  planned_containers: 2
+  runtime_verified: false
+  reason: One Qdrant node plus a separate VectorDBBench driver isolates ingestion and concurrent queries.
+sources:
+  - role: VectorDBBench workload driver
+    repo_url: https://github.com/zilliztech/VectorDBBench
+    commit: 4ea181055b11af7d75161179ef2feff9539c3b33
+    archive_url: https://github.com/zilliztech/VectorDBBench/archive/4ea181055b11af7d75161179ef2feff9539c3b33.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Review slice queried commit metadata but downloaded no source archive.}
+    license: {spdx: MIT, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported MIT.}
+  - role: Qdrant database source
+    repo_url: https://github.com/qdrant/qdrant
+    commit: 74f3e85b9473c62560006c043e13737ce6b48412
+    archive_url: https://github.com/qdrant/qdrant/archive/74f3e85b9473c62560006c043e13737ce6b48412.tar.gz
+    archive_sha256: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: Qdrant source is provenance-only and was not downloaded.}
+    license: {spdx: Apache-2.0, status: metadata-verified, reason: GitHub license metadata at the pinned commit reported Apache-2.0.}
+dataset:
+  name: SIFT 100K deterministic ingestion stream and fixed query set
+  source: VectorDBBench-compatible SIFT source, subset indices locked with seed 42
+  license: {spdx: NOASSERTION, status: human-review-required, reason: SIFT/VectorDBBench dataset terms need explicit confirmation.}
+  checksum: {algorithm: sha256, value: null, status: pending-not-downloaded, reason: No source dataset or deterministic ingestion stream was materialized.}
+  estimated_download_mib: 600
+  prepared_mib: 75
+  cache_path: ${DRIFTBENCH_LAB_STATE}/cache/sift100k-ingestion/
+workload:
+  seed: 42
+  scale: 100000 vectors, 128 dimensions, cosine or L2 fixed before implementation
+  batch_sizes: [100, 1000, 5000]
+  phases: [ingestion_only, ingestion_with_fixed_rate_search, distribution_shift_batches]
+  warmup: 10000 vectors before measurement
+  repetitions: 3 per batch size
+  metrics: [vectors_per_sec, batch_latency_p95_ms, search_latency_p95_ms, freshness_seconds, recall_at_10]
+execution:
+  prepare: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: verify driver/data hashes and materialize seed-42 ordered batches plus truth."
+  run: "FUTURE ONLY — FORBIDDEN IN REVIEW SLICE: recreate a dedicated collection, ingest bounded batches, and issue the fixed query stream."
+  implementation_status: planned
+  network_policy: Qdrant uses an internal Compose network only; no network download occurs during a run.
+  cleanup: Always run Compose down --remove-orphans; preserve run storage until explicit run-ID destruction.
+images:
+  - role: Qdrant database
+    reference: docker.io/qdrant/qdrant:v1.11.3@sha256:da426bb8aa0ba0a3032b3110e71d0d1516d51a686aa17b39bde4e090ce3b8e7c
+    platform_digest_status: pending-future-prepare
+  - role: VectorDBBench runner base
+    reference: docker.io/library/python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
+    platform_digest_status: pending-future-prepare
+resources:
+  tier: local-lite
+  cpus: 2.0
+  memory_mib: 4096
+  pids: 512
+  disk_gib: 16
+  services: [qdrant, vectordbbench-runner]
+artifacts:
+  logs: ${DRIFTBENCH_LAB_STATE}/runs/vec-ingestion-qdrant/${RUN_ID}/logs/
+  results: ${DRIFTBENCH_LAB_STATE}/runs/vec-ingestion-qdrant/${RUN_ID}/results/
+  metrics: ${DRIFTBENCH_LAB_STATE}/runs/vec-ingestion-qdrant/${RUN_ID}/metrics/
+  figures: ${DRIFTBENCH_LAB_STATE}/runs/vec-ingestion-qdrant/${RUN_ID}/figures/
+  run_manifest: ${DRIFTBENCH_LAB_STATE}/runs/vec-ingestion-qdrant/${RUN_ID}/run-manifest.json
+observability:
+  progress_metrics: [driftbench_progress_ratio, driftbench_vectors_ingested_total]
+  result_metrics: [driftbench_vectors_per_second, driftbench_batch_latency_ms, driftbench_freshness_seconds]
+  local_dashboard: 127.0.0.1:8765
+  grafana: optional-runtime-unverified
+  png_export: ${DRIFTBENCH_LAB_STATE}/runs/vec-ingestion-qdrant/${RUN_ID}/figures/
+blockers:
+  - Component is a documentation stub with no VectorDBBench/Qdrant adapter or bounded run config.
+  - VectorDBBench support for every proposed concurrent-search signal must be verified at the pinned commit.
+  - Dataset license and source/subset/truth/platform hashes are pending.
