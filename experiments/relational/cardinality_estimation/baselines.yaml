@@ -1,0 +1,253 @@
+schema_version: 1
+registry_status: research-catalog-only
+as_of: "2026-08-23"
+claim_boundary: >-
+  Registry membership means that a method is methodologically relevant, not
+  that DriftBench reproduced its paper result or verified it on TPC-H.
+groups:
+  runnable-plan-anchor:
+    status: review-blocked-anchor
+    purpose: PostgreSQL-native reference estimators planned for the common TPC-H-derived probes.
+  established-integration-candidate:
+    status: adapter-unverified
+    purpose: Established academic methods requiring separately reviewed TPC-H adapters.
+  recent-priority-candidate:
+    status: adapter-unverified
+    purpose: Recent academic methods prioritized for follow-up integration research.
+  emerging-watchlist:
+    status: research-watchlist
+    purpose: Emerging methods retained for provenance tracking, not active execution planning.
+selection_policy:
+  active_plan_anchors: [postgres-default, postgres-extended-statistics]
+  candidate_execution: disabled
+  common_protocol: tpch_plan.yaml
+  required_before_promotion:
+    - immutable source and dependency lock
+    - human license review
+    - deterministic TPC-H probe adapter
+    - estimator-output contract test
+    - resource-bounded smoke evidence
+estimators:
+  - id: postgres-default
+    group: runnable-plan-anchor
+    method_family: native-histogram-and-independence
+    paper: PostgreSQL 16.4 planner statistics
+    venue: PostgreSQL upstream
+    year: 2024
+    doi: null
+    source:
+      repository: https://github.com/postgres/postgres
+      revision: 2caa85f4aae689e6f6721d7363b4c66a2a6417d6
+      license: PostgreSQL
+      license_status: metadata-verified
+    native_datasets: [general-purpose]
+    query_shape_support: PostgreSQL-supported predicates and joins
+    training_or_update_regime: ANALYZE on each declared snapshot
+    hardware_expectation: CPU; same PostgreSQL container as ground truth
+    tpch_compatibility: planned-native
+    adapter_status: planned-anchor
+    blocker: Docker and database execution remain review-only.
+  - id: postgres-extended-statistics
+    group: runnable-plan-anchor
+    method_family: native-multivariate-statistics
+    paper: PostgreSQL 16.4 CREATE STATISTICS
+    venue: PostgreSQL upstream
+    year: 2024
+    doi: null
+    source:
+      repository: https://github.com/postgres/postgres
+      revision: 2caa85f4aae689e6f6721d7363b4c66a2a6417d6
+      license: PostgreSQL
+      license_status: metadata-verified
+    native_datasets: [general-purpose]
+    query_shape_support: dependency, ndistinct, and MCV statistics within tables
+    training_or_update_regime: deterministic CREATE STATISTICS list then ANALYZE
+    hardware_expectation: CPU; same PostgreSQL container as ground truth
+    tpch_compatibility: planned-native
+    adapter_status: planned-anchor
+    blocker: The exact extended-statistics objects require a separately reviewed protocol.
+  - id: mscn
+    group: established-integration-candidate
+    method_family: query-driven-deep-sets
+    paper: "Learned Cardinalities: Estimating Correlated Joins with Deep Learning"
+    venue: CIDR
+    year: 2019
+    doi: https://doi.org/10.48550/arXiv.1809.00677
+    source:
+      repository: https://github.com/andreaskipf/learnedcardinalities
+      revision: 50073283eacdea300d1dcd815c720f64e3d2d400
+      license: MIT
+      license_status: metadata-verified
+    native_datasets: [IMDb/JOB]
+    query_shape_support: supervised multi-table SPJ within the published featurization
+    training_or_update_regime: retrain from labelled query/cardinality pairs
+    hardware_expectation: CPU or CUDA depending on training configuration
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: No DriftBench TPC-H featurizer, label split, or immutable environment exists.
+  - id: deepdb
+    group: established-integration-candidate
+    method_family: data-driven-relational-sum-product-networks
+    paper: "DeepDB: Learn from Data, not from Queries!"
+    venue: PVLDB
+    year: 2020
+    doi: https://doi.org/10.48550/arXiv.1909.00607
+    source:
+      repository: https://github.com/DataManagementLab/deepdb-public
+      revision: 655ada13a043a4226a239b0c0a65bcdefef87a02
+      license: MIT
+      license_status: metadata-verified
+    native_datasets: [IMDb/JOB, Flights, Census]
+    query_shape_support: multi-table SPJ subject to relationship and predicate support
+    training_or_update_regime: learn RSPNs from a static data snapshot
+    hardware_expectation: CPU; memory depends on learned ensemble
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: TPC-H schema, predicate, and update compatibility have not been verified.
+  - id: neurocard
+    group: established-integration-candidate
+    method_family: autoregressive-join-distribution
+    paper: "NeuroCard: One Cardinality Estimator for All Tables"
+    venue: PVLDB
+    year: 2021
+    doi: https://doi.org/10.48550/arXiv.2006.08109
+    source:
+      repository: https://github.com/neurocard/neurocard
+      revision: a98f509e8d3c522d52ce4b4db47b894b7fafc153
+      license: Apache-2.0
+      license_status: metadata-verified
+    native_datasets: [IMDb/JOB, DMV]
+    query_shape_support: multi-table joins represented by the learned full outer join
+    training_or_update_regime: train per data snapshot; update path needs verification
+    hardware_expectation: CUDA recommended by the published implementation
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: Full-outer-join construction and TPC-H resource cost are unverified.
+  - id: bayescard
+    group: established-integration-candidate
+    method_family: probabilistic-graphical-model
+    paper: "BayesCard: Revitalizing Bayesian Frameworks for Cardinality Estimation"
+    venue: SIGMOD
+    year: 2021
+    doi: https://doi.org/10.48550/arXiv.2012.14743
+    source:
+      repository: https://github.com/wuziniu/BayesCard
+      revision: a6ca7e2c1450930ab17e40269d149e7abeb3fd52
+      license: NOASSERTION
+      license_status: human-review-required
+    native_datasets: [IMDb/JOB, STATS-CEB]
+    query_shape_support: multi-table SPJ within the published schema wrappers
+    training_or_update_regime: train Bayesian networks; update support requires adapter review
+    hardware_expectation: CPU
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: Repository license and TPC-H schema adapter require human review.
+  - id: factorjoin
+    group: recent-priority-candidate
+    method_family: factorized-data-driven-join-estimation
+    paper: "FactorJoin: A New Cardinality Estimation Framework for Join Queries"
+    venue: PACMMOD
+    year: 2023
+    doi: https://doi.org/10.1145/3588721
+    source:
+      repository: https://github.com/wuziniu/FactorJoin
+      revision: b1ba71475c5e505dc2ca80681a529a539f2eda9f
+      license: NOASSERTION
+      license_status: human-review-required
+    native_datasets: [STATS-CEB, IMDb/JOB, SSB]
+    query_shape_support: join queries; public wrappers are dataset-specific
+    training_or_update_regime: build factor distributions; STATS incremental update is published
+    hardware_expectation: CPU; patched end-to-end PostgreSQL benchmark is separate
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: Public code has no TPC-H path or asserted repository license.
+  - id: alece
+    group: recent-priority-candidate
+    method_family: attention-based-dynamic-workload
+    paper: "ALECE: An Attention-based Learned Cardinality Estimator for SPJ Queries on Dynamic Workloads"
+    venue: PVLDB
+    year: 2023
+    doi: https://doi.org/10.14778/3626292.3626302
+    source:
+      repository: https://github.com/pfl-cs/ALECE
+      revision: 0c5b0636db358a7cf4320894615ad372f43b54ac
+      license: NOASSERTION
+      license_status: human-review-required
+    native_datasets: [STATS]
+    query_shape_support: SPJ queries in insert-heavy, update-heavy, and distribution-shift workloads
+    training_or_update_regime: workload-specific training and cross-workload evaluation
+    hardware_expectation: TensorFlow; published path patches PostgreSQL 13.1
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: STATS-only initialization and patched PostgreSQL path are not TPC-H-ready.
+  - id: price
+    group: recent-priority-candidate
+    method_family: pretrained-cross-database-transformer
+    paper: "PRICE: A Pretrained Model for Cross-Database Cardinality Estimation"
+    venue: PVLDB
+    year: 2024
+    doi: https://doi.org/10.14778/3712221.3712231
+    source:
+      repository: https://github.com/StCarmen/PRICE
+      revision: 487f8d8669b5592b537ce294b6902378a500c256
+      license: NOASSERTION
+      license_status: human-review-required
+    native_datasets: [26-dataset-pretrain, IMDb, STATS, ErgastF1, VisualGenome]
+    query_shape_support: pretrained multi-table cardinality features
+    training_or_update_regime: pretrained inference with optional target finetuning
+    hardware_expectation: >-
+      Published repository reports about 17 GiB datasets, 7 GiB features, and
+      160 GiB GPU memory for full pretraining; pretrained evaluation is smaller.
+    tpch_compatibility: adapter-unverified
+    adapter_status: planned
+    blocker: No published TPC-H evaluation path, asserted code license, or local-lite budget evidence.
+  - id: cardood
+    group: emerging-watchlist
+    method_family: out-of-distribution-query-driven
+    paper: "CardOOD: robust query-driven cardinality estimation under out-of-distribution"
+    venue: The VLDB Journal
+    year: 2026
+    doi: https://doi.org/10.1007/s00778-026-00979-3
+    source: {repository: null, revision: null, license: NOASSERTION, license_status: no-code-verified}
+    native_datasets: [paper-review-pending]
+    query_shape_support: paper-review-pending
+    training_or_update_regime: paper-review-pending
+    hardware_expectation: paper-review-pending
+    tpch_compatibility: unknown
+    adapter_status: watchlist
+    blocker: No official code repository or TPC-H compatibility has been verified.
+  - id: distjoin
+    group: emerging-watchlist
+    method_family: decoupled-neural-join-estimation
+    paper: "DistJoin: A Decoupled Join Cardinality Estimator Based on Adaptive Neural Predicate Modulation"
+    venue: IEEE TKDE
+    year: 2025
+    doi: https://doi.org/10.1109/TKDE.2025.3638845
+    source: {repository: null, revision: null, license: NOASSERTION, license_status: no-code-verified}
+    native_datasets: [paper-review-pending]
+    query_shape_support: join queries; implementation boundary unverified
+    training_or_update_regime: paper-review-pending
+    hardware_expectation: paper-review-pending
+    tpch_compatibility: unknown
+    adapter_status: watchlist
+    blocker: No official code revision or TPC-H adapter has been verified.
+  - id: zerocard
+    group: emerging-watchlist
+    method_family: target-database-independent-pretraining
+    paper: "ZeroCard: Cardinality Estimation with Zero Dependence on Target Databases"
+    venue: arXiv
+    year: 2025
+    doi: https://doi.org/10.48550/arXiv.2510.07983
+    source: {repository: null, revision: null, license: NOASSERTION, license_status: no-code-verified}
+    native_datasets: [paper-review-pending]
+    query_shape_support: paper-review-pending
+    training_or_update_regime: no target data, query, or retraining claimed by paper title; verification pending
+    hardware_expectation: paper-review-pending
+    tpch_compatibility: unknown
+    adapter_status: watchlist
+    blocker: Preprint and implementation provenance require independent review.
+excluded_from_active_multi_table_set:
+  - id: naru
+    reason: >-
+      The current DriftBench/AreCELearnedYet integration is single-table Census.
+      It is retained as literature context but is not a TPC-H multi-table baseline.

@@ -13,6 +13,21 @@ Who uses DriftBench:
 
 Version history: [CHANGELOG](https://github.com/Liuguanli/DriftBench/blob/main/CHANGELOG.md) · Production site: [driftbench.com](https://driftbench.com)
 
+## Database experiment roadmap
+
+Research experiment work is organized by database family and component under
+[`experiments/`](experiments/README.md). The website's applicability label and the
+repository's implementation progress are tracked separately; `Supported` on the website
+does not mean that every component has an implementation or verified database result here.
+
+| Family | Website applicability | Repository progress | Components |
+|---|---|---|---|
+| Relational | [Supported](https://driftbench.com/where-drift-applies) | 2 existing / verification pending; 4 stubs | [Cardinality estimation](experiments/relational/cardinality_estimation/README.md), [Optimizer](experiments/relational/optimizer/README.md), [Indexes](experiments/relational/indexes/README.md), [Execution engine](experiments/relational/execution_engine/README.md), [Buffer pool](experiments/relational/buffer_pool/README.md), [Transactions](experiments/relational/transactions/README.md) |
+| Vector | [Proposed](https://driftbench.com/where-drift-applies) | 0 existing; 5 stubs | [ANN index](experiments/vector/ann_index/README.md), [Quantization](experiments/vector/quantization/README.md), [Reranking](experiments/vector/reranking/README.md), [Ingestion](experiments/vector/ingestion/README.md), [Partitioning](experiments/vector/partitioning/README.md) |
+
+The [detailed progress tracker](experiments/README.md#progress-tracker) is the single
+source of truth for component-level status. Last updated: 2026-08-23.
+
 ---
 
 ## Install

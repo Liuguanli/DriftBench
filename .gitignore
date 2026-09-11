@@ -18,11 +18,11 @@ build/
 
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
-
-/driftbench/notebooks/.jupyter_ystore.db
+.jupyter_ystore.db
 
 # Ignore output logs and generated files
 # autoquerybench/output/
+/artifacts/
 driftbench/data/*
 !driftbench/data/*.py
 !driftbench/data/resources/
@@ -30,16 +30,16 @@ driftbench/data/*
 *.log
 # *.csv
 # *.json
-tasks/cardinality_estimation/data/
-tasks/cardinality_estimation/output/
-tasks/cardinality_estimation/ce_timeline_census/log/
-tasks/cardinality_estimation/ce_timeline_census/result/
-tasks/cardinality_estimation/ce_timeline_census/model/
-tasks/cardinality_estimation/ce_timeline_census/figures/
-tasks/indexing/data/
-tasks/indexing/queries/
-tasks/indexing/logs/
-tasks/indexing/out/
+experiments/relational/cardinality_estimation/data/
+experiments/relational/cardinality_estimation/output/
+experiments/relational/cardinality_estimation/ce_timeline_census/log/
+experiments/relational/cardinality_estimation/ce_timeline_census/result/
+experiments/relational/cardinality_estimation/ce_timeline_census/model/
+experiments/relational/cardinality_estimation/ce_timeline_census/figures/
+experiments/relational/indexes/data/
+experiments/relational/indexes/queries/
+experiments/relational/indexes/logs/
+experiments/relational/indexes/out/
 
 # Ignore paper PDFs
 papers

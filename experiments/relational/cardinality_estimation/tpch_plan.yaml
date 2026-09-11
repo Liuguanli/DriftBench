@@ -1,0 +1,98 @@
+schema_version: 1
+experiment_id: rel-ce-tpch
+review_only: true
+claim_boundary:
+  label: TPC-H-derived CE study
+  statement: >-
+    This plan derives cardinality-estimation probes from pinned TPC-H templates.
+    It is not an official TPC-H benchmark run and must not report a TPC-H score.
+dataset:
+  benchmark: TPC-H
+  scale_factor: 1.0
+  seed: 42
+  smoke_scale_factor: 0.1
+  smoke_status: future-only
+  generator:
+    repository: https://github.com/gregrahn/tpch-kit
+    revision: 852ad0a5ee31ebefeed884cea4188781dd9613a3
+    archive_sha256: null
+    checksum_status: pending-not-downloaded
+  snapshot_identity:
+    manifest_field: dataset_snapshot_sha256
+    status: pending-not-generated
+baseline_registry:
+  path: baselines.yaml
+  group_ids:
+    - runnable-plan-anchor
+    - established-integration-candidate
+    - recent-priority-candidate
+    - emerging-watchlist
+workload:
+  kind: deterministic-spj-subplan-probes
+  seed: 42
+  parameter_source: pinned qgen seed and parameter manifest
+  parameter_manifest_sha256: null
+  ground_truth: future SELECT COUNT(*) execution on the immutable snapshot
+  probes:
+    - id: q03-spj-01
+      template_id: 3
+      subquery_id: customer-orders
+      relations: [customer, orders]
+      join_depth: 1
+      provenance: pre-aggregation SPJ subtree derived from pinned TPC-H Q3
+    - id: q03-spj-02
+      template_id: 3
+      subquery_id: customer-orders-lineitem
+      relations: [customer, orders, lineitem]
+      join_depth: 2
+      provenance: pre-aggregation SPJ subtree derived from pinned TPC-H Q3
+    - id: q05-spj-01
+      template_id: 5
+      subquery_id: region-nation-customer-orders-lineitem-supplier
+      relations: [region, nation, customer, orders, lineitem, supplier]
+      join_depth: 5
+      provenance: pre-aggregation SPJ subtree derived from pinned TPC-H Q5
+    - id: q09-spj-01
+      template_id: 9
+      subquery_id: part-partsupp-lineitem-orders-supplier-nation
+      relations: [part, partsupp, lineitem, orders, supplier, nation]
+      join_depth: 5
+      provenance: pre-aggregation SPJ subtree derived from pinned TPC-H Q9
+phases:
+  - id: baseline-static
+    snapshot_policy: immutable SF1 snapshot
+    estimator_update_policy: train or build once on baseline
+  - id: cardinality-growth
+    snapshot_policy: future FK-safe append plan with per-table hashes
+    estimator_update_policy: frozen and adaptive results reported separately
+  - id: correlation-shift
+    snapshot_policy: future TPC-H-derived attribute-correlation mutation
+    estimator_update_policy: frozen and adaptive results reported separately
+  - id: workload-selectivity-shift
+    snapshot_policy: unchanged baseline data
+    estimator_update_policy: fixed model; deterministic predicate-parameter phases
+fairness:
+  common_inputs:
+    - identical dataset snapshot hash
+    - identical ordered probe manifest and parameter bindings
+    - identical ground-truth cardinalities
+  q_error:
+    definition: max((estimate + 1) / (actual + 1), (actual + 1) / (estimate + 1))
+    zero_handling: add one to estimate and actual before taking the ratio
+    percentiles: [p50, p90, p95, p99, max]
+  report_for_every_estimator:
+    - inference_latency_ms
+    - train_or_build_time_s
+    - update_time_s
+    - model_or_statistics_bytes
+    - peak_rss_mib
+    - cpu_model_and_threads
+    - accelerator_model_and_memory
+  policy_separation:
+    - static_frozen
+    - adaptive_updated
+execution:
+  preparation: blocked-review-only
+  database: blocked-review-only
+  estimator_training: blocked-review-only
+  allowed_commands: [plan, validate]
