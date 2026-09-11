@@ -1,0 +1,20 @@
+spec_version: 1
+pattern_id: run-guide-price-skew
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+data_source:
+  kind: csv
+  path: ./output/run-guide/data/tpch/data/sf_0.001/lineitem.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/run-guide/lineitem-schema.json
+variables:
+  base_table: lineitem
+  drifts:
+    - name: price-skew
+      drift_type: value_skew
+      columns: [l_extendedprice]
+      portion: 0.8
+      skewness: 5
+      output_path: ./output/run-guide/lineitem-drifted.csv

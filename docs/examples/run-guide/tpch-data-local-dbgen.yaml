@@ -1,0 +1,8 @@
+# Replace dbgen_path with the actual native executable path for your platform.
+schema: driftbench.artifact-request/v1
+benchmark: tpch
+artifact_type: data
+parameters:
+  mode: generate
+  scale_factor: 0.001
+  dbgen_path: ./tools/dbgen

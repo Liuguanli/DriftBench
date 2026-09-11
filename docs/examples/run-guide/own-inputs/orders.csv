@@ -1,0 +1,13 @@
+order_id,region,amount
+1,east,10.0
+2,west,20.0
+3,east,30.0
+4,west,40.0
+5,east,50.0
+6,west,60.0
+7,east,70.0
+8,west,80.0
+9,east,90.0
+10,west,100.0
+11,east,110.0
+12,west,120.0

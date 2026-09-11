@@ -83,6 +83,9 @@ Related benchmark docs: [complete adapter reference](docs/benchmark_reference.md
 verified artifacts across projects, see the opt-in
 [ADLS Gen2 HNS cache guide](docs/azure_hns_cache.md).
 
+For offline setup, concrete examples and external requirements of the new adapters,
+see [sysbench, SSB and LDBC artifact support](docs/benchmark_extensions.md).
+
 Adapter names describe modeled workload families, not official benchmark conformance.
 Most outputs are DriftBench synthetic fixtures, and the TPC-H auto-build neither pins the
 upstream revision nor records the `dbgen` binary hash. The canonical

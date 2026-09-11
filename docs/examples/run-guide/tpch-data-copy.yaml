@@ -1,0 +1,8 @@
+# Replace source_dir with a directory containing all eight canonical .tbl files.
+schema: driftbench.artifact-request/v1
+benchmark: tpch
+artifact_type: data
+parameters:
+  mode: copy
+  scale_factor: 0.001
+  source_dir: ./input/tpch-sf-0.001

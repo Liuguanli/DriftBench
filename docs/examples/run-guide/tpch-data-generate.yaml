@@ -1,0 +1,8 @@
+# Run from the DriftBench repository root. Requires a native dbgen build.
+# Auto-discovery: PATH, repository build, local cache, then git clone + make.
+schema: driftbench.artifact-request/v1
+benchmark: tpch
+artifact_type: data
+parameters:
+  mode: generate
+  scale_factor: 0.001

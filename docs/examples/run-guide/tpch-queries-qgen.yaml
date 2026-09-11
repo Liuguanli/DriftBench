@@ -1,0 +1,10 @@
+# Bundled Python qgen-style parameter generation; no native qgen or DB execution.
+schema: driftbench.artifact-request/v1
+benchmark: tpch
+artifact_type: queries
+parameters:
+  mode: qgen
+  queries_per_template: 2
+  seed: 42
+  shuffle: true
+  scale: 0.001

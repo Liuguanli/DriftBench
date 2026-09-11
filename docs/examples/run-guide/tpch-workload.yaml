@@ -1,0 +1,20 @@
+spec_version: 1
+pattern_id: run-guide-supplied-sql
+seed: 42
+type: {family: workload, category: sql_templates, subtype: tpch}
+variables:
+  template_dir: ./docs/examples/run-guide/templates
+  query_ids: [6]
+  defaults: {param_mode: custom, queries_per_template: 3, shuffle: false}
+  params:
+    '6': ['1994-01-01', '1995-01-01', 0.06, 24]
+  query_runs:
+    - name: uniform
+      outputs:
+        - {type: workload, path: ./output/run-guide/workload.sql}
+        - type: temporal
+          path: ./output/run-guide/workload.csv
+          timestamp:
+            start_time: '2025-07-01T00:00:00'
+            pattern: uniform
+            queries_per_minute: 60

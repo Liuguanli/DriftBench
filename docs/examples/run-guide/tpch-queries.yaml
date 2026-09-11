@@ -1,0 +1,12 @@
+# Fixed parameters for the bundled Q6 template; not a distinct "static" mode.
+schema: driftbench.artifact-request/v1
+benchmark: tpch
+artifact_type: queries
+parameters:
+  mode: custom
+  query_ids: [6]
+  queries_per_template: 1
+  seed: 42
+  shuffle: false
+  param_specs:
+    '6': ['1994-01-01', 0.06, 24]

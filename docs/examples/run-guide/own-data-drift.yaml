@@ -1,0 +1,20 @@
+spec_version: 1
+pattern_id: own-orders-amount-skew
+seed: 42
+type: {family: data, category: drift, subtype: single_table}
+data_source:
+  kind: csv
+  path: ./docs/examples/run-guide/own-inputs/orders.csv
+  schema_extractor:
+    source_type: csv
+    sample_size: 1000
+    schema_output_path: ./output/run-guide/own-inputs/orders-schema.json
+variables:
+  base_table: orders
+  drifts:
+    - name: amount-skew
+      drift_type: value_skew
+      columns: [amount]
+      portion: 0.75
+      skewness: 5
+      output_path: ./output/run-guide/own-inputs/orders-drifted.csv
