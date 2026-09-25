@@ -362,12 +362,13 @@ class SkillContractTests(unittest.TestCase):
         self.assertTrue(front["description"])
         self.assertTrue((skill.parent / "references" / "workflow.md").is_file())
         self.assertTrue((skill.parent / "agents" / "openai.yaml").is_file())
-        private = subprocess.run(["git", "check-ignore", "--no-index", ".private\\azure-budget.yaml"],
+        private_path = Path(".private") / "azure-budget.yaml"
+        private = subprocess.run(["git", "check-ignore", "--no-index", str(private_path)],
                                  cwd=root, capture_output=True, text=True)
-        self.assertEqual(private.returncode, 0)
+        self.assertEqual(private.returncode, 0, private.stderr)
         versioned = subprocess.run(["git", "check-ignore", "--no-index", str(skill)],
                                    cwd=root, capture_output=True, text=True)
-        self.assertEqual(versioned.returncode, 1)
+        self.assertEqual(versioned.returncode, 1, versioned.stderr)
         self.assertIn("driftbench-azure-budget", (root / "AGENTS.md").read_text(encoding="utf-8"))
 
 
