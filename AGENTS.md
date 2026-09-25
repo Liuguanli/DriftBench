@@ -45,6 +45,30 @@ Persona roles are advisory. The `product_manager` selects the relevant personas 
 - Do not commit, push, merge, tag, release, deploy, or publish unless the user explicitly authorizes that action.
 - Never publish from a development branch.
 
+## Azure data budget and reader-approval gate
+
+- Before any assistant-initiated Azure data addition, expansion, import, copy,
+  staging upload, or read-write cache materialization, invoke the project skill
+  `driftbench-azure-budget` and present a fresh scoped cost/read-capacity report.
+  If this session has not discovered the new skill yet, read its `SKILL.md` and
+  reference workflow and run the documented command; disclose that fallback.
+- Keep the owner's whole-subscription AUD budget and financial reports only in
+  ignored `.private` configuration, never tracked files or Copilot Memory.
+  This is a project-only, before-changes rule, not a recurring schedule.
+- Missing/stale/unsupported evidence or a projected budget overrun blocks the
+  mutation pending owner coordination. Do not treat unknown spend as zero,
+  silently raise the budget, or reuse an earlier successful report after failure.
+  A cost estimate never grants permission or guarantees the subscription bill.
+- Run the same preflight before a new reader grant. No new principal receives
+  access without explicit owner approval of both identity and dataset. Prepare
+  a native least-privilege read-only plan after effective-access review; do not
+  make data anonymous or distribute account keys/SAS as a shortcut.
+- Per-user approval permits repeated reads, not a per-download quota. Existing
+  inherited/group RBAC, ACLs, keys/SAS and administrator access are separate
+  review concerns; never revoke or widen them without specific authorization.
+- The skill is read-only. No IAM grant, Azure budget change, gateway deployment,
+  or publication is authorized merely by installing or running it.
+
 ## Agent availability
 
 - When concurrency is limited, run roles sequentially; do not skip a required gate.

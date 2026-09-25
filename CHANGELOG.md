@@ -6,6 +6,24 @@ Format notes:
 - Version headings follow release tags (for example `v0.1.0b4`).
 - Each version includes a `Services` section so users can see capability coverage quickly.
 
+## [Unreleased]
+
+### Services
+- `Data`: Public, offline discovery of Azure benchmark artifact metadata.
+
+### Added
+- `from driftbench import catalog` with explicit `list`, `get`, and `info`
+  calls over a timestamped metadata snapshot included in wheel and sdist.
+  Browsing requires no Azure login or optional Azure packages; imports do not
+  read the snapshot or access the network.
+- Read-only maintainer catalog export for committed cache and independent
+  dataset layouts, with bounded metadata verification and atomic local output.
+  The snapshot records ten data variants across eight benchmark
+  families, and no query variants. Private payload permissions remain unchanged.
+- A separately stored TPC-H SF 10 dataset (eight `.tbl` files, about 11.23 GB)
+  is included in the catalog alongside the unchanged SF 0.01 dataset. Examples
+  select scales explicitly; upload verification does not imply TPC certification.
+
 ## [v0.1.0b10] - 2026-08-22
 
 ### Services

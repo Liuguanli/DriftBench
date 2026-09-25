@@ -86,7 +86,7 @@ visualization/data/**
 visualization/cache/**
 !visualization/cache/.gitkeep
 
-# Version only the project-owned Codex personas and validation skill.
+# Version only the project-owned Codex personas and explicitly listed skills.
 # Keep local Codex configuration and unrelated agents/skills ignored.
 !.codex/
 .codex/*
@@ -102,6 +102,8 @@ visualization/cache/**
 .agents/skills/*
 !.agents/skills/driftbench-real-user-validation/
 !.agents/skills/driftbench-real-user-validation/**
+!.agents/skills/driftbench-azure-budget/
+!.agents/skills/driftbench-azure-budget/**
 
 # Local credentials and private Azure cache configuration.
 .env

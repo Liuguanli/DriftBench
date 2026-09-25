@@ -1,0 +1,4 @@
+interface:
+  display_name: "DriftBench Azure Budget"
+  short_description: "Check Azure costs and owner-approved reader access"
+  default_prompt: "Use $driftbench-azure-budget before adding Azure data or approving a reader. Report current storage cost, subscription budget headroom, and conditional full-download capacity without changing Azure."

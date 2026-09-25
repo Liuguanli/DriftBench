@@ -1,5 +1,11 @@
 # ADLS Gen2 HNS artifact cache
 
+For anonymous discovery of already observed artifacts, use the
+[public Python catalog](artifact_catalog.md). Browsing its packaged metadata
+snapshot does not authenticate, list Azure storage, or change payload permissions.
+The maintainer-only catalog exporter is separate from the exact-path runtime
+cache described below.
+
 DriftBench can use an explicit Azure Data Lake Storage Gen2 cache before it
 generates an eligible local benchmark artifact. The ordinary adapter
 `.generate()` API remains offline. Cache mode is also `off` by default, so a

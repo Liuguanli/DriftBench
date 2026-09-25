@@ -118,6 +118,7 @@ include = [
     "/docs/p0_mcp_examples.sh",
     "/docs/mcp_config_example.json",
     "/docs/azure_hns_cache.md",
+    "/docs/artifact_catalog.md",
     "/docs/benchmark_extensions.md",
     "/docs/benchmark_reference.md",
     "/docs/examples/azure-cache.yaml",

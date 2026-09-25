@@ -1,0 +1,565 @@
+{
+  "schema": "driftbench.azure-catalog/v1",
+  "observed_at": "2026-09-24T08:17:00Z",
+  "source": {
+    "account_url": "https://driftbench.dfs.core.windows.net",
+    "file_system": "driftbench-cache",
+    "prefix": "users/guanli/dev"
+  },
+  "entries": [
+    {
+      "id": "dsb/data/artifact-cache-v1/643215f763655f0366b900c8fdaa20d02f1bfea51f3d525eb8c90a49164103eb",
+      "benchmark": "dsb",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.dsb.DSBData",
+      "generator_revision": "3",
+      "parameters": {
+        "scale_factor": 1
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/dsb/data/driftbench-data-dsb-dsbdata-r3/643215f763655f0366b900c8fdaa20d02f1bfea51f3d525eb8c90a49164103eb",
+      "files": [
+        {
+          "path": "artifacts/dsb/data/customer.csv",
+          "bytes": 18903,
+          "sha256": "60a0c3fd861bc6e6003a00fe344899c3224248ba7461ad83a00864e978476fe4"
+        },
+        {
+          "path": "artifacts/dsb/data/date_dim.csv",
+          "bytes": 52438,
+          "sha256": "1c66164b59be1c865ba30015cf54c268a8eb28695bf6de3f78c225bc71325167"
+        },
+        {
+          "path": "artifacts/dsb/data/dsb_schema.sql",
+          "bytes": 512,
+          "sha256": "ed2eb05473fd5ab10028841d020f9e9221e8548f6455e557e98cbad083ab69db"
+        },
+        {
+          "path": "artifacts/dsb/data/lineorder.csv",
+          "bytes": 158328,
+          "sha256": "d81fa40e3027dcfaba8e178a8f30a6342f99774c7e945b6a205ac1d796c9f4b9"
+        }
+      ],
+      "formats": [
+        "csv",
+        "sql"
+      ],
+      "file_count": 4,
+      "total_bytes": 230181,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "16f53fd008966d42b70d213bd209a3a73f051048becc1f9d9fbc19b96ded8762",
+      "commit_sha256": "8bacdb3681a3eca370eff9bc3dbc5c52bc416d79fb14944254eb92e5eee3a11c"
+    },
+    {
+      "id": "job/data/artifact-cache-v1/602825d361bcf833698bb7e04751a23b3b74bbbf8f367559f28dd39bf01e203d",
+      "benchmark": "job",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.job.JOBData",
+      "generator_revision": "3",
+      "parameters": {
+        "scale_factor": 1
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/job/data/driftbench-data-job-jobdata-r3/602825d361bcf833698bb7e04751a23b3b74bbbf8f367559f28dd39bf01e203d",
+      "files": [
+        {
+          "path": "artifacts/job/data/cast_info.csv",
+          "bytes": 133883,
+          "sha256": "590a80bcbc11b93794ea794adbd4cf203146f331e0960d5c47a35506171c6fea"
+        },
+        {
+          "path": "artifacts/job/data/company_name.csv",
+          "bytes": 2349,
+          "sha256": "c9546d18d3a7849201257004901f5ef08d61878033edb40c8bac397999fbaac0"
+        },
+        {
+          "path": "artifacts/job/data/company_type.csv",
+          "bytes": 105,
+          "sha256": "8348c08d53228ae95c9a1a79445edb74816df2118252f3e80c4dc4f83e0f6a5f"
+        },
+        {
+          "path": "artifacts/job/data/info_type.csv",
+          "bytes": 136,
+          "sha256": "6d01f67a7f60db2a20618c28c7ceb632a56a56d03c9714e1a139d598f729face"
+        },
+        {
+          "path": "artifacts/job/data/job_schema.sql",
+          "bytes": 2550,
+          "sha256": "f9c347a8aaeddf413b8ff56098b763c48458a3a0ab04486ac47a4829033129f7"
+        },
+        {
+          "path": "artifacts/job/data/keyword.csv",
+          "bytes": 3462,
+          "sha256": "5052434c2d60e69c9881f433fa547ab8ce096e0f173c37847bed50b7c0622ea3"
+        },
+        {
+          "path": "artifacts/job/data/kind_type.csv",
+          "bytes": 101,
+          "sha256": "e579b514e2c0412602072d6bb7a60a5090621e178b7443a3161897bde09c0c37"
+        },
+        {
+          "path": "artifacts/job/data/movie_companies.csv",
+          "bytes": 14631,
+          "sha256": "146392340b90735fe1b83683d42fac524e53c04c867dd3b899b95516bded7c36"
+        },
+        {
+          "path": "artifacts/job/data/movie_info.csv",
+          "bytes": 59025,
+          "sha256": "3a3042d4accd7c3d6e42bb7d8379fb2c90f62564f0e5b1afa4bf0e75dcf83645"
+        },
+        {
+          "path": "artifacts/job/data/movie_keyword.csv",
+          "bytes": 25451,
+          "sha256": "ebe6a0353413700a3406e82d74e475f19c5f630d3b6b24037e73aebeb293efa0"
+        },
+        {
+          "path": "artifacts/job/data/name.csv",
+          "bytes": 28526,
+          "sha256": "062de6c6b5da118575391fdc4431e7af0eed983a04580f11a812f3c4edf24048"
+        },
+        {
+          "path": "artifacts/job/data/title.csv",
+          "bytes": 17906,
+          "sha256": "14dd800b5f7e326c0037e9be6e26da59967b24c8ed20245dd127262f80543f6c"
+        }
+      ],
+      "formats": [
+        "csv",
+        "sql"
+      ],
+      "file_count": 12,
+      "total_bytes": 288125,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "cd8f8b1a2f95d8260661603ce7814b452d0ef359403f985665121a4645d3c728",
+      "commit_sha256": "01cc2f3273e3fb8fd7c2dced8faf9d34768e60a141984f2812baba1e4f5a33e7"
+    },
+    {
+      "id": "pgbench/data/artifact-cache-v1/ac6f74c2323a22cf605066234ddedc54214d8ef6066ee41bc997e2228329e045",
+      "benchmark": "pgbench",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.pgbench.PgBenchData",
+      "generator_revision": "3",
+      "parameters": {
+        "scale_factor": 1
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/pgbench/data/driftbench-data-pgbench-pgbenchdata-r3/ac6f74c2323a22cf605066234ddedc54214d8ef6066ee41bc997e2228329e045",
+      "files": [
+        {
+          "path": "artifacts/pgbench/data/pgbench_accounts.csv",
+          "bytes": 1428132,
+          "sha256": "29ffbcefc0ceda6a2d0cb3c23aa414064a282e038710cefb43171ec1c5bf98a2"
+        },
+        {
+          "path": "artifacts/pgbench/data/pgbench_branches.csv",
+          "bytes": 27,
+          "sha256": "8049cbcc20b8743b4ec67c506a1cb750126748c3457e883415629b5d6298f7a5"
+        },
+        {
+          "path": "artifacts/pgbench/data/pgbench_history.csv",
+          "bytes": 32,
+          "sha256": "5784b6f212f030f4fe1f780e4af74f3f4787d412f6e5de69cf7977a63aaba302"
+        },
+        {
+          "path": "artifacts/pgbench/data/pgbench_schema.sql",
+          "bytes": 713,
+          "sha256": "ee97c222e356e790e6df249ed3c1ae0f91900c29acd400da3426817eec2c6488"
+        },
+        {
+          "path": "artifacts/pgbench/data/pgbench_tellers.csv",
+          "bytes": 106,
+          "sha256": "b42d4dc0484c914b51a09a48221c2d10f5dbe9595fff436b217bf6072a8c25f0"
+        }
+      ],
+      "formats": [
+        "csv",
+        "sql"
+      ],
+      "file_count": 5,
+      "total_bytes": 1429010,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "5c40c283e78875b2898f5bb83c781ed6717a7841c7743089d13631f6f03e9da0",
+      "commit_sha256": "12d3fbdc61ad7aa6a00c4fe77d985375a771f4a1a9f5db56490ac1e88ff7ecd4"
+    },
+    {
+      "id": "tpcc/data/artifact-cache-v1/b48f3eefc731476752379e08f087d2ab4991779c81111dc9ca362f430252ce2e",
+      "benchmark": "tpcc",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.tpcc.TPCCData",
+      "generator_revision": "4",
+      "parameters": {
+        "scale_factor": 1
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/tpcc/data/driftbench-data-tpcc-tpccdata-r4/b48f3eefc731476752379e08f087d2ab4991779c81111dc9ca362f430252ce2e",
+      "files": [
+        {
+          "path": "artifacts/tpcc/data/customer.csv",
+          "bytes": 359157,
+          "sha256": "6dbe9b6b9050ef5abf3867851b2f99465dd061f4e2cbe16715fb107fa26f003b"
+        },
+        {
+          "path": "artifacts/tpcc/data/district.csv",
+          "bytes": 607,
+          "sha256": "502ae9ac3b046a12090ab5e4d62c8867afcc4b294eff1d2d1fa56582cdeb5c6f"
+        },
+        {
+          "path": "artifacts/tpcc/data/history.csv",
+          "bytes": 131245,
+          "sha256": "2095c66a68684e05aa061c2d7a06d8b29974878c74939016b0963c4a63a4ca7b"
+        },
+        {
+          "path": "artifacts/tpcc/data/item.csv",
+          "bytes": 406940,
+          "sha256": "244fc78cf3a7c1e691da2fd998116e69680a4542bd406e2055c743e0ea1e1977"
+        },
+        {
+          "path": "artifacts/tpcc/data/new_order.csv",
+          "bytes": 8215,
+          "sha256": "9e0b25c6b73c8394e13edb5e3e8e4cf5faf536f901ac389119f883b6888aa480"
+        },
+        {
+          "path": "artifacts/tpcc/data/order_line.csv",
+          "bytes": 1309027,
+          "sha256": "581fd9a3110d10dab940f85f81d2848c4195170ff064f4b148c98b9a2ddbcffc"
+        },
+        {
+          "path": "artifacts/tpcc/data/orders.csv",
+          "bytes": 89124,
+          "sha256": "2b465f64491f8d9b0b236f586bea21da6d7dd7d0673324299ddbe7daa29b3237"
+        },
+        {
+          "path": "artifacts/tpcc/data/stock.csv",
+          "bytes": 427947,
+          "sha256": "a1cf216ed1048df45ca78634c0c596f94582c3e30ed7e44dec01a773693f2037"
+        },
+        {
+          "path": "artifacts/tpcc/data/tpcc_schema.sql",
+          "bytes": 3343,
+          "sha256": "2115a62cd97136e6ac8ebf8950a27b9dd0232016ca56c58304a03bbd34c2a7d8"
+        },
+        {
+          "path": "artifacts/tpcc/data/warehouse.csv",
+          "bytes": 109,
+          "sha256": "dab4841fee53c4d11974f9ce36a4be56cbaff9894f57c8f903d2da74fadeefec"
+        }
+      ],
+      "formats": [
+        "csv",
+        "sql"
+      ],
+      "file_count": 10,
+      "total_bytes": 2735714,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "312b46d21ded605996c2b832bd42f0a1f3e44856a0675ced8ce3178fa9eed38e",
+      "commit_sha256": "6e614e42b10bc5d0ca2099d766460ded59c10003082cd90fb6c8e550682bc84e"
+    },
+    {
+      "id": "tpcc_skew/data/artifact-cache-v1/a0f36ab08a82310248b43e966547e991937f733f0eb70145fb6e162223972ff4",
+      "benchmark": "tpcc_skew",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.tpcc_skew.TPCCSkewData",
+      "generator_revision": "4",
+      "parameters": {
+        "hot_warehouse_fraction": 0.5,
+        "scale_factor": 2,
+        "skew_factor": 0.99
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/tpcc_skew/data/driftbench-data-tpcc-skew-tpccskewdata-r4/a0f36ab08a82310248b43e966547e991937f733f0eb70145fb6e162223972ff4",
+      "files": [
+        {
+          "path": "artifacts/tpcc_skew/data/customer.csv",
+          "bytes": 718137,
+          "sha256": "d863dcbd8a25ddce0dd41fca4185aac498042ecbaca6a11fcc30f5a20f079811"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/district.csv",
+          "bytes": 1149,
+          "sha256": "dc2275fcff2bc8db559a98b64730f0ed7a24602a217868a5d80605a1a1e0dc15"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/history.csv",
+          "bytes": 262363,
+          "sha256": "30053494f1f9d12702f811437eb18a4bb5fd45b5eaf1ee92ccd0fadf871d09e5"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/item.csv",
+          "bytes": 836056,
+          "sha256": "fc1c3b7f290fe1470427120077bbcd6abbf403df0023df371f9c350c96a3805d"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/new_order.csv",
+          "bytes": 16405,
+          "sha256": "9d991552503e41274ffa57ccec363ba51ded91b61c5bb82718d9dca5ce89f8a9"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/order_line.csv",
+          "bytes": 2678008,
+          "sha256": "04384ad33570e8eb397e1fa472864a4242ea65d2c65a909fc669d8e7ed8a7435"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/orders.csv",
+          "bytes": 178217,
+          "sha256": "5a550ac3b072e5d64b2a705ecbf1ef5f02182d7154c6c4989f13e877dbbcbb4d"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/stock.csv",
+          "bytes": 855882,
+          "sha256": "12c5efc2edb0630997d890843dd6a0f2df2e22970d34ec233160b995fc38fe1d"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/tpcc_schema.sql",
+          "bytes": 3343,
+          "sha256": "2115a62cd97136e6ac8ebf8950a27b9dd0232016ca56c58304a03bbd34c2a7d8"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/warehouse.csv",
+          "bytes": 161,
+          "sha256": "19afd73f16c898165e8758cdcec73dcf45573f3fe3338889f93314c4f0b1f12b"
+        },
+        {
+          "path": "artifacts/tpcc_skew/data/warehouse_access_weights.csv",
+          "bytes": 68,
+          "sha256": "e8aae7a268ba909e65125bf44c5576af35e24f9d61653eec8fced72b65444dd0"
+        }
+      ],
+      "formats": [
+        "csv",
+        "sql"
+      ],
+      "file_count": 11,
+      "total_bytes": 5549789,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "6b547571a0cf1b3a5a8218344d672c809f3e8928847786c5d2cb5db8a3010041",
+      "commit_sha256": "e82c779816dd0a04cccdb779e091d249e19ab12e9a43163846fb37dccb90e74c"
+    },
+    {
+      "id": "tpcds/data/artifact-cache-v1/9149e81156dd2d5374d3e1aaf5549a2c7d8b0ca5eec9b6a35ff2e6888cc58ad7",
+      "benchmark": "tpcds",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.tpcds.TPCDSData",
+      "generator_revision": "3",
+      "parameters": {
+        "scale_factor": 1
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/tpcds/data/driftbench-data-tpcds-tpcdsdata-r3/9149e81156dd2d5374d3e1aaf5549a2c7d8b0ca5eec9b6a35ff2e6888cc58ad7",
+      "files": [
+        {
+          "path": "artifacts/tpcds/data/customer.dat",
+          "bytes": 59572,
+          "sha256": "8f70065014062ff55b4b0ef34641a1ef603e81dad714c6070d3d7b835d5cf23e"
+        },
+        {
+          "path": "artifacts/tpcds/data/date_dim.dat",
+          "bytes": 122973,
+          "sha256": "35c48fad17479c3c86e8701bd5deb9f10e97c4a9e20035acb901224c6cd76dfc"
+        },
+        {
+          "path": "artifacts/tpcds/data/item.dat",
+          "bytes": 42338,
+          "sha256": "afa70f13a399d9d2c2195211dd75bbddb0b431fedd68947c0ec698c8f4fac91a"
+        },
+        {
+          "path": "artifacts/tpcds/data/store.dat",
+          "bytes": 27,
+          "sha256": "8a4ccb857166d0600418c4560ecfcb562bc2407003416de3ab71cfcd3a17ab00"
+        },
+        {
+          "path": "artifacts/tpcds/data/store_sales.dat",
+          "bytes": 343397,
+          "sha256": "b56352291d7c980677da6e66635bc587b2049a84e5064d5f38e22b240875203c"
+        }
+      ],
+      "formats": [
+        "dat"
+      ],
+      "file_count": 5,
+      "total_bytes": 568307,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "ff0db3028ee015948ba07903781cca18b4c6ccf2f0dc7021b16923f2de75d0e8",
+      "commit_sha256": "7e4db54cfcb7365e96ee7bb3e73f15599178a4bb56dae5d0521fb00883f0d63e"
+    },
+    {
+      "id": "tpch/data/immutable-dataset-v1/3b326534e8b1cbcbb5022505d51684a03f4e00ba5e1fd444b05acfdcc1495416",
+      "benchmark": "tpch",
+      "artifact_type": "data",
+      "layout": "immutable-dataset-v1",
+      "generator": "tpchgen-rs",
+      "generator_revision": "4f6bf4c5ab40511c8fdef5888fc8d022e5e546d7",
+      "parameters": {
+        "scale_factor": "10"
+      },
+      "path": "users/guanli/dev/datasets/v1/tpch/data/tpchgen-rs/4f6bf4c5ab40511c8fdef5888fc8d022e5e546d7/sf_10/3b326534e8b1cbcbb5022505d51684a03f4e00ba5e1fd444b05acfdcc1495416",
+      "files": [
+        {
+          "bytes": 244847642,
+          "path": "tpch/data/sf_10/customer.tbl",
+          "sha256": "d4ba00a59ddb3bdaabeb1bcf560a182f8874366c9db51cedc3bd5ec9d64d03bd"
+        },
+        {
+          "bytes": 7775727688,
+          "path": "tpch/data/sf_10/lineitem.tbl",
+          "sha256": "9a7b308b6ca31a88880421f5d1a8a540c6b9ff377d698b0401ed688534c7344d"
+        },
+        {
+          "bytes": 2224,
+          "path": "tpch/data/sf_10/nation.tbl",
+          "sha256": "66f96949939fa8fdf1c4ffed1e5f6c2842fe11a14b51fdc6ed1e17460031e8c5"
+        },
+        {
+          "bytes": 1749195031,
+          "path": "tpch/data/sf_10/orders.tbl",
+          "sha256": "f226ed1f69337bfd0dd2db00aa1c53d31ffb58dc03aa9386a80c7efcc24802c2"
+        },
+        {
+          "bytes": 243336157,
+          "path": "tpch/data/sf_10/part.tbl",
+          "sha256": "0eba8e6d7787f4dda40916bc4e01871498f3a5c29b9711c00c13bf2231ba2904"
+        },
+        {
+          "bytes": 1204850769,
+          "path": "tpch/data/sf_10/partsupp.tbl",
+          "sha256": "0c66a4409078d92b2a1c1f66f5349468c32ce4016e4c2d198e1916552b361a60"
+        },
+        {
+          "bytes": 389,
+          "path": "tpch/data/sf_10/region.tbl",
+          "sha256": "6022658d673924389b54dcb70fa8c3d6da1b0d7afa3c1c017bab62a019df404f"
+        },
+        {
+          "bytes": 14176368,
+          "path": "tpch/data/sf_10/supplier.tbl",
+          "sha256": "5de31112f00febc38aaa35581a7acf269b55f77b368c6ec3179fc138bf1fc996"
+        }
+      ],
+      "formats": [
+        "tbl"
+      ],
+      "file_count": 8,
+      "total_bytes": 11232136268,
+      "manifest_path": "provenance_manifest.json",
+      "manifest_sha256": "b2862c92a3380e41b4c9af71b05e15c70acc8f08d56df5cc489f332559bbe3c1",
+      "commit_sha256": "de7797e66e545aea2097eff38202cbed4bfd5733198f2f2019ef7346439887c0"
+    },
+    {
+      "id": "tpch/data/immutable-dataset-v1/72764dad47622f7d5e0387b6faf623f2a4257648533b6f08040adcc6393cba2c",
+      "benchmark": "tpch",
+      "artifact_type": "data",
+      "layout": "immutable-dataset-v1",
+      "generator": "tpchgen-rs",
+      "generator_revision": "4f6bf4c5ab40511c8fdef5888fc8d022e5e546d7",
+      "parameters": {
+        "scale_factor": "0.01"
+      },
+      "path": "users/guanli/dev/datasets/v1/tpch/data/tpchgen-rs/4f6bf4c5ab40511c8fdef5888fc8d022e5e546d7/sf_0.01/72764dad47622f7d5e0387b6faf623f2a4257648533b6f08040adcc6393cba2c",
+      "files": [
+        {
+          "bytes": 240990,
+          "path": "tpch/data/sf_0.01/customer.tbl",
+          "sha256": "6b690cce995cb715861ebf2c77aa02c61406e3a0ddcd3326d1ecfa969b9163f8"
+        },
+        {
+          "bytes": 7264250,
+          "path": "tpch/data/sf_0.01/lineitem.tbl",
+          "sha256": "ee411d23efcd2943ef70489799e37dfc24543dbd03b461a88e16fd82a95765e4"
+        },
+        {
+          "bytes": 2224,
+          "path": "tpch/data/sf_0.01/nation.tbl",
+          "sha256": "66f96949939fa8fdf1c4ffed1e5f6c2842fe11a14b51fdc6ed1e17460031e8c5"
+        },
+        {
+          "bytes": 1659137,
+          "path": "tpch/data/sf_0.01/orders.tbl",
+          "sha256": "07cc8b362fda6d0b503c4d6c5d228817548e0688a3b21b590c52bb47b7b79c0f"
+        },
+        {
+          "bytes": 237134,
+          "path": "tpch/data/sf_0.01/part.tbl",
+          "sha256": "896e14465325110dd9cf05a16972028a58be0010959262176ecd97f4db1702f8"
+        },
+        {
+          "bytes": 1161705,
+          "path": "tpch/data/sf_0.01/partsupp.tbl",
+          "sha256": "5947b5ebab042b49148f82c1324ad122f7e0d98cfadcbef12da0a5e239e09e79"
+        },
+        {
+          "bytes": 389,
+          "path": "tpch/data/sf_0.01/region.tbl",
+          "sha256": "6022658d673924389b54dcb70fa8c3d6da1b0d7afa3c1c017bab62a019df404f"
+        },
+        {
+          "bytes": 13795,
+          "path": "tpch/data/sf_0.01/supplier.tbl",
+          "sha256": "9dc1002ee774699a092ed83ba278caf466d62a15d7e35bb6ed9293475528734b"
+        }
+      ],
+      "formats": [
+        "tbl"
+      ],
+      "file_count": 8,
+      "total_bytes": 10579624,
+      "manifest_path": "provenance_manifest.json",
+      "manifest_sha256": "56b8226eec16a4e2e1b54888025f260c7fdc9d87ff9e994f5b22f73f29bd1497",
+      "commit_sha256": "55fe4daef3f1fae4d25174e56836fd8e6225bb9724fee336c46996b488349936"
+    },
+    {
+      "id": "ycsb/data/artifact-cache-v1/325cb528e1544718a269a34970714ef1536ce0d31ca6c25378af4cca8119183c",
+      "benchmark": "ycsb",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.ycsb.YCSBData",
+      "generator_revision": "4",
+      "parameters": {
+        "record_count": 1000,
+        "scale_factor": null
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/ycsb/data/driftbench-data-ycsb-ycsbdata-r4/325cb528e1544718a269a34970714ef1536ce0d31ca6c25378af4cca8119183c",
+      "files": [
+        {
+          "path": "artifacts/ycsb/data/usertable.csv",
+          "bytes": 1031080,
+          "sha256": "f9ded82420699132495c01f2d7d654147821e4950b94e933464d51bf95cbb2c3"
+        }
+      ],
+      "formats": [
+        "csv"
+      ],
+      "file_count": 1,
+      "total_bytes": 1031080,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "d458768fbd539b8caa04f0a43320e2ecc052c446a109525490142134cbcdfb90",
+      "commit_sha256": "1df8c9a008839176f283c8731daafc89987afb16b8a1d9f56d25f570f4bcfa7a"
+    },
+    {
+      "id": "ycsb/data/artifact-cache-v1/f7f8ee96f195a712ae11eb9e92c6a0dc35fac8970d43ea1d1131e6c567f05d34",
+      "benchmark": "ycsb",
+      "artifact_type": "data",
+      "layout": "artifact-cache-v1",
+      "generator": "driftbench.data.ycsb.YCSBData",
+      "generator_revision": "4",
+      "parameters": {
+        "record_count": 1000,
+        "scale_factor": 1
+      },
+      "path": "users/guanli/dev/cache/driftbench-artifact-cache/v1/ycsb/data/driftbench-data-ycsb-ycsbdata-r4/f7f8ee96f195a712ae11eb9e92c6a0dc35fac8970d43ea1d1131e6c567f05d34",
+      "files": [
+        {
+          "path": "artifacts/ycsb/data/usertable.csv",
+          "bytes": 1031080,
+          "sha256": "f9ded82420699132495c01f2d7d654147821e4950b94e933464d51bf95cbb2c3"
+        }
+      ],
+      "formats": [
+        "csv"
+      ],
+      "file_count": 1,
+      "total_bytes": 1031080,
+      "manifest_path": "manifest.json",
+      "manifest_sha256": "3ef106879fd1f5b5496a01926e4e9307c0997842de196f3dea2153d6df4e41d6",
+      "commit_sha256": "2ee1c02e1ddea136fcba0f53ba73bbdc3c88e69963bd5af441c33056a24105bc"
+    }
+  ]
+}

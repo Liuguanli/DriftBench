@@ -23,12 +23,14 @@ from driftbench.cache import (
     RemoteCacheMode,
     materialize_artifacts,
 )
+from driftbench import catalog
 
 __all__ = [
     "__version__",
     "AzureHNSCacheConfig",
     "MaterializationResult",
     "RemoteCacheMode",
+    "catalog",
     "get_filter",
     "get_schema_extractor",
     "load_and_validate_spec",

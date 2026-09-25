@@ -53,6 +53,25 @@ python -c "from driftbench.data.ycsb import data; print(data(record_count=10).ge
 
 ---
 
+## Browse the Azure artifact catalog
+
+```python
+from driftbench import catalog
+
+print(catalog.info())  # UTC snapshot time, scope, counts, and access requirements
+data = catalog.list(artifact_type="data")
+queries = catalog.list(artifact_type="queries")
+tpch = catalog.list(benchmark="tpch", artifact_type="data")
+tpch_sf10 = next(entry for entry in tpch if entry["parameters"]["scale_factor"] == "10")
+```
+
+This public **packaged metadata snapshot** needs no Azure login or optional
+Azure dependencies. Neither importing nor browsing contacts Azure. It describes
+observed artifacts, not generator capabilities or guaranteed live availability;
+payload access remains private. See the [catalog contract and refresh guide](docs/artifact_catalog.md).
+TPC-H has separate SF 0.01 and SF 10 datasets; select the scale explicitly.
+This is a development-branch API, not yet included in a published package release.
+
 ## Benchmark Adapters (`driftbench.data`)
 
 Twelve adapters prepare local benchmark artifacts. Most synthetic generators need no
