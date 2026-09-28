@@ -19,6 +19,8 @@ from numbers import Real
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from driftbench.numeric_contract import require_integer, require_real
+
 
 QUERY_MIX_ALGORITHM = "driftbench.query-workload-mix/v1"
 QUERY_MIX_OUTPUT_SCHEMA = "driftbench.query-template-mix-result/v1"
@@ -99,10 +101,8 @@ def apply_query_workload_mix_drift(
     template_ids = tuple(template.template_id for template in template_tuple)
     if len(set(template_ids)) != len(template_ids):
         raise ValueError("template IDs must be unique")
-    if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size <= 0:
-        raise ValueError("sample_size must be a positive integer")
-    if isinstance(seed, bool) or not isinstance(seed, int):
-        raise TypeError("seed must be an integer")
+    sample_size = require_integer(sample_size, "sample_size", minimum=1)
+    seed = require_integer(seed, "seed")
 
     if baseline_weights is None:
         baseline_weights = {template_id: 1.0 for template_id in template_ids}
@@ -174,8 +174,7 @@ def parse_query_template_mix_spec(
     seed = spec.get("seed", _MISSING)
     if seed is _MISSING:
         raise ValueError("query mix spec requires top-level seed")
-    if isinstance(seed, bool) or not isinstance(seed, int):
-        raise TypeError("query mix spec seed must be an integer")
+    seed = require_integer(seed, "query mix spec seed")
 
     variables = spec.get("variables")
     if not isinstance(variables, Mapping):
@@ -184,12 +183,9 @@ def parse_query_template_mix_spec(
     sample_size = variables.get("sample_size", _MISSING)
     if sample_size is _MISSING:
         raise ValueError("query mix spec requires variables.sample_size")
-    if (
-        isinstance(sample_size, bool)
-        or not isinstance(sample_size, int)
-        or sample_size <= 0
-    ):
-        raise ValueError("variables.sample_size must be a positive integer")
+    sample_size = require_integer(
+        sample_size, "variables.sample_size", minimum=1
+    )
 
     template_ids = _parse_template_ids(variables.get("template_ids"))
     runtime_map = _parse_runtime_inputs(runtime_inputs)
@@ -374,12 +370,7 @@ def _expand_weight_config(
 
 
 def _nonnegative_real(value: Any, field: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, Real):
-        raise TypeError(f"{field} must be a real number")
-    converted = float(value)
-    if not math.isfinite(converted) or converted < 0:
-        raise ValueError(f"{field} must be finite and non-negative")
-    return converted
+    return require_real(value, field, minimum=0.0)
 
 
 def _write_result_json(
@@ -444,13 +435,9 @@ def _normalize_weights(
 
     numeric: dict[str, float] = {}
     for template_id in template_ids:
-        value = weights[template_id]
-        if isinstance(value, bool) or not isinstance(value, Real):
-            raise TypeError(f"{name}[{template_id!r}] must be a real number")
-        converted = float(value)
-        if not math.isfinite(converted) or converted < 0:
-            raise ValueError(f"{name}[{template_id!r}] must be finite and non-negative")
-        numeric[template_id] = converted
+        numeric[template_id] = require_real(
+            weights[template_id], f"{name}[{template_id!r}]", minimum=0.0
+        )
     total = math.fsum(numeric.values())
     if total <= 0:
         raise ValueError(f"{name} must have a positive total weight")

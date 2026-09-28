@@ -8,6 +8,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+from decimal import Decimal
 from pathlib import Path
 from unittest import mock
 
@@ -709,6 +710,10 @@ class ManifestAndGalleryTests(unittest.TestCase):
 
             gallery_path = build_gallery(root)
             text = gallery_path.read_text(encoding="utf-8")
+            configuration_json = re.findall(
+                r"^- Configuration: `(.*)`$", text, re.MULTILINE
+            )
+            configurations = [json.loads(value) for value in configuration_json]
             image_links = re.findall(r"!\[[^]]+\]\(([^)]+)\)", text)
             spec_links = re.findall(r"^- DriftSpec: .*\]\(([^)]+)\)$", text, re.MULTILINE)
             manifest_links = re.findall(
@@ -732,6 +737,22 @@ class ManifestAndGalleryTests(unittest.TestCase):
             self.assertEqual(len(image_links), 40)
             self.assertEqual(len(spec_links), 40)
             self.assertEqual(len(manifest_links), 40)
+            self.assertEqual(len(configurations), 40)
+            for serialized, configuration in zip(
+                configuration_json, configurations, strict=True
+            ):
+                with self.subTest(configuration=serialized):
+                    fractional_parts = re.findall(r"-?\d+\.(\d+)", serialized)
+                    self.assertTrue(
+                        all(len(part) <= 6 for part in fractional_parts)
+                    )
+                    for field in ("baseline_weights", "target_weights"):
+                        if field in configuration:
+                            displayed_total = sum(
+                                Decimal(str(value))
+                                for value in configuration[field].values()
+                            )
+                            self.assertEqual(displayed_total, Decimal("1"))
             self.assertEqual(len(re.findall(r"\n## .+ \(`", text)), 8)
             self.assertEqual(text.count("5/5 PASS"), 8)
             self.assertIn("Reading the diagnostics", text)

@@ -36,6 +36,7 @@ from driftbench.cache import (
 )
 from driftbench.cache.requests import load_artifact_request, load_azure_cache_config
 from driftbench.console import console_print
+from driftbench.numeric_contract import present_value
 from driftbench.orchestrate import TargetConfigError, orchestrate_targets
 import driftbench.spec.types  # ensure handlers registered
 from driftbench.spec.core import (
@@ -71,7 +72,7 @@ def _emit(data: Dict[str, Any], as_json: bool) -> None:
         console_print(json.dumps(data, ensure_ascii=True, allow_nan=False, indent=2))
         return
     for key, value in data.items():
-        console_print(f"{key}: {value}")
+        console_print(f"{key}: {present_value(value, field=key)}")
 
 
 def _collect_declared_outputs(obj: Any) -> List[str]:

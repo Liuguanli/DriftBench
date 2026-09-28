@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Any, Mapping
 
+from driftbench.numeric_contract import format_number, present_value
+
 from driftbench.query_drift import QUERY_MIX_ALGORITHM
 
 from . import VISUALIZATION_SCHEMA_VERSION
@@ -473,7 +475,10 @@ def _artifact_key_set(root: Path, suffix: str) -> set[tuple[str, str, str]]:
 
 
 def _compact_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    display_value = present_value(value)
+    return json.dumps(
+        display_value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
 
 
 def _effect_summary(effect: Mapping[str, Any]) -> str:
@@ -490,8 +495,7 @@ def _effect_summary(effect: Mapping[str, Any]) -> str:
 def _metric(value: Any) -> str:
     if value is None:
         return "n/a"
-    number = float(value)
-    return str(int(number)) if number.is_integer() else f"{number:.4f}"
+    return format_number(value)
 
 
 __all__ = [

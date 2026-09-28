@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping
 
+from driftbench.numeric_contract import format_number
+
 
 class EffectAssertionError(RuntimeError):
     pass
@@ -147,10 +149,7 @@ def _short_metric(value: str) -> str:
 def _format_value(value: Any) -> str:
     if value is None:
         return "n/a"
-    number = float(value)
-    if number.is_integer():
-        return str(int(number))
-    return f"{number:.3f}"
+    return format_number(value)
 
 
 def _operator_symbol(value: str) -> str:

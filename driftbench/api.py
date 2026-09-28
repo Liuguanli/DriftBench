@@ -10,6 +10,16 @@ from typing import Any, Dict, Tuple
 
 from driftbench.core.data.filter_registry import get_filter, register_filter
 from driftbench.core.schema.factory import get_schema_extractor
+from driftbench.numeric_contract import (
+    DISPLAY_DECIMAL_PLACES,
+    format_number,
+    present_probability_map,
+    present_real,
+    present_value,
+    require_integer,
+    require_probability,
+    require_real,
+)
 from driftbench.query_drift import (
     QueryTemplate,
     QueryTemplateMixSpec,
@@ -56,19 +66,27 @@ def load_and_validate_spec(spec_path: str) -> Tuple[Dict[str, Any], Dict[str, st
 
 
 __all__ = [
+    "DISPLAY_DECIMAL_PLACES",
     "QueryTemplate",
     "QueryTemplateMixSpec",
     "QueryWorkloadMixResult",
     "apply_query_workload_mix_drift",
     "execute_query_template_mix_spec",
+    "format_number",
     "get_filter",
     "get_schema_extractor",
     "load_and_validate_spec",
     "load_spec",
     "parse_query_template_mix_spec",
+    "present_probability_map",
+    "present_real",
+    "present_value",
     "register_filter",
     "run_spec",
     "run_spec_and_return_summary",
+    "require_integer",
+    "require_probability",
+    "require_real",
     "trace_to_spec",
     "validate_spec",
 ]
