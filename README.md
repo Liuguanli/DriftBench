@@ -71,6 +71,9 @@ observed artifacts, not generator capabilities or guaranteed live availability;
 payload access remains private. See the [catalog contract and refresh guide](docs/artifact_catalog.md).
 TPC-H has separate SF 0.01 and SF 10 datasets; select the scale explicitly.
 This is a development-branch API, not yet included in a published package release.
+An explicit `catalog.materialize(entry_id, cache_dir=...)` can download an
+authorized immutable dataset once and verify/reuse its local cache offline.
+Browsing remains offline; see the catalog guide for limits and authentication.
 
 ## Benchmark Adapters (`driftbench.data`)
 

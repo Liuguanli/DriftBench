@@ -32,12 +32,17 @@ import driftbench
 assert not any(name == "azure" or name.startswith("azure.") for name in sys.modules)
 catalog_reads_allowed = True
 from driftbench import catalog
+assert callable(catalog.materialize)
+assert "driftbench.cache.datasets" not in sys.modules
 assert catalog.info()["counts"] == {"data": 10, "queries": 0}
 assert len(catalog.list()) == 10
 assert catalog.get(catalog.list()[0]["id"])
 tpch_by_scale = {entry["parameters"]["scale_factor"]: entry for entry in catalog.list(benchmark="tpch")}
 assert set(tpch_by_scale) == {"0.01", "10"}
 assert tpch_by_scale["10"]["total_bytes"] == 11_232_136_268
+from driftbench.cache import datasets
+assert callable(datasets.materialize_dataset)
+assert not any(name == "azure" or name.startswith("azure.") for name in sys.modules)
 '''
 
 
@@ -107,14 +112,14 @@ class Inventory:
         }))
         return root
 
-    def dataset(self) -> str:
+    def dataset(self, *, table_data: dict[str, bytes] | None = None) -> str:
         fingerprint = sha(b"immutable dataset identity")
         revision = "b" * 40
         root = f"team/datasets/v1/tpch/data/tpchgen-rs/{revision}/sf_0.01/{fingerprint}"
         artifacts = []
         for table in ("region", "nation", "supplier", "customer", "part", "partsupp", "orders", "lineitem"):
             artifacts.append(self.put(root, f"tpch/data/sf_0.01/{table}.tbl",
-                                      b"1|example|\n", payload=True))
+                                      (table_data or {}).get(table, b"1|example|\n"), payload=True))
         control_path = "tpch/data/sf_0.01/tpch_data_manifest.json"
         artifacts.append(self.put(root, control_path, encode({"benchmark": "tpch", "artifact_type": "data"})))
         provenance = encode({

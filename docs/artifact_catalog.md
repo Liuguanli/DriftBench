@@ -73,9 +73,89 @@ finalization. The smaller dataset was preserved. These are generation/upload
 checks, not official benchmark conformance or database execution evidence.
 
 Public metadata does **not** make the data public. Reading payloads still
-requires appropriate Azure authorization. This API does not download files,
-generate data, run SQL, or change permissions. The catalog does not establish
+requires appropriate Azure authorization. Browsing does not download files;
+the separate explicit `materialize` call below can populate a private local cache.
+Neither operation generates data, runs SQL, or changes permissions. The catalog does not establish
 official benchmark conformance, database execution, or performance results.
+
+## Download once and reuse verified local data
+
+This development-checkout API supports `immutable-dataset-v1` **data** entries,
+not the ordinary `artifact-cache-v1` layout or query artifacts. A published
+package lacking `catalog.materialize` cannot use it until an appropriate version
+is separately released; no automatic checkout fallback is provided.
+
+```python
+from pathlib import Path
+from driftbench import catalog
+
+sf001 = next(
+    entry for entry in catalog.list(benchmark="tpch", artifact_type="data")
+    if entry["parameters"]["scale_factor"] == "0.01"
+)
+result = catalog.materialize(
+    sf001["id"],
+    cache_dir=Path.home() / "DriftBenchDatasets",
+    max_bytes=64 * 1024 * 1024,
+)
+print(result["cache_outcome"], result["payload_dir"])
+```
+
+The first successful population returns `cache_outcome="downloaded"` and reads
+the exact catalog commit marker, provenance manifest, and eight listed payloads.
+It checks pinned metadata hashes, metadata structure/cross-references, and every
+payload's size/SHA-256 before atomically exposing the local entry. The provenance
+reference to the generator manifest is checked, but that additional generator
+manifest is not downloaded: this is the catalog's payload subset, not a full
+remote bundle export.
+
+Repeat the same call to get `cache_outcome="hit"`. **Every hit verifies the full
+inventory, all hashes, metadata, and source/descriptor binding locally**, without
+constructing an Azure client, importing its SDK, reading a credential file, or
+contacting Azure. This still reads the local files to hash them; it is not merely
+an existence or timestamp check. An observation-time-only catalog refresh does
+not invalidate identical content, but changed source/entry descriptors create a
+different cache key.
+
+| Result field | Meaning |
+|---|---|
+| `entry_id`, `source`, `binding_sha256` | Selected immutable ID and canonical source/descriptor binding; no credentials |
+| `local_path`, `payload_dir`, `files` | Dedicated cache entry, common payload parent, and verified absolute file paths |
+| `file_count`, `payload_bytes` | Listed payload inventory, not metadata |
+| `metadata_bytes`, `materialized_bytes` | Commit/provenance plus local binding bytes; total local content including payloads |
+| `downloaded_payload_bytes`, `downloaded_metadata_bytes` | Content obtained on this population; both zero on a hit; local binding is not downloaded |
+| `remote_checked`, `catalog_observed_at` | Whether this call read Azure, and the packaged catalog's observation time |
+
+`max_bytes` is an aggregate **materialized-content** limit including metadata
+and the local binding, not an Azure bill or HTTP retry quota. Known oversize
+requests fail before credentials/client construction; remote metadata is also
+bounded to 1 MiB per object, and payload streams cannot exceed their descriptors.
+The default therefore rejects SF10. SDK buffering, protocol overhead, and retries
+are not reported as downloaded content or bounded billing traffic.
+
+Misses require the existing optional `azure` dependencies and an already
+authorized identity from the [Azure setup guide](azure_hns_cache.md).
+An explicit `credential_env_file` selects the existing private credential-file
+mode; otherwise the existing non-interactive credential chain is used. The call
+does not log in, grant access, upload, list the namespace, or alter Azure data.
+
+Unknown IDs raise `KeyError`; invalid catalog metadata raises `CatalogError`.
+Unsupported requests/limits/paths use the existing cache configuration errors.
+Authentication, transport, integrity, collision, and lock failures remain errors.
+A missing remote object is **not** a request to generate replacement data.
+Corrupt or incomplete existing local entries fail without repair or overwrite:
+inspect them or explicitly choose another dedicated `cache_dir`.
+
+Keep private caches outside the checkout/package installation, separate from
+walkthrough outputs. Symlinks/reparse points and unexplained files/directories
+are rejected. Forbidden roots are checked by resolved path and directory identity
+before local writes, so Windows path aliases cannot bypass that boundary.
+Windows-invalid payload filenames are rejected before client construction.
+Cooperating callers share the existing bounded OS-backed lock;
+failed calls clean only their own staging directory, never older entries.
+Cached validity proves agreement with pinned catalog evidence, **not current
+Azure freshness or permission**. Revoking remote access does not erase an
+already downloaded local copy. Never publish caches, real inputs, or credentials.
 
 ## Maintainer refresh (read-only Azure access)
 

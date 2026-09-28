@@ -6,6 +6,11 @@ snapshot does not authenticate, list Azure storage, or change payload permission
 The maintainer-only catalog exporter is separate from the exact-path runtime
 cache described below.
 
+Cataloged `immutable-dataset-v1` data, including the two independent TPC-H
+datasets, uses the separate explicit `catalog.materialize(...)` reader described
+in the catalog guide. Its verified local hits are offline; it never generates
+misses or uploads. Do not confuse that reader with the artifact-cache flow below.
+
 DriftBench can use an explicit Azure Data Lake Storage Gen2 cache before it
 generates an eligible local benchmark artifact. The ordinary adapter
 `.generate()` API remains offline. Cache mode is also `off` by default, so a

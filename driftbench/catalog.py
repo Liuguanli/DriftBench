@@ -1,7 +1,7 @@
-"""Browse the public, packaged snapshot of Azure benchmark artifact metadata.
+"""Browse packaged Azure metadata and explicitly materialize immutable datasets.
 
 Importing this module is passive. Explicit calls read a packaged JSON resource;
-they do not contact Azure or grant access to the private artifact files.
+only ``materialize`` may read Azure on a local cache miss. No call grants access.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import math
 import re
 from datetime import datetime, timedelta
 from importlib import resources
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from driftbench.cache.errors import CacheConfigurationError
@@ -24,7 +24,7 @@ from driftbench.cache.models import (
 )
 
 
-__all__ = ["CatalogError", "get", "info", "list"]
+__all__ = ["CatalogError", "get", "info", "list", "materialize"]
 
 _SCHEMA = "driftbench.azure-catalog/v1"
 _MAX_BYTES = 8 * 1024 * 1024
@@ -239,14 +239,43 @@ def list(*, benchmark: str | None = None,
     )
 
 
-def get(entry_id: str) -> dict[str, Any]:
-    """Return an independent record by its stable ID, or raise ``KeyError``."""
+def _load_entry(entry_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     if not isinstance(entry_id, str) or not entry_id:
         raise ValueError("entry_id must be a non-empty catalog ID from catalog.list()")
-    for entry in _load()["entries"]:
+    snapshot = _load()
+    for entry in snapshot["entries"]:
         if entry["id"] == entry_id:
-            return entry
+            return snapshot, entry
     raise KeyError("catalog ID is not present in the packaged snapshot")
+
+
+def get(entry_id: str) -> dict[str, Any]:
+    """Return an independent record by its stable ID, or raise ``KeyError``."""
+    return _load_entry(entry_id)[1]
+
+
+def materialize(
+    entry_id: str,
+    *,
+    cache_dir: str | Path,
+    credential_env_file: str | Path | None = None,
+    max_bytes: int = 64 * 1024 * 1024,
+) -> dict[str, Any]:
+    """Download immutable data once, then verify and reuse it entirely offline.
+
+    ``max_bytes`` includes payloads, commit/provenance metadata, and the local
+    binding record. It is not a network billing/retry limit. A corrupt existing
+    entry fails without repair; choose another dedicated cache directory.
+    """
+    snapshot, entry = _load_entry(entry_id)
+    from driftbench.cache.datasets import materialize_dataset
+
+    result = materialize_dataset(
+        entry, snapshot["source"], cache_dir=cache_dir,
+        credential_env_file=credential_env_file, max_bytes=max_bytes,
+    )
+    result["catalog_observed_at"] = snapshot["observed_at"]
+    return result
 
 
 def info() -> dict[str, Any]:
