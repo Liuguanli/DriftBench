@@ -9,9 +9,27 @@ Format notes:
 ## [Unreleased]
 
 ### Services
-- `Data`: Public, offline discovery of Azure benchmark artifact metadata.
+- `Data`: Public, offline discovery of Azure artifact metadata and opt-in verified dataset downloads.
 
 ### Added
+- A public numeric contract, exported through `driftbench.api`, for finite and
+  range-aware validation plus presentation-only formatting. Human-facing
+  notebook, CLI, and gallery summaries use at most six fractional digits;
+  normalized probability maps use deterministic largest-remainder allocation
+  so their displayed decimal mass remains exactly one. Canonical machine
+  artifacts, sampling/statistics, hashes, SQL, currency, timestamps, and
+  benchmark-defined values retain their domain precision.
+- Twelve paired Notebook/Python companion walkthroughs for local benchmark
+  artifact inspection, supported cardinality drift, query-template streams,
+  and parameter/profile changes. They record the actual package import source
+  and distinguish missing inputs/APIs and unsupported steps from successful
+  execution. Companions do not execute databases or native drivers; the TPC-H
+  example optionally prepares authorized Azure SF0.01 data before local steps.
+- Explicit `catalog.materialize` for immutable data: content/source-bound local
+  caching, full offline verification on every hit, content-size-bounded
+  read-only materialization on misses, and atomic publication. The bound is not
+  a network-transfer or billing cap. Invalid caches fail without automatic repair;
+  default browsing and walkthroughs remain offline.
 - `from driftbench import catalog` with explicit `list`, `get`, and `info`
   calls over a timestamped metadata snapshot included in wheel and sdist.
   Browsing requires no Azure login or optional Azure packages; imports do not
@@ -23,6 +41,13 @@ Format notes:
 - A separately stored TPC-H SF 10 dataset (eight `.tbl` files, about 11.23 GB)
   is included in the catalog alongside the unchanged SF 0.01 dataset. Examples
   select scales explicitly; upload verification does not imply TPC certification.
+
+### Changed
+- The new public numeric validators reject booleans and integral floats for
+  integer-semantic fields, bound signed integers to 64-bit range by default,
+  and require continuous values to be finite and within declared ranges.
+  Query-mix `seed` and `sample_size` now use these validators, including their
+  shared strict errors for integer-like floats and out-of-range values.
 
 ## [v0.1.0b10] - 2026-08-22
 
