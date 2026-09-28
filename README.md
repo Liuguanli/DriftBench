@@ -105,6 +105,13 @@ Related benchmark docs: [complete adapter reference](docs/benchmark_reference.md
 verified artifacts across projects, see the opt-in
 [ADLS Gen2 HNS cache guide](docs/azure_hns_cache.md).
 
+For step-by-step local usage checks, see the
+[12 paired Notebook/Python walkthroughs](docs/benchmark_walkthroughs/README.md).
+They distinguish installed-package and checkout imports, inspect real local
+artifacts, demonstrate supported data/query-mix changes, and explicitly report
+missing inputs or unsupported capabilities. They do not run databases; Azure
+preparation is off by default and explicitly available for the TPC-H SF0.01 example.
+
 For offline setup, concrete examples and external requirements of the new adapters,
 see [sysbench, SSB and LDBC artifact support](docs/benchmark_extensions.md).
 
